@@ -1,11 +1,22 @@
-print("Bienvenue sur PrediTrade AI")
+import streamlit as st
 
-while True:
-    question = input("Pose une question sur un marché financier : ")
+st.set_page_config(page_title="PrediTrade AI", layout="wide")
 
-    if question.lower() == "quit":
-        break
+st.title("📈 PrediTrade AI")
+st.subheader("Assistant IA de trading pour débutants")
 
-    print("Analyse PrediTrade AI :")
-    print("Probabilité de hausse : 72%")
-    print("Le marché montre une tendance haussière.")
+st.write("Bienvenue sur la première version de PrediTrade AI.")
+
+actif = st.text_input("Entrez un actif (BTC, EUR/USD, AAPL...)")
+
+if st.button("Analyser"):
+    st.success("Analyse terminée")
+
+    st.metric(
+        label="Probabilité de hausse",
+        value="72%"
+    )
+
+    st.info(
+        "Le marché montre actuellement une tendance haussière."
+    )
