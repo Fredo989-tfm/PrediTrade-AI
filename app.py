@@ -1,13 +1,13 @@
 import streamlit as st
 
-st.set_page_config(page_title="PrediTrade AI", layout="wide")
+st.set_page_config(page_title="PrediTrade AI")
 
 st.title("📈 PrediTrade AI")
 st.subheader("Assistant IA de trading pour débutants")
 
 st.write("Bienvenue sur la première version de PrediTrade AI.")
 
-actif = st.text_input("Entrez un actif (BTC, EUR/USD, AAPL...)")
+actif = st.text_input("Entrez un actif (BTC, EURUSD, AAPL...)")
 
 if st.button("Analyser"):
     st.success("Analyse terminée")
@@ -17,6 +17,6 @@ if st.button("Analyser"):
         value="72%"
     )
 
-    st.info(
-        "Le marché montre actuellement une tendance haussière."
+    st.write(
+        "Le marché montre une tendance haussière basée sur les indicateurs disponibles."
     )
