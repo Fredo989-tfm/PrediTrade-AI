@@ -40,4 +40,27 @@ if st.button("Analyser"):
         value=f"{prob}%"
     )
 
-    st.write(analyse)
+st.write(analyse)
+
+if actif == "BTC":
+    risque = "Moyen"
+    confiance = "8/10"
+
+elif actif == "TSLA":
+    risque = "Élevé"
+    confiance = "6/10"
+
+elif actif == "AAPL":
+    risque = "Faible"
+    confiance = "9/10"
+
+elif actif == "EURUSD":
+    risque = "Moyen"
+    confiance = "7/10"
+
+else:
+    risque = "Inconnu"
+    confiance = "5/10"
+
+st.write(f"⚠️ Risque : {risque}")
+st.write(f"🎯 Confiance : {confiance}")
