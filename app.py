@@ -10,7 +10,7 @@ st.title("📈 PrediTrade AI")
 st.subheader("Assistant IA de trading pour débutants")
 
 st.write(
-    "Bienvenue sur la première version de PrediTrade AI. "
+    "Bienvenue sur la première version de PrediTrade AI.\n"
     "Entrez un actif pour obtenir une analyse rapide."
 )
 
@@ -30,7 +30,7 @@ if st.button("Analyser"):
 
     elif actif == "TSLA":
         prob = 65
-        analyse = "Tesla reste volatile mais conserve un potentiel positif."
+        analyse = "Tesla reste volatile mais conserve un potentiel haussier."
         risque = "Élevé"
         confiance = "6/10"
 
@@ -42,13 +42,13 @@ if st.button("Analyser"):
 
     elif actif == "EURUSD":
         prob = 55
-        analyse = "EURUSD évolue actuellement dans une zone neutre."
+        analyse = "EURUSD évolue actuellement dans une zone d'incertitude."
         risque = "Moyen"
         confiance = "7/10"
 
     else:
         prob = 60
-        analyse = "Données insuffisantes pour une analyse avancée."
+        analyse = "Données insuffisantes, analyse limitée."
         risque = "Inconnu"
         confiance = "5/10"
 
@@ -59,19 +59,18 @@ if st.button("Analyser"):
         value=f"{prob}%"
     )
 
+    st.progress(prob / 100)
+
+    if prob >= 75:
+        st.success("🟢 Signal : Achat")
+
+    elif prob >= 60:
+        st.warning("🟡 Signal : Surveillance")
+
+    else:
+        st.error("🔴 Signal : Prudence")
+
     st.write(analyse)
 
     st.write(f"⚠️ Risque : {risque}")
     st.write(f"🎯 Confiance : {confiance}")
-
-    st.progress(prob)
-
-    if prob >= 75:
-        st.success("Signal global : Achat potentiel 🟢")
-    elif prob >= 60:
-        st.warning("Signal global : Surveillance 🟡")
-    else:
-        st.error("Signal global : Prudence 🔴")
-
-st.markdown("---")
-st.caption("PrediTrade AI v1.0")
