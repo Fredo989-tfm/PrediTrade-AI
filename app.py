@@ -1,14 +1,22 @@
-
 import streamlit as st
 
-st.set_page_config(page_title="PrediTrade AI", layout="centered")
+st.set_page_config(
+    page_title="PrediTrade AI",
+    page_icon="📈",
+    layout="centered"
+)
 
 st.title("📈 PrediTrade AI")
 st.subheader("Assistant IA de trading pour débutants")
 
-st.write("Bienvenue sur la première version intelligente de PrediTrade AI.")
+st.write(
+    "Bienvenue sur la première version de PrediTrade AI. "
+    "Entrez un actif pour obtenir une analyse rapide."
+)
 
-actif = st.text_input("Entrez un actif (BTC, EURUSD, AAPL, TSLA...)")
+actif = st.text_input(
+    "Entrez un actif (BTC, EURUSD, AAPL, TSLA...)"
+)
 
 if st.button("Analyser"):
 
@@ -34,13 +42,13 @@ if st.button("Analyser"):
 
     elif actif == "EURUSD":
         prob = 55
-        analyse = "EURUSD évolue actuellement dans une zone d'incertitude."
+        analyse = "EURUSD évolue actuellement dans une zone neutre."
         risque = "Moyen"
         confiance = "7/10"
 
     else:
         prob = 60
-        analyse = "Données insuffisantes, analyse générique appliquée."
+        analyse = "Données insuffisantes pour une analyse avancée."
         risque = "Inconnu"
         confiance = "5/10"
 
@@ -55,3 +63,15 @@ if st.button("Analyser"):
 
     st.write(f"⚠️ Risque : {risque}")
     st.write(f"🎯 Confiance : {confiance}")
+
+    st.progress(prob)
+
+    if prob >= 75:
+        st.success("Signal global : Achat potentiel 🟢")
+    elif prob >= 60:
+        st.warning("Signal global : Surveillance 🟡")
+    else:
+        st.error("Signal global : Prudence 🔴")
+
+st.markdown("---")
+st.caption("PrediTrade AI v1.0")
