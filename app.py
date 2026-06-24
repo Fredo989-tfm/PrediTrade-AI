@@ -1,4 +1,3 @@
-
 import streamlit as st
 import yfinance as yf
 
@@ -92,18 +91,18 @@ if st.button("Analyser"):
 
             if not data.empty:
 
-                close_data = data["Close"].dropna()
+                close_data = data["Close"]
 
-                prix = round(
-                    float(close_data.iloc[-1]),
-                    2
-                )
+                if hasattr(close_data, "iloc"):
+                    prix = round(float(close_data.iloc[-1]), 2)
+                else:
+                    prix = round(float(close_data), 2)
 
                 st.subheader("📊 Données réelles du marché")
 
                 st.metric(
                     "Prix actuel",
-                    prix
+                    f"{prix}"
                 )
 
                 st.line_chart(close_data)
