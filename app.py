@@ -26,4 +26,93 @@ if st.button("Analyser"):
     if actif == "BTC":
         ticker = "BTC-USD"
         prob = 78
-        analyse = "Bitcoin montre une tendance haussière sout
+        analyse = "Bitcoin montre une tendance haussière soutenue."
+        risque = "Moyen"
+        confiance = "8/10"
+
+    elif actif == "TSLA":
+        ticker = "TSLA"
+        prob = 65
+        analyse = "Tesla reste volatile mais conserve un potentiel intéressant."
+        risque = "Élevé"
+        confiance = "6/10"
+
+    elif actif == "AAPL":
+        ticker = "AAPL"
+        prob = 82
+        analyse = "Apple présente une structure haussière solide."
+        risque = "Faible"
+        confiance = "9/10"
+
+    elif actif == "EURUSD":
+        ticker = "EURUSD=X"
+        prob = 55
+        analyse = "EURUSD évolue actuellement dans une zone neutre."
+        risque = "Moyen"
+        confiance = "7/10"
+
+    else:
+        ticker = None
+        prob = 50
+        analyse = "Actif non reconnu."
+        risque = "Inconnu"
+        confiance = "5/10"
+
+    st.success("Analyse terminée")
+
+    st.metric(
+        label="Probabilité de hausse",
+        value=f"{prob}%"
+    )
+
+    st.progress(prob / 100)
+
+    if prob >= 70:
+        st.success("🟢 Signal : Achat")
+    elif prob >= 55:
+        st.warning("🟡 Signal : Surveillance")
+    else:
+        st.error("🔴 Signal : Vente")
+
+    st.write(analyse)
+    st.write(f"⚠️ Risque : {risque}")
+    st.write(f"🎯 Confiance : {confiance}")
+
+    if ticker:
+
+        try:
+            data = yf.download(
+                ticker,
+                period="1mo",
+                progress=False,
+                auto_adjust=True
+            )
+
+            if not data.empty:
+
+                st.subheader("📊 Données réelles du marché")
+
+                close_data = data["Close"]
+
+                # Correction définitive du problème Series
+                try:
+                    prix = round(float(close_data.iloc[-1]), 2)
+                except:
+                    prix = round(float(close_data.iloc[-1].iloc[0]), 2)
+
+                st.metric(
+                    "Prix actuel",
+                    f"{prix}"
+                )
+
+                st.line_chart(close_data)
+
+            else:
+                st.warning(
+                    "Aucune donnée disponible pour cet actif."
+                )
+
+        except Exception as e:
+            st.error(
+                f"Erreur : {e}"
+            )
