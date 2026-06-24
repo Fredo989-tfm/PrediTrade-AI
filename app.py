@@ -1,4 +1,5 @@
 import streamlit as st
+import yfinance as yf
 
 st.set_page_config(
     page_title="PrediTrade AI",
@@ -10,12 +11,12 @@ st.title("📈 PrediTrade AI")
 st.subheader("Assistant IA de trading pour débutants")
 
 st.write(
-    "Bienvenue sur la première version de PrediTrade AI.\n"
-    "Entrez un actif pour obtenir une analyse rapide."
+    "Bienvenue sur PrediTrade AI V3.\n"
+    "Entrez un actif pour obtenir une analyse."
 )
 
 actif = st.text_input(
-    "Entrez un actif (BTC, EURUSD, AAPL, TSLA...)"
+    "Entrez un actif (BTC, TSLA, AAPL, EURUSD)"
 )
 
 if st.button("Analyser"):
@@ -23,32 +24,37 @@ if st.button("Analyser"):
     actif = actif.upper()
 
     if actif == "BTC":
+        ticker = "BTC-USD"
         prob = 78
         analyse = "Bitcoin montre une tendance haussière soutenue."
         risque = "Moyen"
         confiance = "8/10"
 
     elif actif == "TSLA":
+        ticker = "TSLA"
         prob = 65
-        analyse = "Tesla reste volatile mais conserve un potentiel haussier."
+        analyse = "Tesla reste volatile mais conserve un potentiel intéressant."
         risque = "Élevé"
         confiance = "6/10"
 
     elif actif == "AAPL":
+        ticker = "AAPL"
         prob = 82
         analyse = "Apple présente une structure haussière solide."
         risque = "Faible"
         confiance = "9/10"
 
     elif actif == "EURUSD":
+        ticker = "EURUSD=X"
         prob = 55
-        analyse = "EURUSD évolue actuellement dans une zone d'incertitude."
+        analyse = "EURUSD évolue actuellement dans une zone neutre."
         risque = "Moyen"
         confiance = "7/10"
 
     else:
-        prob = 60
-        analyse = "Données insuffisantes, analyse limitée."
+        ticker = None
+        prob = 50
+        analyse = "Actif non reconnu."
         risque = "Inconnu"
         confiance = "5/10"
 
@@ -61,16 +67,46 @@ if st.button("Analyser"):
 
     st.progress(prob / 100)
 
-    if prob >= 75:
+    if prob >= 70:
         st.success("🟢 Signal : Achat")
-
-    elif prob >= 60:
+    elif prob >= 55:
         st.warning("🟡 Signal : Surveillance")
-
     else:
-        st.error("🔴 Signal : Prudence")
+        st.error("🔴 Signal : Vente")
 
     st.write(analyse)
 
     st.write(f"⚠️ Risque : {risque}")
     st.write(f"🎯 Confiance : {confiance}")
+
+    if ticker:
+
+        try:
+            data = yf.download(
+                ticker,
+                period="1mo",
+                progress=False
+            )
+
+            if not data.empty:
+
+                prix = round(
+                    float(data["Close"].iloc[-1]),
+                    2
+                )
+
+                st.subheader("📊 Données réelles")
+
+                st.metric(
+                    "Prix actuel",
+                    f"{prix}"
+                )
+
+                st.line_chart(
+                    data["Close"]
+                )
+
+        except Exception:
+            st.error(
+                "Impossible de récupérer les données du marché."
+            )
