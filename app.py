@@ -1,3 +1,4 @@
+
 import streamlit as st
 import yfinance as yf
 
@@ -85,28 +86,34 @@ if st.button("Analyser"):
             data = yf.download(
                 ticker,
                 period="1mo",
-                progress=False
+                progress=False,
+                auto_adjust=True
             )
 
             if not data.empty:
 
+                close_data = data["Close"].dropna()
+
                 prix = round(
-                    float(data["Close"].iloc[-1]),
+                    float(close_data.iloc[-1]),
                     2
                 )
 
-                st.subheader("📊 Données réelles")
+                st.subheader("📊 Données réelles du marché")
 
                 st.metric(
                     "Prix actuel",
-                    f"{prix}"
+                    prix
                 )
 
-                st.line_chart(
-                    data["Close"]
+                st.line_chart(close_data)
+
+            else:
+                st.warning(
+                    "Aucune donnée disponible pour cet actif."
                 )
 
-        except Exception:
+        except Exception as e:
             st.error(
-                "Impossible de récupérer les données du marché."
+                f"Erreur : {e}"
             )
