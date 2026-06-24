@@ -20,7 +20,18 @@ st.write(
     "Bienvenue sur PrediTrade AI V6.\n"
     "Entrez un actif pour obtenir une analyse intelligente."
 )
+st.subheader("🔥 Radar d'Opportunités")
 
+radar = [
+    ("NVDA", 86),
+    ("MSFT", 85),
+    ("AAPL", 82),
+    ("BTC", 82),
+    ("META", 79)
+]
+
+for nom, score in radar:
+    st.write(f"📈 {nom} — Score IA : {score}/100")
 actif = st.text_input(
     "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD, GOLD, SP500, NASDAQ)"
 )
@@ -160,7 +171,8 @@ if st.button("Analyser"):
     )
 
     st.subheader("🤖 PrediScore™")
-    st.metric("Score IA", f"{prediscore}/100")
+    st.metric("Score IA", f"{prediscore}/100") 
+    st.progress(prediscore / 100)
 
     if prediscore >= 80:
         st.success("✅ Recommandation IA : ACHAT")
