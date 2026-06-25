@@ -242,11 +242,38 @@ if st.button("Analyser"):
 
                 st.subheader("📊 Données réelles du marché")
 
-                st.metric(
-                    "Prix actuel",
-                    f"${prix:,.2f}"
-                )
 
+                st.subheader("📊 Données réelles du marché")
+
+prix_cible = round(
+    prix * (1 + (prob - 50) / 100),
+    2
+)
+
+potentiel = round(
+    ((prix_cible - prix) / prix) * 100,
+    2
+)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric(
+        "Prix actuel",
+        f"${prix:,.2f}"
+    )
+
+with col2:
+    st.metric(
+        "Prix cible IA",
+        f"${prix_cible:,.2f}"
+    )
+
+with col3:
+    st.metric(
+        "Potentiel",
+        f"{potentiel}%"
+    )
                 prix_cible = round(
                     prix * (1 + (prob - 50) / 100),
                     2
@@ -255,16 +282,6 @@ if st.button("Analyser"):
                 potentiel = round(
                     ((prix_cible - prix) / prix) * 100,
                     2
-                )
-
-                st.metric(
-                    "Prix cible IA",
-                    f"${prix_cible:,.2f}"
-                )
-
-                st.metric(
-                    "Potentiel estimé",
-                    f"{potentiel}%"
                 )
 
                 st.write(
