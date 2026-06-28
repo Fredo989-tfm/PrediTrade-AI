@@ -16,9 +16,21 @@ mode = st.selectbox(
 )
 
 st.write(
-    "Bienvenue sur PrediTrade AI V6.\n"
-    "Entrez un actif pour obtenir une analyse intelligente."
+    "Bienvenue sur PrediTrade AI V6 Stable."
 )
+
+st.subheader("🔥 Radar d'Opportunités")
+
+radar = [
+    ("NVDA", 86),
+    ("MSFT", 85),
+    ("BTC", 82),
+    ("AAPL", 81),
+    ("META", 79)
+]
+
+for nom, score in radar:
+    st.write(f"📈 {nom} — Score IA : {score}/100")
 
 actif = st.text_input(
     "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD, GOLD, SP500, NASDAQ)"
@@ -27,8 +39,7 @@ actif = st.text_input(
 if st.button("Analyser"):
 
     actif = actif.upper()
-
-    if actif == "BTC":
+if actif == "BTC":
         ticker = "BTC-USD"
         prob = 78
         analyse = "Bitcoin montre une tendance haussière soutenue."
@@ -132,8 +143,7 @@ if st.button("Analyser"):
         analyse = "Actif non reconnu."
         risque = "Inconnu"
         confiance = "5/10"
-
-    st.success("Analyse terminée")
+        st.success("Analyse terminée")
 
     st.metric(
         "Probabilité de hausse",
@@ -155,18 +165,22 @@ if st.button("Analyser"):
 
     prediscore = round(
         (prob * 0.7) +
-        (float(confiance.split('/')[0]) * 3)
+        (float(confiance.split("/")[0]) * 3)
     )
 
     st.subheader("🤖 PrediScore™")
-    st.metric("Score IA", f"{prediscore}/100")
+
+    st.metric(
+        "Score IA",
+        f"{prediscore}/100"
+    )
+
+    st.progress(prediscore / 100)
 
     if prediscore >= 80:
         st.success("✅ Recommandation IA : ACHAT")
-
     elif prediscore >= 60:
         st.warning("⏳ Recommandation IA : ATTENDRE")
-
     else:
         st.error("❌ Recommandation IA : ÉVITER")
 
@@ -176,7 +190,7 @@ if st.button("Analyser"):
 
         if prob >= 70:
             st.success(
-                "L'IA estime que l'actif possède actuellement un potentiel haussier intéressant."
+                "L'IA estime que cet actif présente actuellement un potentiel haussier intéressant."
             )
 
         elif prob >= 55:
@@ -186,7 +200,7 @@ if st.button("Analyser"):
 
         else:
             st.error(
-                "L'actif présente actuellement trop d'incertitudes."
+                "L'IA recommande la prudence sur cet actif."
             )
 
     else:
@@ -195,7 +209,7 @@ if st.button("Analyser"):
             st.write("• Tendance haussière")
             st.write("• Momentum positif")
             st.write("• Confiance élevée")
-            st.write("• Probabilité statistique favorable")
+            st.write("• Probabilité favorable")
 
         elif prob >= 55:
             st.write("• Marché neutre")
@@ -206,8 +220,7 @@ if st.button("Analyser"):
             st.write("• Faiblesse du marché")
             st.write("• Momentum négatif")
             st.write("• Risque élevé")
-
-    if ticker:
+            if ticker:
 
         try:
 
@@ -224,15 +237,8 @@ if st.button("Analyser"):
 
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
-                except:
+                except Exception:
                     prix = float(close_data.iloc[-1])
-
-                st.subheader("📊 Données réelles du marché")
-
-                st.metric(
-                    "Prix actuel",
-                    f"${prix:,.2f}"
-                )
 
                 prix_cible = round(
                     prix * (1 + (prob - 50) / 100),
@@ -244,19 +250,29 @@ if st.button("Analyser"):
                     2
                 )
 
-                st.metric(
-                    "Prix cible IA",
-                    f"${prix_cible:,.2f}"
-                )
+                st.subheader("📊 Données réelles du marché")
 
-                st.metric(
-                    "Potentiel estimé",
-                    f"{potentiel}%"
-                )
+                col1, col2, col3 = st.columns(3)
 
-                st.write(
-                    "⏰ Horizon estimé : 7 jours"
-                )
+                with col1:
+                    st.metric(
+                        "Prix actuel",
+                        f"${prix:,.2f}"
+                    )
+
+                with col2:
+                    st.metric(
+                        "Prix cible IA",
+                        f"${prix_cible:,.2f}"
+                    )
+
+                with col3:
+                    st.metric(
+                        "Potentiel",
+                        f"{potentiel}%"
+                    )
+
+                st.write("⏰ Horizon estimé : 7 jours")
 
                 st.line_chart(close_data)
 
@@ -266,4 +282,6 @@ if st.button("Analyser"):
                 )
 
         except Exception as e:
-            st.error(f"Erreur : {e}")
+            st.error(
+                f"Erreur lors de la récupération des données : {e}"
+        )
