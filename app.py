@@ -8,15 +8,20 @@ st.set_page_config(
 )
 
 st.title("📈 PrediTrade AI")
-st.subheader("Assistant IA de trading pour débutants")
+st.subheader("Assistant IA de trading")
+
+mode = st.selectbox(
+    "Mode d'analyse",
+    ["Débutant", "Expert"]
+)
 
 st.write(
-    "Bienvenue sur PrediTrade AI V5.\n"
+    "Bienvenue sur PrediTrade AI V6.\n"
     "Entrez un actif pour obtenir une analyse intelligente."
 )
 
 actif = st.text_input(
-    "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD)"
+    "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD, GOLD, SP500, NASDAQ)"
 )
 
 if st.button("Analyser"):
@@ -100,6 +105,27 @@ if st.button("Analyser"):
         risque = "Moyen"
         confiance = "7/10"
 
+    elif actif == "GOLD":
+        ticker = "GC=F"
+        prob = 70
+        analyse = "L'or conserve son rôle de valeur refuge."
+        risque = "Faible"
+        confiance = "8/10"
+
+    elif actif == "SP500":
+        ticker = "^GSPC"
+        prob = 74
+        analyse = "Le S&P500 reste soutenu par les grandes capitalisations."
+        risque = "Moyen"
+        confiance = "8/10"
+
+    elif actif == "NASDAQ":
+        ticker = "^IXIC"
+        prob = 77
+        analyse = "Le Nasdaq bénéficie de la dynamique IA."
+        risque = "Moyen"
+        confiance = "8/10"
+
     else:
         ticker = None
         prob = 50
@@ -135,22 +161,56 @@ if st.button("Analyser"):
     st.subheader("🤖 PrediScore™")
     st.metric("Score IA", f"{prediscore}/100")
 
+    if prediscore >= 80:
+        st.success("✅ Recommandation IA : ACHAT")
+
+    elif prediscore >= 60:
+        st.warning("⏳ Recommandation IA : ATTENDRE")
+
+    else:
+        st.error("❌ Recommandation IA : ÉVITER")
+
     st.subheader("📚 Pourquoi ce signal ?")
 
-    if prob >= 70:
-        st.write("• Tendance haussière")
-        st.write("• Momentum positif")
-        st.write("• Confiance élevée")
-    elif prob >= 55:
-        st.write("• Marché neutre")
-        st.write("• Surveillance recommandée")
+    if mode == "Débutant":
+
+        if prob >= 70:
+            st.success(
+                "L'IA estime que l'actif possède actuellement un potentiel haussier intéressant."
+            )
+
+        elif prob >= 55:
+            st.warning(
+                "L'IA recommande d'attendre une meilleure confirmation."
+            )
+
+        else:
+            st.error(
+                "L'actif présente actuellement trop d'incertitudes."
+            )
+
     else:
-        st.write("• Faiblesse du marché")
-        st.write("• Risque élevé")
+
+        if prob >= 70:
+            st.write("• Tendance haussière")
+            st.write("• Momentum positif")
+            st.write("• Confiance élevée")
+            st.write("• Probabilité statistique favorable")
+
+        elif prob >= 55:
+            st.write("• Marché neutre")
+            st.write("• Consolidation")
+            st.write("• Surveillance recommandée")
+
+        else:
+            st.write("• Faiblesse du marché")
+            st.write("• Momentum négatif")
+            st.write("• Risque élevé")
 
     if ticker:
 
         try:
+
             data = yf.download(
                 ticker,
                 period="1mo",
@@ -207,4 +267,3 @@ if st.button("Analyser"):
 
         except Exception as e:
             st.error(f"Erreur : {e}")
-            
