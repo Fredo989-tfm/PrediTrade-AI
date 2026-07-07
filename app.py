@@ -8,38 +8,22 @@ st.set_page_config(
 )
 
 st.title("📈 PrediTrade AI")
-st.subheader("Assistant IA de trading")
-
-mode = st.selectbox(
-    "Mode d'analyse",
-    ["Débutant", "Expert"]
-)
+st.subheader("Assistant IA de trading pour débutants")
 
 st.write(
-    "Bienvenue sur PrediTrade AI V6 Stable."
+    "Bienvenue sur PrediTrade AI V5.\n"
+    "Entrez un actif pour obtenir une analyse intelligente."
 )
 
-st.subheader("🔥 Radar d'Opportunités")
-
-radar = [
-    ("NVDA", 86),
-    ("MSFT", 85),
-    ("BTC", 82),
-    ("AAPL", 81),
-    ("META", 79)
-]
-
-for nom, score in radar:
-    st.write(f"📈 {nom} — Score IA : {score}/100")
-
 actif = st.text_input(
-    "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD, GOLD, SP500, NASDAQ)"
+    "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD)"
 )
 
 if st.button("Analyser"):
 
     actif = actif.upper()
-if actif == "BTC":
+
+    if actif == "BTC":
         ticker = "BTC-USD"
         prob = 78
         analyse = "Bitcoin montre une tendance haussière soutenue."
@@ -116,34 +100,14 @@ if actif == "BTC":
         risque = "Moyen"
         confiance = "7/10"
 
-    elif actif == "GOLD":
-        ticker = "GC=F"
-        prob = 70
-        analyse = "L'or conserve son rôle de valeur refuge."
-        risque = "Faible"
-        confiance = "8/10"
-
-    elif actif == "SP500":
-        ticker = "^GSPC"
-        prob = 74
-        analyse = "Le S&P500 reste soutenu par les grandes capitalisations."
-        risque = "Moyen"
-        confiance = "8/10"
-
-    elif actif == "NASDAQ":
-        ticker = "^IXIC"
-        prob = 77
-        analyse = "Le Nasdaq bénéficie de la dynamique IA."
-        risque = "Moyen"
-        confiance = "8/10"
-
     else:
         ticker = None
         prob = 50
         analyse = "Actif non reconnu."
         risque = "Inconnu"
         confiance = "5/10"
-        st.success("Analyse terminée")
+
+    st.success("Analyse terminée")
 
     st.metric(
         "Probabilité de hausse",
@@ -165,65 +129,28 @@ if actif == "BTC":
 
     prediscore = round(
         (prob * 0.7) +
-        (float(confiance.split("/")[0]) * 3)
+        (float(confiance.split('/')[0]) * 3)
     )
 
     st.subheader("🤖 PrediScore™")
-
-    st.metric(
-        "Score IA",
-        f"{prediscore}/100"
-    )
-
-    st.progress(prediscore / 100)
-
-    if prediscore >= 80:
-        st.success("✅ Recommandation IA : ACHAT")
-    elif prediscore >= 60:
-        st.warning("⏳ Recommandation IA : ATTENDRE")
-    else:
-        st.error("❌ Recommandation IA : ÉVITER")
+    st.metric("Score IA", f"{prediscore}/100")
 
     st.subheader("📚 Pourquoi ce signal ?")
 
-    if mode == "Débutant":
-
-        if prob >= 70:
-            st.success(
-                "L'IA estime que cet actif présente actuellement un potentiel haussier intéressant."
-            )
-
-        elif prob >= 55:
-            st.warning(
-                "L'IA recommande d'attendre une meilleure confirmation."
-            )
-
-        else:
-            st.error(
-                "L'IA recommande la prudence sur cet actif."
-            )
-
+    if prob >= 70:
+        st.write("• Tendance haussière")
+        st.write("• Momentum positif")
+        st.write("• Confiance élevée")
+    elif prob >= 55:
+        st.write("• Marché neutre")
+        st.write("• Surveillance recommandée")
     else:
+        st.write("• Faiblesse du marché")
+        st.write("• Risque élevé")
 
-        if prob >= 70:
-            st.write("• Tendance haussière")
-            st.write("• Momentum positif")
-            st.write("• Confiance élevée")
-            st.write("• Probabilité favorable")
-
-        elif prob >= 55:
-            st.write("• Marché neutre")
-            st.write("• Consolidation")
-            st.write("• Surveillance recommandée")
-
-        else:
-            st.write("• Faiblesse du marché")
-            st.write("• Momentum négatif")
-            st.write("• Risque élevé")
-            if ticker:
+    if ticker:
 
         try:
-
             data = yf.download(
                 ticker,
                 period="1mo",
@@ -237,8 +164,15 @@ if actif == "BTC":
 
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
-                except Exception:
+                except:
                     prix = float(close_data.iloc[-1])
+
+                st.subheader("📊 Données réelles du marché")
+
+                st.metric(
+                    "Prix actuel",
+                    f"${prix:,.2f}"
+                )
 
                 prix_cible = round(
                     prix * (1 + (prob - 50) / 100),
@@ -250,29 +184,19 @@ if actif == "BTC":
                     2
                 )
 
-                st.subheader("📊 Données réelles du marché")
+                st.metric(
+                    "Prix cible IA",
+                    f"${prix_cible:,.2f}"
+                )
 
-                col1, col2, col3 = st.columns(3)
+                st.metric(
+                    "Potentiel estimé",
+                    f"{potentiel}%"
+                )
 
-                with col1:
-                    st.metric(
-                        "Prix actuel",
-                        f"${prix:,.2f}"
-                    )
-
-                with col2:
-                    st.metric(
-                        "Prix cible IA",
-                        f"${prix_cible:,.2f}"
-                    )
-
-                with col3:
-                    st.metric(
-                        "Potentiel",
-                        f"{potentiel}%"
-                    )
-
-                st.write("⏰ Horizon estimé : 7 jours")
+                st.write(
+                    "⏰ Horizon estimé : 7 jours"
+                )
 
                 st.line_chart(close_data)
 
@@ -282,6 +206,4 @@ if actif == "BTC":
                 )
 
         except Exception as e:
-            st.error(
-                f"Erreur lors de la récupération des données : {e}"
-        )
+            st.error(f"Erreur : {e}")
