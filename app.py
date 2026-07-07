@@ -207,3 +207,4 @@ if st.button("Analyser"):
 
         except Exception as e:
             st.error(f"Erreur : {e}")
+            
