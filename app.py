@@ -268,21 +268,7 @@ if st.button("Analyser"):
                     st.metric(
                         "Potentiel",
                         f"{potentiel}%"
-                    )
-                st.subheader("🔮 Prévisions IA")
-                prix_24h = round(prix * 1.01, 2)
-                prix_7j = round(prix * 1.05, 2)
-                prix_30j = round(prix * 1.12, 2)
-                
-                prix_90j = round(prix * 1.25, 2)
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("📅 24 heures", f"${prix_24h:,.2f}", "+1 %")
-                    st.metric("📅 30 jours", f"${prix_30j:,.2f}", "+12 %")
-               with col2:
-                  st.metric("📅 7 jours", f"${prix_7j:,.2f}", "+5 %")
-                   st.metric("📅 90 jours", f"${prix_90j:,.2f}", "+25 %")
-                        
+                    )      
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data) 
                     
