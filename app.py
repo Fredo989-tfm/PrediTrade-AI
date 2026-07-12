@@ -270,6 +270,7 @@ if st.button("Analyser"):
                         f"{potentiel}%"
                     )
                     st.subheader("🔮 Prévisions IA")
+                    prix_24h = round(prix * 1.01, 2)
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data) 
                     
