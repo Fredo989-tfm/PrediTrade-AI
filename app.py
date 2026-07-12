@@ -268,7 +268,8 @@ if st.button("Analyser"):
                     st.metric(
                         "Potentiel",
                         f"{potentiel}%"
-                    )      
+                    )
+                    st.subheader("🔮 Prévisions IA")
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data) 
                     
