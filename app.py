@@ -234,7 +234,14 @@ if st.button("Analyser"):
             if not data.empty:
 
                 close_data = data["Close"]
+                delta = close_data.diff()
+                gain = delta.clip(lower=0)
+                loss = -delta.clip(upper=0)
 
+                avg_gain = gain.rolling(14).mean()
+                avg_loss = loss.rolling(14).mean()
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
                 except:
@@ -243,6 +250,7 @@ if st.button("Analyser"):
                 tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
 
                 st.subheader("📊 Données réelles du marché")
+                st.write(f"📈 RSI (14) : {rsi.iloc[-1]:.2f}")
 
                 
 
