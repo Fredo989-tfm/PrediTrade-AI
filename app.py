@@ -276,11 +276,11 @@ if st.button("Analyser"):
                     prix_90j = round(prix * (1 + (prob - 50) / 120), 2) 
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.metric("📅 24 heures", f"${prix_24h:,.2f}", "+1 %")
-                        st.metric("📅 30 jours", f"${prix_30j:,.2f}", "+12 %")
+                        st.metric("📅 24 heures", f"${prix_24h:,.2f}", f"{round((prix_24h/prix-1)*100,1)} %")
+                        st.metric("📅 30 jours", f"${prix_30j:,.2f}", f"{round((prix_30j/prix-1)*100,1)} %")
                     with col2:
-                        st.metric("📅 7 jours", f"${prix_7j:,.2f}", "+5 %")
-                        st.metric("📅 90 jours", f"${prix_90j:,.2f}", "+25 %")
+                        st.metric("📅 7 jours", f"${prix_7j:,.2f}", f"{round((prix_7j/prix-1)*100,1)} %")
+                        st.metric("📅 90 jours", f"${prix_90j:,.2f}", f"{round((prix_90j/prix-1)*100,1)} %")
                        
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data) 
