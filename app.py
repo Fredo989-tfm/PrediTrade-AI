@@ -270,10 +270,10 @@ if st.button("Analyser"):
                         f"{potentiel}%"
                     )
                     st.subheader("🔮 Prévisions IA")
-                    prix_24h = round(prix * 1.01, 2)
-                    prix_7j = round(prix * 1.05, 2)
-                    prix_30j = round(prix * 1.12, 2)
-                    prix_90j = round(prix * 1.25, 2)
+                    prix_24h = round(prix * (1 + (prob - 50) / 5000), 2) 
+                    prix_7j = round(prix * (1 + (prob - 50) / 1000), 2) 
+                    prix_30j = round(prix * (1 + (prob - 50) / 300), 2) 
+                    prix_90j = round(prix * (1 + (prob - 50) / 120), 2) 
                     col1, col2 = st.columns(2)
                     with col1:
                         st.metric("📅 24 heures", f"${prix_24h:,.2f}", "+1 %")
