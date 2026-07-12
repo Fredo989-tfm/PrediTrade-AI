@@ -240,7 +240,7 @@ if st.button("Analyser"):
                 except:
                     prix = float(close_data.iloc[-1])
                     
-                tendance = float(((close_data.iloc[-1] - close_data.iloc[0]) / close_data.iloc[0]) * 100)
+                tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
 
                 st.subheader("📊 Données réelles du marché")
 
