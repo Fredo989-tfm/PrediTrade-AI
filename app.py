@@ -239,6 +239,7 @@ if st.button("Analyser"):
                     prix = float(close_data.iloc[-1].iloc[0])
                 except:
                     prix = float(close_data.iloc[-1])
+                    tendance = ((close_data.iloc[-30] - close_data.iloc[-1]) / close_data.iloc[-30]) * -100
 
                 st.subheader("📊 Données réelles du marché")
 
@@ -270,17 +271,17 @@ if st.button("Analyser"):
                         f"{potentiel}%"
                     )
                     st.subheader("🔮 Prévisions IA")
-                    prix_24h = round(prix * (1 + (prob - 50) / 5000), 2) 
+                    prix_24h = round(prix * (1 + tendance / 1000), 2) 
                     prix_7j = round(prix * (1 + (prob - 50) / 1000), 2) 
                     prix_30j = round(prix * (1 + (prob - 50) / 300), 2) 
                     prix_90j = round(prix * (1 + (prob - 50) / 120), 2) 
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.metric("📅 24 heures", f"${prix_24h:,.2f}", f"{round((prix_24h/prix-1)*100,1)} %")
-                        st.metric("📅 30 jours", f"${prix_30j:,.2f}", f"{round((prix_30j/prix-1)*100,1)} %")
+                        st.metric("📅 24 heures", f"${prix_24h:,.2f}", f"+{round(((prix_24h-prix)/prix)*100,1)}%")
+                        st.metric("📅 30 jours", f"${prix_30j:,.2f}", f"+{round(((prix_30j-prix)/prix)*100,1)}%")
                     with col2:
-                        st.metric("📅 7 jours", f"${prix_7j:,.2f}", f"{round((prix_7j/prix-1)*100,1)} %")
-                        st.metric("📅 90 jours", f"${prix_90j:,.2f}", f"{round((prix_90j/prix-1)*100,1)} %")
+                        st.metric("📅 7 jours", f"${prix_7j:,.2f}", f"+{round(((prix_7j-prix)/prix)*100,1)}%")
+                        st.metric("📅 90 jours", f"${prix_90j:,.2f}", f"+{round(((prix_90j-prix)/prix)*100,1)}%")
                        
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data) 
