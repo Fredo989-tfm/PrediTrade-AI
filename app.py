@@ -269,7 +269,7 @@ if st.button("Analyser"):
                         "Potentiel",
                         f"{potentiel}%"
                     )
-                st.write("⏰ Horizon estimé : 7 jours"
+                st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data)
                     
                 
