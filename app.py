@@ -254,31 +254,25 @@ if st.button("Analyser"):
                     2
                 )
                 col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "Prix actuel",
-        f"${prix:,.2f}"
-    )
-
-with col2:
-    st.metric(
-        "Prix cible IA",
-        f"${prix_cible:,.2f}"
-    )
-
-with col3:
-    st.metric(
-        "Potentiel",
-        f"{potentiel}%"
-    )
-
-                st.write(
-                    "⏰ Horizon estimé : 7 jours"
-                )
-
+                with col1:
+                    St.metric (
+                        "Prix actuel",
+                        f"${prix:,.2f}"
+                    )
+                with col2:
+                    st.metric(
+                        "Prix cible IA",
+                        f"${prix_cible:,.2f}"
+                    ) 
+                with col3:
+                    st.metric(
+                        "Potentiel",
+                        f"{potentiel}%"
+                    )
+                st.write("⏰ Horizon estimé : 7 jours"
                 st.line_chart(close_data)
-
+                    
+                
             else:
                 st.warning(
                     "Aucune donnée disponible pour cet actif."
