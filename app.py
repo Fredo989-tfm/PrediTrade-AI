@@ -250,7 +250,8 @@ if st.button("Analyser"):
                 tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
 
                 st.subheader("📊 Données réelles du marché")
-                st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}") 
+                st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}")
+                st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
 
                 
 
