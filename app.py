@@ -257,8 +257,9 @@ if st.button("Analyser"):
                     st.success("🟢 RSI faible : opportunité d'achat")
                  elif rsi_value > 70:
                      st.warning("🔴 RSI élevé : prudence, actif potentiellement en surachat")
-                else:
-                    st.info("🟡 RSI neutre : aucune condition extrême détectée")
+                 else:
+                     st.info("🟡 RSI neutre : aucune condition extrême détectée")
+                         
 
                 
 
