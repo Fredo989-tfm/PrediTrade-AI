@@ -252,6 +252,13 @@ if st.button("Analyser"):
                 st.subheader("📊 Données réelles du marché")
                 st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}")
                 st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
+                rsi_value = float(rsi.iloc[-1].iloc[0])
+                if rsi_value < 30:
+                    st.success("🟢 RSI faible : opportunité d'achat")
+                    elif rsi_value > 70:
+                        st.warning("🔴 RSI élevé : prudence, actif potentiellement en surachat")
+                else:
+                    st.info("🟡 RSI neutre : aucune condition extrême détectée")
 
                 
 
