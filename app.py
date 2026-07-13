@@ -242,6 +242,11 @@ if st.button("Analyser"):
                 avg_loss = loss.rolling(14).mean()
                 rs = avg_gain / avg_loss
                 rsi = 100 - (100 / (1 + rs))
+                ema12 = close_data.ewm(span=12, adjust=False).mean()
+                ema26 = close_data.ewm(span=26, adjust=False).mean()
+                macd = ema12 - ema26
+                signal = macd.ewm(span=9, adjust=False).mean()
+                histogram = macd - signal
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
                 except:
@@ -252,6 +257,7 @@ if st.button("Analyser"):
                 st.subheader("📊 Données réelles du marché")
                 st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}")
                 st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
+                st.write(f"📊 MACD : {float(macd.iloc[-1].iloc[0]):.2f}")
                 rsi_value = float(rsi.iloc[-1].iloc[0])
                 if rsi_value < 30:
                     st.success("🟢 RSI faible : opportunité d'achat")
