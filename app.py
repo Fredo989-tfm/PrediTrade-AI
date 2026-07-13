@@ -246,6 +246,36 @@ if st.button("Analyser"):
                 ema26 = close_data.ewm(span=26, adjust=False).mean()
                 macd = ema12 - ema26
                 signal = macd.ewm(span=9, adjust=False).mean()
+                rolling_mean = close_data.rolling(20).mean()
+                rolling_std = close_data.rolling(20).std()
+                upper_band = rolling_mean + (rolling_std * 2)
+                lower_band = rolling_mean - (rolling_std * 2)
+                st.write(f"📈 Bande supérieure : {float(upper_band.iloc[-1].iloc[0]):.2f}")
+                st.write(f"📉 Bande inférieure : {float(lower_band.iloc[-1].iloc[0]):.2f}")
+                current_price = float(close_data.iloc[-1].iloc[0])
+                if current_price > float(upper_band.iloc[-1].iloc[0]):
+                    st.warning("🔴 Prix au-dessus de la bande supérieure : risque de surachat")
+                elif current_price < float(lower_band.iloc[-1].iloc[0]):
+                    st.success("🟢 Prix sous la bande inférieure : opportunité potentielle d'achat")
+                else:
+                    st.info("🟡 Prix à l'intérieur des bandes : marché dans une zone normale")
+                    score = 50
+                if rsi_value < 30:
+                    score += 15
+                elif rsi_value > 70:
+                    score += 15
+                    score -= 15
+                if macd_value > signal_value:
+                    score += 10
+                else:
+                    score -= 10
+                    st.metric("🎯 PrediScore", f"{score}/100")
+                if score >= 70:
+                    st.success("🟢 Achat fort")
+                elif score >= 40:
+                    st.info("🟡 Attendre")
+                else:
+                    st.error("🔴 Prudence / Vente")
                 histogram = macd - signal
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
