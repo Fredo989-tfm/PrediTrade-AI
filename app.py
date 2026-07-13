@@ -258,6 +258,13 @@ if st.button("Analyser"):
                 st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}")
                 st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
                 st.write(f"📊 MACD : {float(macd.iloc[-1].iloc[0]):.2f}")
+                st.write(f"📈 Signal MACD : {float(signal.iloc[-1].iloc[0]):.2f}")
+                macd_value = float(macd.iloc[-1].iloc[0])
+                signal_value = float(signal.iloc[-1].iloc[0])
+                if macd_value > signal_value:
+                    st.success("🟢 MACD haussier : tendance positive")
+                else:
+                    st.warning("🔴 MACD baissier : tendance négative")
                 rsi_value = float(rsi.iloc[-1].iloc[0])
                 if rsi_value < 30:
                     st.success("🟢 RSI faible : opportunité d'achat")
