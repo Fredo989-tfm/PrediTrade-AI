@@ -272,6 +272,16 @@ if st.button("Analyser"):
                     st.warning("🔴 RSI élevé : prudence, actif potentiellement en surachat")
                 else:
                     st.info("🟡 RSI neutre : aucune condition extrême détectée")
+                    ema20 = close_data.ewm(span=20, adjust=False).mean()
+                    ema50 = close_data.ewm(span=50, adjust=False).mean()
+                    ema20_value = float(ema20.iloc[-1].iloc[0])
+                    ema50_value = float(ema50.iloc[-1].iloc[0])
+                    st.write(f"📈 EMA 20 : {ema20_value:.2f}")
+                    st.write(f"📉 EMA 50 : {ema50_value:.2f}")
+                    if ema20_value > ema50_value:
+                        st.success("🟢 Tendance haussière (EMA 20 > EMA 50)")
+                    else:
+                        st.warning("🔴 Tendance baissière (EMA 20 < EMA 50)")
 
                 
 
