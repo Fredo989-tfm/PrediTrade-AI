@@ -335,17 +335,31 @@ if st.button("Analyser"):
                         st.info("🟡 Attendre")
                     else:
                         st.error("🔴 Prudence / Vente")
+                        st.subheader("🎯 Objectif de prix")
                 
 
                 prix_cible = round(
                     prix * (1 + (prob - 50) / 100),
                     2
                 )
+                st.metric("🎯 Prix cible", f"${prix_cible:,.2f}")
 
                 potentiel = round(
                     ((prix_cible - prix) / prix) * 100,
                     2
                 )
+                st.write(f"📈 Potentiel : {potentiel}%")
+                st.subheader("🛑 Stop Loss")
+                stop_loss = round(prix * 0.97, 2)
+                st.metric("🛑 Stop Loss", f"${stop_loss:,.2f}")
+                st.caption("Le Stop Loss est le prix auquel il est conseillé de limiter les pertes.")
+                st.subheader("⚠️ Niveau de risque")
+                if probability >= 80:
+                    st.success("🟢 Risque faible")
+                elif probability >= 60:
+                   st.info("🟡 Risque moyen")
+                else:
+                    st.error("🔴 Risque élevé")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric (
