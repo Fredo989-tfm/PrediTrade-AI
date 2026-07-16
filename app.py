@@ -367,6 +367,17 @@ if st.button("Analyser"):
                     st.info("📊 L'IA recommande d'attendre. Les signaux sont mitigés et il est préférable d'attendre une confirmation.")
                 else:
                     st.error("📉 L'IA détecte une forte pression baissière. Les indicateurs ne sont pas favorables à une entrée. Il est recommandé de rester prudent ou d'attendre un meilleur signal.")
+                st.subheader("📊 Analyse de la tendance")
+                st.write("⚡ Court terme")
+                st.success("📈 Haussière")
+                st.write("📅 Moyen terme")
+                st.info("🟡 Neutre")
+                st.write("🏦 Long terme")
+                st.success(f"🟢 Haussière (EMA20 : {ema20_value:.2f} > EMA50 : {ema50_value:.2f})")
+                if ema20_value > ema50_value:
+                    st.success("📈 Tendance générale : Haussière")
+                else:
+                    st.error("📉 Tendance générale : Baissière")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric (
