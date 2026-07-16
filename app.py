@@ -309,6 +309,14 @@ if st.button("Analyser"):
                     else:
                         score -= 15
                     st.metric("🎯 PrediScore", f"{score}/100")
+                    if score >= 80:
+                        st.success("🟢 Confiance IA : Très élevée (90-100%)")
+                    elif score >= 70:
+                        st.success("🟢 Confiance IA : Élevée (75-90%)")
+                    elif score >= 55:
+                        st.info("🟡 Confiance IA : Moyenne (55-75%)")
+                    else:
+                        st.warning("🔴 Confiance IA : Faible (<55%)")
                     if score >= 70:
                         st.success("🟢 Achat fort")
                     elif score >= 40:
