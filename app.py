@@ -354,9 +354,9 @@ if st.button("Analyser"):
                 st.metric("🛑 Stop Loss", f"${stop_loss:,.2f}")
                 st.caption("Le Stop Loss est le prix auquel il est conseillé de limiter les pertes.")
                 st.subheader("⚠️ Niveau de risque")
-                if probability >= 80:
+                if score >= 80:
                     st.success("🟢 Risque faible")
-                elif probability >= 60:
+                elif score >= 60:
                    st.info("🟡 Risque moyen")
                 else:
                     st.error("🔴 Risque élevé")
