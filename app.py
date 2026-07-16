@@ -295,7 +295,26 @@ if st.button("Analyser"):
                         st.success("🟢 Tendance haussière (EMA 20 > EMA 50)")
                     else:
                         st.warning("🔴 Tendance baissière (EMA 20 < EMA 50)")
-
+                        score = 50
+                        if rsi_value < 30:
+                            score += 15
+                        elif rsi_value > 70:
+                            score -= 15
+                       if macd_value > signal_value:
+                           score += 10
+                        else:
+                           score -= 10
+                        if ema20_value > ema50_value:
+                            score += 15
+                        else:
+                            score -= 15
+                        st.metric("🎯 PrediScore", f"{score}/100")
+                        if score >= 70:
+                            st.success("🟢 Achat fort")
+                        elif score >= 40:
+                            st.info("🟡 Attendre")
+                        else:
+                            st.error("🔴 Prudence / Vente")
                 
 
                 prix_cible = round(
