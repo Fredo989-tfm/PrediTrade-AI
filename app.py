@@ -360,6 +360,13 @@ if st.button("Analyser"):
                    st.info("🟡 Risque moyen")
                 else:
                     st.error("🔴 Risque élevé")
+                st.subheader("🔔 Alertes intelligentes")
+                if score >= 80:
+                    st.success("🟢 ALERTE : Opportunité d'achat détectée")
+                elif score >= 60:
+                    st.warning("🟡 ALERTE : Attendre une confirmation")
+                else:
+                    st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
                 st.subheader("🤖 Analyse IA")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
