@@ -386,9 +386,7 @@ if st.button("Analyser"):
                             st.markdown(f"**📰 {article['title']}**") 
                             st.caption(article["source"]["name"])
                     else:
-                        if news.get("status") == "ok":
-                            else:
-                                st.warning("Impossible de charger les actualités.")
+                        st.warning("Impossible de charger les actualités.")
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
