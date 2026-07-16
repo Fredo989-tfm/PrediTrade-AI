@@ -360,6 +360,13 @@ if st.button("Analyser"):
                    st.info("🟡 Risque moyen")
                 else:
                     st.error("🔴 Risque élevé")
+                st.subheader("🤖 Analyse IA")
+                if score >= 70:
+                    st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
+                if score >= 70:
+                    st.info("📊 L'IA recommande d'attendre. Les signaux sont mitigés et il est préférable d'attendre une confirmation.")
+                else:
+                    st.error("📉 L'IA détecte une forte pression baissière. Les indicateurs ne sont pas favorables à une entrée. Il est recommandé de rester prudent ou d'attendre un meilleur signal.")
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric (
