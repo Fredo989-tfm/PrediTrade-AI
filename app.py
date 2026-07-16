@@ -317,6 +317,18 @@ if st.button("Analyser"):
                         st.info("🟡 Confiance IA : Moyenne (55-75%)")
                     else:
                         st.warning("🔴 Confiance IA : Faible (<55%)")
+                        probability = min(max(score, 0), 100)
+                        st.subheader("🧠 Confiance de l'IA") 
+                    if probability >= 90:
+                        st.success("🟢 Très forte confiance")
+                    elif probability >= 75:
+                        st.success("🟢 Forte confiance")
+                    elif probability >= 60:
+                        st.info("🟡 Confiance moyenne")
+                    else:
+                        st.warning("🔴 Faible confiance")
+                    st.progress(probability / 100)
+                    st.write(f"Confiance estimée : {probability}%")
                     if score >= 70:
                         st.success("🟢 Achat fort")
                     elif score >= 40:
