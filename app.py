@@ -259,23 +259,6 @@ if st.button("Analyser"):
                     st.success("🟢 Prix sous la bande inférieure : opportunité potentielle d'achat")
                 else:
                     st.info("🟡 Prix à l'intérieur des bandes : marché dans une zone normale")
-                    score = 50
-                if rsi_value < 30:
-                    score += 15
-                elif rsi_value > 70:
-                    score += 15
-                    score -= 15
-                if macd_value > signal_value:
-                    score += 10
-                else:
-                    score -= 10
-                    st.metric("🎯 PrediScore", f"{score}/100")
-                if score >= 70:
-                    st.success("🟢 Achat fort")
-                elif score >= 40:
-                    st.info("🟡 Attendre")
-                else:
-                    st.error("🔴 Prudence / Vente")
                 histogram = macd - signal
                 try:
                     prix = float(close_data.iloc[-1].iloc[0])
