@@ -1,5 +1,7 @@
 import streamlit as st
 import yfinance as yf
+import requests
+NEWS_API_KEY = st.secrets["c030c7bffd714e75811ec089602200d7"] 
 
 st.set_page_config(
     page_title="PrediTrade AI",
@@ -374,6 +376,21 @@ if st.button("Analyser"):
                     st.warning("🟡 ALERTE : Attendre une confirmation")
                 else:
                     st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
+                st.subheader("📰 Actualités du marché")
+                try:
+                    url = f"https://newsapi.org/v2/everything?q=bitcoin&language=fr&pageSize=3&apiKey={NEWS_API_KEY}"
+                    response = requests.get(url)
+                    news = response.json()
+                    if news.get("status") == "ok":
+                        for article in news["articles"][:3]:
+                            st.markdown(f"**📰 {article['title']}**") 
+                            st.caption(article["source"]["name"])
+                    else:
+                        if news.get("status") == "ok":
+                            else:
+                                st.warning("Impossible de charger les actualités.")
+                except Exception as e:
+                    st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
