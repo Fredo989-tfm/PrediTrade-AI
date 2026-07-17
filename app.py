@@ -363,8 +363,8 @@ if st.button("Analyser"):
                     with col2:
                         st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
                     st.divider()
-                        st.subheader("🧠 Confiance de l'IA")
-                        st.subheader("🧠 Explication de l'IA")
+                    st.subheader("🧠 Confiance de l'IA")
+                    st.subheader("🧠 Explication de l'IA")
                     if confidence >= 70:
                         st.success("🟢 L'IA recommande d'ACHETER : plusieurs indicateurs sont favorables.")
                     elif confidence <= 30:
