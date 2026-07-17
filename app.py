@@ -304,7 +304,7 @@ if st.button("Analyser"):
 
                 st.subheader("📊 Données réelles du marché")
                 st.write(f"📈 RSI (14) : {rsi_value:.2f}")
-                st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
+                st.progress(min(max(int(rsi_value), 0), 100))
                 st.write(f"📊 MACD : {macd_value:.4f}")
                 st.write(f"📈 Signal MACD : {signal_value:.4f}")
                 macd_value = float(macd.iloc[-1].iloc[0])
