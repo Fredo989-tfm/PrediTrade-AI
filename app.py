@@ -248,8 +248,8 @@ if st.button("Analyser"):
                 ema26 = close_data.ewm(span=26, adjust=False).mean()
                 ema20 = close_data.ewm(span=20, adjust=False).mean()
                 ema50 = close_data.ewm(span=50, adjust=False).mean()
-                ema20_value = float(ema20.iloc[-1])
-                ema50_value = float(ema50.iloc[-1])
+                ema20_value = float(ema20.iloc[-1].iloc[0])
+                ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
                 signal = macd.ewm(span=9, adjust=False).mean()
                 rolling_mean = close_data.rolling(20).mean()
