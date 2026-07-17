@@ -277,6 +277,9 @@ if st.button("Analyser"):
                 ema20_value = float(ema20.iloc[-1].iloc[0])
                 ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
+                macd_signal = macd.ewm(span=9, adjust=False).mean()
+                macd_value = float(macd.iloc[-1])
+                macd_signal_value = float(macd_signal.iloc[-1])
                 signal = macd.ewm(span=9, adjust=False).mean()
                 rolling_mean = close_data.rolling(20).mean()
                 rolling_std = close_data.rolling(20).std()
@@ -325,16 +328,22 @@ if st.button("Analyser"):
                         st.success("🟢 Tendance haussière (EMA20 > EMA50)")
                     else:
                         st.warning("🔴 Tendance baissière (EMA20 < EMA50)")
+                        bearish_signals += 1
+                    bullish_signals = 0
+                    bearish_signals = 0
                     score = 50
                     if rsi_value < 30:
+                        bullish_signals += 1
                         score += 15
                     elif rsi_value > 70:
+                        bearish_signals += 1
                         score -= 15
                     if macd_value > signal_value:
                         score += 10
                     else:
                         score -= 10
                     if ema20_value > ema50_value:
+                        bullish_signals += 1
                         score += 15
                     else:
                         score -= 15
@@ -348,7 +357,33 @@ if st.button("Analyser"):
                     else:
                         st.warning("🔴 Confiance IA : Faible (<55%)")
                         probability = min(max(score, 0), 100)
-                        st.subheader("🧠 Confiance de l'IA") 
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric("🎯 Confiance de l'IA", f"{confidence}%")
+                    with col2:
+                        st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
+                    st.divider()
+                        st.subheader("🧠 Confiance de l'IA")
+                        st.subheader("🧠 Explication de l'IA")
+                    if confidence >= 70:
+                        st.success("🟢 L'IA recommande d'ACHETER : plusieurs indicateurs sont favorables.")
+                    elif confidence <= 30:
+                        st.error("🔴 L'IA recommande de VENDRE : plusieurs indicateurs sont baissiers.")
+                    else:
+                        st.info("🟡 L'IA recommande d'ATTENDRE : les signaux du marché sont mitigés.")
+                    st.subheader("🛡️ Gestion du risque")
+                    stop_loss = round(current_price * 0.98, 2)
+                    take_profit = round(current_price * 1.04, 2)
+                    st.metric("🛑 Stop Loss", f"{stop_loss}")
+                    st.metric("🎯 Take Profit", f"{take_profit}")
+                    risk_reward = round((take_profit - current_price) / (current_price - stop_loss), 2)
+                    st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
+                    if macd_value > macd_signal_value:
+                        bullish_signals += 1
+                    else:
+                        bearish_signals += 1
+                    confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
+                    st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                     if probability >= 90:
                         st.success("🟢 Très forte confiance")
                     elif probability >= 75:
@@ -418,6 +453,8 @@ if st.button("Analyser"):
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
+                confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
+                st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
                 if score >= 40:
