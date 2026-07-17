@@ -295,10 +295,7 @@ if st.button("Analyser"):
                 else:
                     st.info("🟡 Prix à l'intérieur des bandes : marché dans une zone normale")
                 histogram = macd - signal
-                try:
-                    prix = float(close_data.iloc[-1].iloc[0])
-                except:
-                    prix = float(close_data.iloc[-1])
+                prix = float(close_data.iloc[-1].iloc[0])
                     
                 tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
 
