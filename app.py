@@ -287,8 +287,8 @@ if st.button("Analyser"):
                 rsi_value = float(rsi.iloc[-1].iloc[0])
                 ema20 = close_data.ewm(span=20, adjust=False).mean()
                 ema50 = close_data.ewm(span=50, adjust=False).mean()
-                ema20_value = float(ema20.iloc[-1])
-                ema50_value = float(ema50.iloc[-1]) 
+                ema20_value = float(ema20.iloc[-1].iloc[0])
+                ema50_value = float(ema50.iloc[-1].iloc[0])
                 if rsi_value < 30:
                     st.success("🟢 RSI faible : opportunité d'achat")
                 elif rsi_value > 70:
