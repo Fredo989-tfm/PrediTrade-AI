@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit.components.v1 import html
 import yfinance as yf
 import requests
 NEWS_API_KEY = st.secrets["NEWS_API_KEY"] 
@@ -10,6 +11,31 @@ st.set_page_config(
 )
 
 st.title("📈 PrediTrade AI")
+html("""<div id="tradingview_chart"></div>""", height=520)
+st.caption("📊 Graphique TradingView (en cours d'intégration)")
+tradingview_html = """
+<div class="tradingview-widget-container">
+<div id="tradingview_chart"></div>
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+new TradingView.widget({
+"width": "100%",
+"height": 500,
+"symbol": "BINANCE:BTCUSDT",
+"interval": "60",
+"timezone": "Etc/UTC",
+"theme": "dark",
+"style": "1",
+"locale": "fr",
+"toolbar_bg": "#f1f3f6",
+"enable_publishing": false,
+"allow_symbol_change": true,
+"container_id": "tradingview_chart"
+});
+</script>
+</div>
+"""
+html(tradingview_html, height=520)
 st.subheader("Assistant IA de trading")
 
 mode = st.selectbox(
