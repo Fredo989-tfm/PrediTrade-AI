@@ -294,10 +294,11 @@ if st.button("Analyser"):
                 elif rsi_value > 70:
                     st.warning("🔴 RSI élevé : prudence, actif potentiellement en surachat")
                 else:
-                    st.info("🟡 RSI neutre : aucune condition extrême détectée")
-                        st.success("🟢 Tendance haussière (EMA 20 > EMA 50)")
+                    st.info("🟡 RSI neutre : aucune condition extrême")
+                    if ema20_value > ema50_value:
+                        st.success("🟢 Tendance haussière (EMA20 > EMA50)")
                     else:
-                        st.warning("🔴 Tendance baissière (EMA 20 < EMA 50)")
+                        st.warning("🔴 Tendance baissière (EMA20 < EMA50)")
                     score = 50
                     if rsi_value < 30:
                         score += 15
