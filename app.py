@@ -303,10 +303,10 @@ if st.button("Analyser"):
                 tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
 
                 st.subheader("📊 Données réelles du marché")
-                st.write(f"📈 RSI (14) : {float(rsi.iloc[-1].iloc[0]):.2f}")
+                st.write(f"📈 RSI (14) : {rsi_value:.2f}")
                 st.progress(min(max(int(float(rsi.iloc[-1].iloc[0])), 0), 100))
-                st.write(f"📊 MACD : {float(macd.iloc[-1].iloc[0]):.2f}")
-                st.write(f"📈 Signal MACD : {float(signal.iloc[-1].iloc[0]):.2f}")
+                st.write(f"📊 MACD : {macd_value:.4f}")
+                st.write(f"📈 Signal MACD : {signal_value:.4f}")
                 macd_value = float(macd.iloc[-1].iloc[0])
                 signal_value = float(signal.iloc[-1].iloc[0])
                 if macd_value > signal_value:
