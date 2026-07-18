@@ -262,8 +262,6 @@ if st.button("Analyser"):
             if not data.empty:
 
                 close_data = data["Close"]
-            if hasattr(close_data, "columns"):
-                close_data = close_data.iloc[:, 0]
                 delta = close_data.diff()
                 gain = delta.clip(lower=0)
                 loss = -delta.clip(upper=0)
