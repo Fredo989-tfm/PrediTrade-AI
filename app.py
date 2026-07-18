@@ -262,10 +262,11 @@ if st.button("Analyser"):
             if not data.empty:
 
                 close_data = data["Close"]
+            if hasattr(close_data, "columns"):
+                close_data = close_data.iloc[:, 0]
                 delta = close_data.diff()
                 gain = delta.clip(lower=0)
                 loss = -delta.clip(upper=0)
-
                 avg_gain = gain.rolling(14).mean()
                 avg_loss = loss.rolling(14).mean()
                 rs = avg_gain / avg_loss
@@ -278,6 +279,7 @@ if st.button("Analyser"):
                 ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
                 macd_signal = macd.ewm(span=9, adjust=False).mean()
+            st.write(type(macd))
                 macd_value = float(macd.iloc[-1])
                 macd_signal_value = float(macd_signal.iloc[-1])
                 signal = macd.ewm(span=9, adjust=False).mean()
@@ -285,19 +287,19 @@ if st.button("Analyser"):
                 rolling_std = close_data.rolling(20).std()
                 upper_band = rolling_mean + (rolling_std * 2)
                 lower_band = rolling_mean - (rolling_std * 2)
-                st.write(f"📈 Bande supérieure : {float(upper_band.iloc[-1].iloc[0]):.2f}")
-                st.write(f"📉 Bande inférieure : {float(lower_band.iloc[-1].iloc[0]):.2f}")
-                current_price = float(close_data.iloc[-1].iloc[0])
-                if current_price > float(upper_band.iloc[-1].iloc[0]):
+                st.write(f"📈 Bande supérieure : {float(upper_band.iloc[-1]):.2f}")
+                st.write(f"📉 Bande inférieure : {float(lower_band.iloc[-1]):.2f}")
+                current_price = float(close_data.iloc[-1]) 
+                if current_price > float(upper_band.iloc[-1]):
                     st.warning("🔴 Prix au-dessus de la bande supérieure : risque de surachat")
-                elif current_price < float(lower_band.iloc[-1].iloc[0]):
+                elif current_price < float(lower_band.iloc[-1]):
                     st.success("🟢 Prix sous la bande inférieure : opportunité potentielle d'achat")
                 else:
                     st.info("🟡 Prix à l'intérieur des bandes : marché dans une zone normale")
                 histogram = macd - signal
-                prix = float(close_data.iloc[-1].iloc[0])
+                prix = float(close_data.iloc[-1]) 
                     
-                tendance = ((close_data.iloc[-1].item() - close_data.iloc[0].item()) / close_data.iloc[0].item()) * 100
+                tendance = ((float(close_data.iloc[-1]) - float(close_data.iloc[0])) / float(close_data.iloc[0])) * 100 
 
                 st.subheader("📊 Données réelles du marché")
                 st.write(f"📈 RSI (14) : {rsi_value:.2f}")
