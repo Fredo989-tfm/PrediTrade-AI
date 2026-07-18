@@ -279,7 +279,7 @@ if st.button("Analyser"):
                 ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
                 macd_signal = macd.ewm(span=9, adjust=False).mean()
-            st.write(type(macd))
+                st.write(type(macd))
                 macd_value = float(macd.iloc[-1])
                 macd_signal_value = float(macd_signal.iloc[-1])
                 signal = macd.ewm(span=9, adjust=False).mean()
