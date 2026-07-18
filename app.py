@@ -269,15 +269,24 @@ if st.button("Analyser"):
                 avg_loss = loss.rolling(14).mean()
                 rs = avg_gain / avg_loss
                 rsi = 100 - (100 / (1 + rs))
+                if hasattr(rsi, "columns"):
+                    rsi = rsi.iloc[:, 0]
                 ema12 = close_data.ewm(span=12, adjust=False).mean()
+                if hasattr(ema12, "columns"):
+                    ema12 = ema12.iloc[:, 0]
                 ema26 = close_data.ewm(span=26, adjust=False).mean()
+                if hasattr(ema26, "columns"):
+                    ema26 = ema26.iloc[:, 0] 
                 ema20 = close_data.ewm(span=20, adjust=False).mean()
+                if hasattr(ema20, "columns"):
+                    ema20 = ema20.iloc[:, 0] 
                 ema50 = close_data.ewm(span=50, adjust=False).mean()
+                if hasattr(ema50, "columns"):
+                    ema50 = ema50.iloc[:, 0] 
                 ema20_value = float(ema20.iloc[-1].iloc[0])
                 ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
                 macd_signal = macd.ewm(span=9, adjust=False).mean()
-                st.write(type(macd))
                 macd_value = float(macd.iloc[-1])
                 macd_signal_value = float(macd_signal.iloc[-1])
                 signal = macd.ewm(span=9, adjust=False).mean()
