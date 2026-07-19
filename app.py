@@ -323,21 +323,20 @@ if st.button("Analyser"):
                     st.success("🟢 MACD haussier : tendance positive")
                 else:
                     st.warning("🔴 MACD baissier : tendance négative")
-                rsi_value = float(rsi.iloc[-1])
                 if rsi_value < 30:
                     st.success("🟢 RSI faible : opportunité d'achat")
                 elif rsi_value > 70:
                     st.warning("🔴 RSI élevé : prudence, actif potentiellement en surachat")
                 else:
                     st.info("🟡 RSI neutre : aucune condition extrême")
+                    bullish_signals = 0
+                    bearish_signals = 0
+                    score = 50
                     if ema20_value > ema50_value:
                         st.success("🟢 Tendance haussière (EMA20 > EMA50)")
                     else:
                         st.warning("🔴 Tendance baissière (EMA20 < EMA50)")
                         bearish_signals += 1
-                    bullish_signals = 0
-                    bearish_signals = 0
-                    score = 50
                     if rsi_value < 30:
                         bullish_signals += 1
                         score += 15
