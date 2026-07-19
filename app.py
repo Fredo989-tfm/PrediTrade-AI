@@ -286,10 +286,14 @@ if st.button("Analyser"):
                 ema20_value = float(ema20.iloc[-1].iloc[0])
                 ema50_value = float(ema50.iloc[-1].iloc[0]) 
                 macd = ema12 - ema26
+                if hasattr(macd, "columns"):
+                    macd = macd.iloc[:, 0]
                 macd_signal = macd.ewm(span=9, adjust=False).mean()
                 macd_value = float(macd.iloc[-1])
                 macd_signal_value = float(macd_signal.iloc[-1])
                 signal = macd.ewm(span=9, adjust=False).mean()
+                if hasattr(signal, "columns"):
+                    signal = signal.iloc[:, 0]
                 rolling_mean = close_data.rolling(20).mean()
                 rolling_std = close_data.rolling(20).std()
                 upper_band = rolling_mean + (rolling_std * 2)
