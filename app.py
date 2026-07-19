@@ -283,8 +283,8 @@ if st.button("Analyser"):
                 ema50 = close_data.ewm(span=50, adjust=False).mean()
                 if hasattr(ema50, "columns"):
                     ema50 = ema50.iloc[:, 0] 
-                ema20_value = float(ema20.iloc[-1].iloc[0])
-                ema50_value = float(ema50.iloc[-1].iloc[0]) 
+                ema20_value = float(ema20.iloc[-1])
+                ema50_value = float(ema50.iloc[-1]) 
                 macd = ema12 - ema26
                 if hasattr(macd, "columns"):
                     macd = macd.iloc[:, 0]
