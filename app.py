@@ -440,13 +440,6 @@ if st.button("Analyser"):
                     st.warning("🟡 ALERTE : Attendre une confirmation")
                 else:
                     st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
-                st.subheader("🔔 Alertes intelligentes")
-                if score >= 80:
-                    st.success("🟢 ALERTE : Opportunité d'achat détectée")
-                elif score >= 60:
-                    st.warning("🟡 ALERTE : Attendre une confirmation")
-                else:
-                    st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
                 st.subheader("📰 Actualités du marché")
                 try:
                     url = f"https://newsapi.org/v2/everything?q=bitcoin&language=fr&pageSize=3&apiKey={NEWS_API_KEY}"
