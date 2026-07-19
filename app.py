@@ -302,7 +302,7 @@ if st.button("Analyser"):
                 lower_band = rolling_mean - (rolling_std * 2)
                 st.write(f"📈 Bande supérieure : {float(upper_band.iloc[-1]):.2f}")
                 st.write(f"📉 Bande inférieure : {float(lower_band.iloc[-1]):.2f}")
-                current_price = float(close_data.iloc[-1]) 
+                current_price = float(close_data.squeeze().iloc[-1]) 
                 if current_price > float(upper_band.iloc[-1]):
                     st.warning("🔴 Prix au-dessus de la bande supérieure : risque de surachat")
                 elif current_price < float(lower_band.iloc[-1]):
@@ -310,9 +310,9 @@ if st.button("Analyser"):
                 else:
                     st.info("🟡 Prix à l'intérieur des bandes : marché dans une zone normale")
                 histogram = macd - signal
-                prix = float(close_data.iloc[-1]) 
+                prix = float(close_data.squeeze().iloc[-1])
                     
-                tendance = ((float(close_data.iloc[-1]) - float(close_data.iloc[0])) / float(close_data.iloc[0])) * 100 
+                tendance = ((float(close_data.squeeze().iloc[-1]) - float(close_data.squeeze().iloc[0])) / float(close_data.squeeze().iloc[0])) * 100 
 
                 st.subheader("📊 Données réelles du marché")
                 st.write(f"📈 RSI (14) : {rsi_value:.2f}")
