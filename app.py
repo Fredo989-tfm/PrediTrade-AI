@@ -403,6 +403,7 @@ if st.button("Analyser"):
                         bearish_signals += 1
                     confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
                     st.metric("🎯 Confiance de l'IA", f"{confidence}%")
+                    probability = score
                     if probability >= 90:
                         st.success("🟢 Très forte confiance")
                     elif probability >= 75:
