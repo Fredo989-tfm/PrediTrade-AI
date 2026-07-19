@@ -320,6 +320,7 @@ if st.button("Analyser"):
                 rsi_value = float(rsi.iloc[-1])
                 st.progress(min(max(int(rsi_value), 0), 100))
                 st.write(f"📊 MACD : {macd_value:.4f}")
+                signal_value = float(signal.iloc[-1])
                 st.write(f"📈 Signal MACD : {signal_value:.4f}")
                 macd_value = float(macd.iloc[-1])
                 signal_value = float(signal.iloc[-1])
