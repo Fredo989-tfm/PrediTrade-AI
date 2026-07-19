@@ -315,7 +315,9 @@ if st.button("Analyser"):
                 tendance = ((float(close_data.squeeze().iloc[-1]) - float(close_data.squeeze().iloc[0])) / float(close_data.squeeze().iloc[0])) * 100 
 
                 st.subheader("📊 Données réelles du marché")
+                rsi_value = float(rsi.iloc[-1])
                 st.write(f"📈 RSI (14) : {rsi_value:.2f}")
+                rsi_value = float(rsi.iloc[-1])
                 st.progress(min(max(int(rsi_value), 0), 100))
                 st.write(f"📊 MACD : {macd_value:.4f}")
                 st.write(f"📈 Signal MACD : {signal_value:.4f}")
