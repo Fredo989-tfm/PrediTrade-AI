@@ -379,6 +379,7 @@ if st.button("Analyser"):
                         confidence = 50
                         st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                     with col2:
+                        risk_reward = 2.0
                         st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
                     st.divider()
                     st.subheader("🧠 Confiance de l'IA")
