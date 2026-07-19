@@ -295,7 +295,9 @@ if st.button("Analyser"):
                 if hasattr(signal, "columns"):
                     signal = signal.iloc[:, 0]
                 rolling_mean = close_data.rolling(20).mean()
+                if hasattr(rolling_mean, "columns"): rolling_mean = rolling_mean.iloc[:, 0]
                 rolling_std = close_data.rolling(20).std()
+                if hasattr(rolling_std, "columns"): rolling_std = rolling_std.iloc[:, 0]
                 upper_band = rolling_mean + (rolling_std * 2)
                 lower_band = rolling_mean - (rolling_std * 2)
                 st.write(f"📈 Bande supérieure : {float(upper_band.iloc[-1]):.2f}")
@@ -317,17 +319,19 @@ if st.button("Analyser"):
                 st.progress(min(max(int(rsi_value), 0), 100))
                 st.write(f"📊 MACD : {macd_value:.4f}")
                 st.write(f"📈 Signal MACD : {signal_value:.4f}")
-                macd_value = float(macd.iloc[-1].iloc[0])
-                signal_value = float(signal.iloc[-1].iloc[0])
+                macd_value = float(macd.iloc[-1])
+                signal_value = float(signal.iloc[-1])
                 if macd_value > signal_value:
                     st.success("🟢 MACD haussier : tendance positive")
                 else:
                     st.warning("🔴 MACD baissier : tendance négative")
-                rsi_value = float(rsi.iloc[-1].iloc[0])
+                rsi_value = float(rsi.iloc[-1])
                 ema20 = close_data.ewm(span=20, adjust=False).mean()
+                if hasattr(ema20, "columns"): ema20 = ema20.iloc[:, 0]
                 ema50 = close_data.ewm(span=50, adjust=False).mean()
-                ema20_value = float(ema20.iloc[-1].iloc[0])
-                ema50_value = float(ema50.iloc[-1].iloc[0])
+                if hasattr(ema50, "columns"): ema50 = ema50.iloc[:, 0]
+                ema20_value = float(ema20.iloc[-1])
+                ema50_value = float(ema50.iloc[-1])
                 if rsi_value < 30:
                     st.success("🟢 RSI faible : opportunité d'achat")
                 elif rsi_value > 70:
