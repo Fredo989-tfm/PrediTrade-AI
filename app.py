@@ -368,7 +368,7 @@ if st.button("Analyser"):
                         probability = min(max(score, 0), 100)
                     col1, col2 = st.columns(2)
                     with col1:
-                        confidence = 50
+                        confidence = score
                         st.metric("🎯 Confiance  de l'IA", f"{confidence}%")
                     with col2:
                         risk_reward = 2.0
