@@ -442,7 +442,7 @@ if st.button("Analyser"):
                     st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
                 st.subheader("📰 Actualités du marché")
                 try:
-                    url = f"https://newsapi.org/v2/everything?q=bitcoin&language=fr&pageSize=3&apiKey={NEWS_API_KEY}"
+                    url = f"https://newsapi.org/v2/everything?q={actif}&language=fr&pageSize=3&apiKey={NEWS_API_KEY}"
                     response = requests.get(url)
                     news = response.json()
                     if news.get("status") == "ok":
