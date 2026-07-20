@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit.components.v1 import html
 import yfinance as yf
 import requests
+from datetime import datetime
 NEWS_API_KEY = st.secrets["NEWS_API_KEY"] 
 
 st.set_page_config(
@@ -176,7 +177,7 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    st.session_state.history.append(f"{actif} • {prob}% • {'🟢 Achat' if prob >= 70 else '🟡 Surveillance' if prob >= 55 else '🔴 Vente'}") 
+    st.session_state.history.append(f"📅 {datetime.now().strftime('%d/%m %H:%M')} • {actif} • {prob}% • {'🟢 Achat' if prob >= 70 else '🟡 Surveillance' if prob >= 55 else '🔴 Vente'}")
 
     st.metric(
         "Probabilité de hausse",
