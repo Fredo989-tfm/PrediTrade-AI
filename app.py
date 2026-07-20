@@ -356,7 +356,6 @@ if st.button("Analyser"):
                         score += 15
                     else:
                         score -= 15
-                    st.metric("🎯 PrediScore", f"{score}/100")
                     if score >= 80:
                         st.success("🟢 Confiance IA : Très élevée (90-100%)")
                     elif score >= 70:
@@ -370,11 +369,7 @@ if st.button("Analyser"):
                     with col1:
                         confidence = score
                         st.metric("🎯 Confiance  de l'IA", f"{confidence}%")
-                    with col2:
-                        risk_reward = 2.0
-                        st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
-                    st.divider()
-                    st.subheader("🧠 Confiance de l'IA")
+                    st.divider() 
                     st.subheader("🧠 Explication de l'IA")
                     if confidence >= 70:
                         st.success("🟢 L'IA recommande d'ACHETER : plusieurs indicateurs sont favorables.")
@@ -393,8 +388,6 @@ if st.button("Analyser"):
                         bullish_signals += 1
                     else:
                         bearish_signals += 1
-                    confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
-                    st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                     probability = score
                     if probability >= 90:
                         st.success("🟢 Très forte confiance")
