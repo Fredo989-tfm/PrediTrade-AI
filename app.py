@@ -65,6 +65,8 @@ actif = st.text_input(
 )
 
 if st.button("Analyser"):
+if "history" not in st.session_state: st.session_state.history = []
+
 
     actif = actif.upper()
 
