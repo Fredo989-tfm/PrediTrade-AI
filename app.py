@@ -176,6 +176,7 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
+    st.session_state.history.append(actif)
 
     st.metric(
         "Probabilité de hausse",
