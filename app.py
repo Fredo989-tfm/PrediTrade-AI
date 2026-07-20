@@ -176,7 +176,7 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    st.session_state.history.append(actif)
+    st.session_state.history.append(f"{actif} • {prob}% • {'🟢 Achat' if prob >= 70 else '🟡 Surveillance' if prob >= 55 else '🔴 Vente'}") 
 
     st.metric(
         "Probabilité de hausse",
@@ -506,7 +506,9 @@ if st.button("Analyser"):
                         st.metric("📅 90 jours", f"${prix_90j:,.2f}", f"+{round(((prix_90j-prix)/prix)*100,1)}%")
                        
                 st.write("⏰ Horizon estimé : 7 jours") 
-                st.line_chart(close_data) 
+                st.line_chart(close_data)
+                st.subheader("🕘 Historique des analyses")
+                for item in reversed(st.session_state.history[-10:]): st.write(f"📌 {item}")
                     
                 
             else:
