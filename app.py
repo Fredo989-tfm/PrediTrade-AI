@@ -177,7 +177,7 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    st.session_state.history.append(f"📅 {datetime.now().strftime('%d/%m %H:%M')} • {actif} • {prob}% • {'🟢 Achat' if prob >= 70 else '🟡 Surveillance' if prob >= 55 else '🔴 Vente'}")
+    st.session_state.history.append({"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif, "score": prob, "signal": "Achat" if prob >= 70 else "Surveillance" if prob >= 55 else "Vente"})
 
     st.metric(
         "Probabilité de hausse",
@@ -458,7 +458,7 @@ if st.button("Analyser"):
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
-                st.metric("🎯 Taux de réussite IA", f"{confidence}%") 
+                st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
                 confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
                 st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                 if score >= 70:
@@ -510,7 +510,7 @@ if st.button("Analyser"):
                 st.write("⏰ Horizon estimé : 7 jours") 
                 st.line_chart(close_data)
                 st.subheader("🕘 Historique des analyses")
-                for item in reversed(st.session_state.history[-10:]): st.write(f"📌 {item}")
+                for item in reversed(st.session_state.history[-10:]): st.write(f"📌 {item['date']} • {item['actif']} • {item['score']}% • {item['signal']}")
                     
                 
             else:
