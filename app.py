@@ -369,7 +369,7 @@ if st.button("Analyser"):
                     col1, col2 = st.columns(2)
                     with col1:
                         confidence = 50
-                        st.metric("🎯 Confiance de l'IA", f"{confidence}%")
+                        st.metric("🎯 Confiance  de l'IA", f"{confidence}%")
                     with col2:
                         risk_reward = 2.0
                         st.metric("⚖️ Ratio Risque/Rendement", f"{risk_reward}:1")
@@ -458,7 +458,7 @@ if st.button("Analyser"):
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
-                st.metric("🎯 Taux de réussite IA", "87%")
+                st.metric("🎯 Taux de réussite IA", f"{confidence}%") 
                 confidence = int((bullish_signals / (bullish_signals + bearish_signals)) * 100) if (bullish_signals + bearish_signals) > 0 else 50
                 st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                 if score >= 70:
