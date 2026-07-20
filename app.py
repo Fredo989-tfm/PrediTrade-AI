@@ -201,10 +201,17 @@ if st.button("Analyser"):
         (prob * 0.7) +
         (float(confiance.split('/')[0]) * 3)
     )
-
-    st.subheader("🤖 PrediScore™")
-    st.metric("Score IA", f"{prediscore}/100")
+    with col1: st.metric("🎯 Score IA", f"{prediscore}/100")
+    st.divider()
+    st.subheader("📊 Tableau de bord IA")
+    st.caption("Vue d'ensemble de l'analyse générée par PrediTrade AI")
+    col1, col2, col3, col4 = st.columns(4)
+    st.divider()
+    with col2: st.metric("🧠 Confiance IA", f"{confidence}%") 
+    with col3: st.metric("📈 Signal", "🟢 Achat" if score >= 70 else "🟡 Attendre" if score >= 55 else "🔴 Vente")
+    with col4: st.metric("⚠️ Niveau de risque", risque) 
     st.progress(prediscore / 100)
+    st.caption("Le PrediScore est calculé automatiquement à partir des indicateurs techniques et de l'analyse IA.")
 
     if prediscore >= 80:
         st.success("✅ Recommandation IA : ACHAT")
@@ -513,3 +520,4 @@ if st.button("Analyser"):
 
         except Exception as e:
             st.error(f"Erreur : {e}")
+            st.caption("© 2026 PrediTrade AI V1.0 • Analyse assistée par intelligence artificielle • Ce logiciel fournit une aide à la décision et ne
