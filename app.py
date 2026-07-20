@@ -451,8 +451,8 @@ if st.button("Analyser"):
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
-                st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
                 confidence = score
+                st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
                 st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
