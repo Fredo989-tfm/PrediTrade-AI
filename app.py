@@ -63,9 +63,9 @@ for nom, score in radar:
 actif = st.text_input(
     "Entrez un actif (BTC, ETH, SOL, TSLA, AAPL, NVDA, META, AMZN, MSFT, GOOGL, EURUSD, GOLD, SP500, NASDAQ)"
 )
+if "history" not in st.session_state: st.session_state.history = []
 
 if st.button("Analyser"):
-if "history" not in st.session_state: st.session_state.history = []
 
 
     actif = actif.upper()
