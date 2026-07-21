@@ -201,7 +201,7 @@ if st.button("Analyser"):
         (prob * 0.7) +
         (float(confiance.split('/')[0]) * 3)
     )
-    with col1: st.metric("🎯 Score IA", f"{prediscore}/100")
+    st.metric("🎯 Score IA", f"{prediscore}/100") 
     st.divider()
     st.subheader("📊 Tableau de bord IA")
     st.caption("Vue d'ensemble de l'analyse générée par PrediTrade AI")
