@@ -207,7 +207,7 @@ if st.button("Analyser"):
     st.caption("Vue d'ensemble de l'analyse générée par PrediTrade AI")
     col1, col2, col3, col4 = st.columns(4)
     st.divider()
-    with col2: st.metric("🧠 Confiance IA", f"{confidence}%") 
+    with col2: st.metric("🧠 Confiance IA", f"{confiance}") 
     with col3: st.metric("📈 Signal", "🟢 Achat" if score >= 70 else "🟡 Attendre" if score >= 55 else "🔴 Vente")
     with col4: st.metric("⚠️ Niveau de risque", risque) 
     st.progress(prediscore / 100)
