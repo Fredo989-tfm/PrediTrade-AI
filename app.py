@@ -208,7 +208,7 @@ if st.button("Analyser"):
     col1, col2, col3, col4 = st.columns(4)
     st.divider()
     with col2: st.metric("🧠 Confiance IA", f"{prediscore}%")
-    with col3: st.metric("🟢 Achat" if prediscore >= 75 else "🟡 Attendre" if prediscore >= 60 else "🔴 Vente") 
+    with col3: st.metric("📈 Signal", "🟢 Achat" if prediscore >= 75 else "🟡 Attendre" if prediscore >= 60 else "🔴 Vente")
     with col4: st.metric("⚠️ Niveau de risque", risque) 
     st.progress(prediscore / 100)
     st.caption("Le PrediScore est calculé automatiquement à partir des indicateurs techniques et de l'analyse IA.")
