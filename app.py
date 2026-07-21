@@ -399,8 +399,6 @@ if st.button("Analyser"):
                     if probability >= 75:
                         st.success("🟢 Forte confiance (75–100%)")
                     elif probability >= 60:
-                        st.success("🟢 Forte confiance")
-                    elif probability >= 60:
                         st.info("🟡 Confiance moyenne (60–74%)")
                     else:
                         st.error("🔴 Faible confiance (0–59%)")
