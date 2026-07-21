@@ -516,8 +516,4 @@ if st.button("Analyser"):
             else:
                 st.warning(
                     "Aucune donnée disponible pour cet actif."
-                ) 
-            except Exception as e:
-                    st.error(f"Erreur lors de l'analyse : {e}")
-
-        st.caption("© 2026 PrediTrade AI V1.0 • Analyse assistée par intelligence artificielle • Ce logiciel fournit une aide à la décision et ne constitue pas un conseil financier.")
+                )
