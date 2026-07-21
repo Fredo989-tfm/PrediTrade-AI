@@ -458,7 +458,7 @@ if st.button("Analyser"):
                 st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
-                if score >= 40:
+                elif score >= 40:
                     st.info("📊 L'IA recommande d'attendre. Les signaux sont mitigés et il est préférable d'attendre une confirmation.")
                 else:
                     st.error("📉 L'IA détecte une forte pression baissière. Les indicateurs ne sont pas favorables à une entrée. Il est recommandé de rester prudent ou d'attendre un meilleur signal.")
