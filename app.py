@@ -177,7 +177,9 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    st.session_state.history.append({"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif, "score": prob, "signal": "Achat" if prob >= 70 else "Surveillance" if prob >= 55 else "Vente"})
+    nouvelle_entree = {"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif, "score": prob, "signal": "Achat" if prob >= 70 else "Surveillance" if prob >= 55 else "Vente"}
+    if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
+        st.session_state.history.append(nouvelle_entree)
 
     st.metric(
         "Probabilité de hausse",
