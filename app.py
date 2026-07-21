@@ -517,4 +517,7 @@ if st.button("Analyser"):
                 st.warning(
                     "Aucune donnée disponible pour cet actif."
                 )
+        except Exception as e:
+            st.error(f"Erreur : {e}")
+             
                 
