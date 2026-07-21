@@ -213,7 +213,7 @@ if st.button("Analyser"):
     st.progress(prediscore / 100)
     st.caption("Le PrediScore est calculé automatiquement à partir des indicateurs techniques et de l'analyse IA.")
 
-    if prediscore >= 80:
+    if prediscore >= 75: 
         st.success("✅ Recommandation IA : ACHAT")
 
     elif prediscore >= 60:
@@ -412,7 +412,7 @@ if st.button("Analyser"):
                         st.info("🟡 Attendre")
                     else:
                         st.error("🔴 Prudence / Vente")
-                        st.subheader("🎯 Objectif de prix")
+                    st.subheader("🎯 Objectif de prix")
                 
 
                 prix_cible = round(
@@ -426,10 +426,6 @@ if st.button("Analyser"):
                     2
                 )
                 st.write(f"📈 Potentiel : {potentiel}%")
-                st.subheader("🛑 Stop Loss")
-                stop_loss = round(prix * 0.97, 2)
-                st.metric("🛑 Stop Loss", f"${stop_loss:,.2f}")
-                st.caption("Le Stop Loss est le prix auquel il est conseillé de limiter les pertes.")
                 st.subheader("⚠️ Niveau de risque")
                 if score >= 80:
                     st.success("🟢 Risque faible")
@@ -460,7 +456,6 @@ if st.button("Analyser"):
                 st.subheader("🤖 Analyse IA")
                 confidence = score
                 st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
-                st.metric("🎯 Confiance de l'IA", f"{confidence}%")
                 if score >= 70:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
                 if score >= 40:
