@@ -395,17 +395,17 @@ if st.button("Analyser"):
                         bullish_signals += 1
                     else:
                         bearish_signals += 1
-                    probability = score
-                    if probability >= 90:
-                        st.success("🟢 Très forte confiance")
-                    elif probability >= 75:
+                    probability = prediscore
+                    if probability >= 75:
+                        st.success("🟢 Forte confiance (75–100%)")
+                    elif probability >= 60:
                         st.success("🟢 Forte confiance")
                     elif probability >= 60:
-                        st.info("🟡 Confiance moyenne")
+                        st.info("🟡 Confiance moyenne (60–74%)")
                     else:
-                        st.warning("🔴 Faible confiance")
+                        st.error("🔴 Faible confiance (0–59%)")
                     st.progress(probability / 100)
-                    st.write(f"Confiance estimée : {probability}%")
+                    st.write(f"🎯 PrediScore : {prediscore}/100")
                     if score >= 70:
                         st.success("🟢 Achat fort")
                     elif score >= 40:
