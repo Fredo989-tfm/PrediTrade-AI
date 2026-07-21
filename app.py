@@ -406,9 +406,9 @@ if st.button("Analyser"):
                         st.error("🔴 Faible confiance (0–59%)")
                     st.progress(probability / 100)
                     st.write(f"🎯 PrediScore : {prediscore}/100")
-                    if score >= 70:
+                    if prediscore >= 75:
                         st.success("🟢 Achat fort")
-                    elif score >= 40:
+                    elif prediscore >= 60:
                         st.info("🟡 Attendre")
                     else:
                         st.error("🔴 Prudence / Vente")
