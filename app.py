@@ -434,7 +434,7 @@ if st.button("Analyser"):
                 else:
                     st.error("🔴 Risque élevé")
                 st.subheader("🔔 Alertes intelligentes")
-                if score >= 80:
+                if prediscore >= 75:
                     st.success("🟢 ALERTE : Opportunité d'achat détectée")
                 elif score >= 40:
                     st.warning("🟡 ALERTE : Attendre une confirmation")
