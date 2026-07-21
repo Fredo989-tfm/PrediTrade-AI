@@ -208,7 +208,7 @@ if st.button("Analyser"):
     col1, col2, col3, col4 = st.columns(4)
     st.divider()
     with col2: st.metric("🧠 Confiance IA", f"{prediscore}%")
-    with col3: st.metric("📈 Signal", "🟢 Achat" if score >= 70 else "🟡 Attendre" if score >= 55 else "🔴 Vente")
+    with col3: st.metric("🟢 Achat" if prediscore >= 75 else "🟡 Attendre" if prediscore >= 60 else "🔴 Vente") 
     with col4: st.metric("⚠️ Niveau de risque", risque) 
     st.progress(prediscore / 100)
     st.caption("Le PrediScore est calculé automatiquement à partir des indicateurs techniques et de l'analyse IA.")
@@ -456,9 +456,9 @@ if st.button("Analyser"):
                 st.subheader("🤖 Analyse IA")
                 confidence = score
                 st.metric("🧠 Fiabilité de l'analyse", f"{confidence}%")
-                if score >= 70:
+                if score >= 75:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
-                elif score >= 40:
+                elif score >= 60:
                     st.info("📊 L'IA recommande d'attendre. Les signaux sont mitigés et il est préférable d'attendre une confirmation.")
                 else:
                     st.error("📉 L'IA détecte une forte pression baissière. Les indicateurs ne sont pas favorables à une entrée. Il est recommandé de rester prudent ou d'attendre un meilleur signal.")
