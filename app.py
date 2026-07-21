@@ -207,7 +207,7 @@ if st.button("Analyser"):
     st.caption("Vue d'ensemble de l'analyse générée par PrediTrade AI")
     col1, col2, col3, col4 = st.columns(4)
     st.divider()
-    with col2: st.metric("🧠 Confiance IA", f"{confiance}") 
+    with col2: st.metric("🧠 Confiance IA", f"{prediscore}%")
     with col3: st.metric("📈 Signal", "🟢 Achat" if score >= 70 else "🟡 Attendre" if score >= 55 else "🔴 Vente")
     with col4: st.metric("⚠️ Niveau de risque", risque) 
     st.progress(prediscore / 100)
@@ -436,7 +436,7 @@ if st.button("Analyser"):
                 st.subheader("🔔 Alertes intelligentes")
                 if score >= 80:
                     st.success("🟢 ALERTE : Opportunité d'achat détectée")
-                elif score >= 60:
+                elif score >= 40:
                     st.warning("🟡 ALERTE : Attendre une confirmation")
                 else:
                     st.error("🔴 ALERTE : Risque élevé, éviter une nouvelle position")
