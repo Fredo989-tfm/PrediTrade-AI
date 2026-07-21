@@ -377,7 +377,7 @@ if st.button("Analyser"):
                     col1, col2 = st.columns(2)
                     with col1:
                         confidence = score
-                        st.metric("🎯 Confiance  de l'IA", f"{confidence}%")
+                        st.metric("🎯 Confiance de l'IA", f"{prediscore}%")
                     st.divider() 
                     st.subheader("🧠 Explication de l'IA")
                     if confidence >= 70:
