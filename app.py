@@ -193,9 +193,9 @@ if st.button("Analyser"):
 
     st.progress(prob / 100)
 
-    if prediscore >= 75:
+    if prob >= 70:
         st.success("🟢 Signal : Achat")
-    elif prediscore >= 60:
+    elif prob >= 60:
         st.warning("🟡 Signal : Surveillance")
     else:
         st.error("🔴 Signal : Vente")
