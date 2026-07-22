@@ -454,11 +454,11 @@ if st.button("Analyser"):
                 except Exception as e:
                     st.error(f"Erreur lors du chargement des actualités : {e}")
                 st.subheader("🤖 Analyse IA")
-                confidence = score
+                confidence = prediscore
                 st.metric("🧠 Fiabilité de l'analyse", f"{prediscore}%")
-                if score >= 75:
+                if prediscore >= 75:
                     st.success("📈 L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs sont favorables à une prise de position.")
-                elif score >= 60:
+                elif prediscore >= 60:
                     st.info("📊 L'IA recommande d'attendre. Les signaux sont mitigés et il est préférable d'attendre une confirmation.")
                 else:
                     st.error("📉 L'IA détecte une forte pression baissière. Les indicateurs ne sont pas favorables à une entrée. Il est recommandé de rester prudent ou d'attendre un meilleur signal.")
