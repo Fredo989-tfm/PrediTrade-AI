@@ -177,7 +177,12 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    nouvelle_entree = {"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif,"score":"signal": "Achat" if prediscore >= 75 else "Attendre" if prediscore >= 60 else "Vente"
+    nouvelle_entree = {
+    "date": datetime.now().strftime("%d/%m %H:%M"),
+    "actif": actif,
+    "score": prediscore,
+    "signal": "Achat" if prediscore >= 75 else "Attendre" if prediscore >= 60 else "Vente"
+}
     if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
         st.session_state.history.append(nouvelle_entree)
 
