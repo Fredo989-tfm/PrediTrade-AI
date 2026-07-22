@@ -177,7 +177,7 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    nouvelle_entree = {"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif, "score": prob, "signal": "Achat" if prob >= 70 else "Surveillance" if prob >= 55 else "Vente"}
+    nouvelle_entree = {"date": datetime.now().strftime("%d/%m %H:%M"), "actif": actif,"score":"signal": "Achat" if prediscore >= 75 else "Attendre" if prediscore >= 60 else "Vente"
     if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
         st.session_state.history.append(nouvelle_entree)
 
@@ -188,9 +188,9 @@ if st.button("Analyser"):
 
     st.progress(prob / 100)
 
-    if prob >= 70:
+    if prediscore >= 75:
         st.success("🟢 Signal : Achat")
-    elif prob >= 55:
+    elif prediscore >= 60:
         st.warning("🟡 Signal : Surveillance")
     else:
         st.error("🔴 Signal : Vente")
@@ -228,12 +228,12 @@ if st.button("Analyser"):
 
     if mode == "Débutant":
 
-        if prob >= 70:
+        if prediscore >= 75:
             st.success(
                 "L'IA estime que l'actif possède actuellement un potentiel haussier intéressant."
             )
 
-        elif prob >= 55:
+        elif prediscore >= 60:
             st.warning(
                 "L'IA recommande d'attendre une meilleure confirmation."
             )
