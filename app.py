@@ -177,15 +177,6 @@ if st.button("Analyser"):
         confiance = "5/10"
 
     st.success("Analyse terminée")
-    nouvelle_entree = {
-    "date": datetime.now().strftime("%d/%m %H:%M"),
-    "actif": actif,
-    "score": prob,
-    "signal": "Achat" if prob >= 70 else "Attendre" if prob >= 60 else "Vente"
-    }
-    if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
-        st.session_state.history.append(nouvelle_entree)
-
     st.metric(
         "Probabilité de hausse",
         f"{prob}%"
@@ -208,6 +199,15 @@ if st.button("Analyser"):
         (prob * 0.7) +
         (float(confiance.split('/')[0]) * 3)
     )
+    nouvelle_entree = {
+    "date": datetime.now().strftime("%d/%m %H:%M"),
+    "actif": actif,
+    "score": prob,
+    "signal": "Achat" if prob >= 70 else "Attendre" if prob >= 60 else "Vente"
+    }
+    if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
+    st.session_state.history.append(nouvelle_entree)
+
     st.metric("🎯 Score IA", f"{prediscore}/100") 
     st.divider()
     st.subheader("📊 Tableau de bord IA")
