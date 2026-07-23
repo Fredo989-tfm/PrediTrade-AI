@@ -206,7 +206,7 @@ if st.button("Analyser"):
     "signal": "Achat" if prob >= 70 else "Attendre" if prob >= 60 else "Vente"
     }
     if not st.session_state.history or st.session_state.history[-1] != nouvelle_entree:
-    st.session_state.history.append(nouvelle_entree)
+        st.session_state.history.append(nouvelle_entree)
 
     st.metric("🎯 Score IA", f"{prediscore}/100") 
     st.divider()
