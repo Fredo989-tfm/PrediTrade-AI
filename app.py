@@ -370,18 +370,17 @@ if st.button("Analyser"):
                         score += 15
                     else:
                         score -= 15
-                    if score >= 80:
+                    if prediscore >= 80:
                         st.success("🟢 Confiance IA : Très élevée (90-100%)")
-                    elif score >= 70:
+                    elif prediscore >= 60:
                         st.success("🟢 Confiance IA : Élevée (75-90%)")
-                    elif score >= 55:
                         st.info("🟡 Confiance IA : Moyenne (55-75%)")
                     else:
                         st.warning("🔴 Confiance IA : Faible (<55%)")
                         probability = min(max(score, 0), 100)
                     col1, col2 = st.columns(2)
                     with col1:
-                        confidence = score
+                        confidence = prediscore
                         st.metric("🎯 Confiance de l'IA", f"{prediscore}%")
                     st.divider() 
                     st.subheader("🧠 Explication de l'IA")
