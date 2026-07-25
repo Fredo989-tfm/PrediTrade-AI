@@ -360,13 +360,13 @@ st.divider()
 
 st.subheader("📰 Actualités du marché")
 
-    try:
-        url = (
-            f"https://newsapi.org/v2/everything"
-            f"?q={actif}"
-            f"&language=fr"
-            f"&pageSize=3"
-            f"&apiKey={NEWS_API_KEY}"
+try:
+    url = (
+        f"https://newsapi.org/v2/everything"
+        f"?q={actif}"
+        f"&language=fr"
+        f"&pageSize=3"
+        f"&apiKey={NEWS_API_KEY}"
         )
 
         response = requests.get(url, timeout=10)
