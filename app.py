@@ -1,434 +1,379 @@
-import streamlit as st
-from streamlit.components.v1 import html
-import yfinance as yf
-import pandas as pd
-import requests
-from datetime import datetime
-
-# ==========================
-# CONFIGURATION
-# ==========================
-
-st.set_page_config(
-    page_title="PrediTrade AI V7",
-    page_icon="📈",
-    layout="wide"
-)
-
-NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
-
-if "history" not in st.session_state:
-    st.session_state.history = [] 
-# ==========================
-# TITRE
-# ==========================
-
-st.title("📈 PrediTrade AI V7")
-st.caption("Assistant intelligent d'analyse des marchés financiers")
-
-# ==========================
-# TRADINGVIEW
-# ==========================
-
-tradingview_html = """
-<div class="tradingview-widget-container">
-<div id="tradingview_chart"></div>
-
-<script src="https://s3.tradingview.com/tv.js"></script>
-
-<script>
-new TradingView.widget({
-"width":"100%",
-"height":500,
-"symbol":"BINANCE:BTCUSDT",
-"interval":"60",
-"timezone":"Etc/UTC",
-"theme":"dark",
-"style":"1",
-"locale":"fr",
-"toolbar_bg":"#f1f3f6",
-"enable_publishing":false,
-"allow_symbol_change":true,
-"container_id":"tradingview_chart"
-});
-</script>
-
-</div>
+"""
+Configuration centrale de PrediTrade AI v1.0
 """
 
-html(tradingview_html, height=520)
+import streamlit as st
 
-st.divider()
+# =========================
+# API KEYS
+# =========================
 
-# ==========================
-# PARAMÈTRES
-# ==========================
+try:
+    NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
+except Exception:
+    NEWS_API_KEY = ""
 
-mode = st.selectbox(
-    "Mode d'analyse",
-    ["Débutant", "Expert"]
-)
+# =========================
+# APPLICATION
+# =========================
 
-actif = st.selectbox(
-    "Choisissez un actif",
-    [
-        "BTC",
-        "ETH",
-        "SOL",
-        "AAPL",
-        "MSFT",
-        "NVDA",
-        "META",
-        "AMZN",
-        "GOOGL",
-        "TSLA",
-        "SP500",
-        "NASDAQ",
-        "GOLD",
-        "EURUSD"
-    ]
-)
+APP_NAME = "PrediTrade AI"
+APP_VERSION = "1.0"
 
-analyser = st.button("Analyser") 
-# ==========================
-# ANALYSE DE L'ACTIF
-# ==========================
+# =========================
+# ACTIFS DISPONIBLES
+# =========================
 
-if analyser:
+ASSETS = {
+    "BTC": "BTC-USD",
+    "ETH": "ETH-USD",
+    "SOL": "SOL-USD",
+    "AAPL": "AAPL",
+    "MSFT": "MSFT",
+    "NVDA": "NVDA",
+    "META": "META",
+    "AMZN": "AMZN",
+    "GOOGL": "GOOGL",
+    "TSLA": "TSLA",
+    "SP500": "^GSPC",
+    "NASDAQ": "^IXIC",
+    "GOLD": "GC=F",
+    "EURUSD": "EURUSD=X"
+}
 
-    correspondance = {
-        "BTC": "BTC-USD",
-        "ETH": "ETH-USD",
-        "SOL": "SOL-USD",
-        "AAPL": "AAPL",
-        "MSFT": "MSFT",
-        "NVDA": "NVDA",
-        "META": "META",
-        "AMZN": "AMZN",
-        "GOOGL": "GOOGL",
-        "TSLA": "TSLA",
-        "SP500": "^GSPC",
-        "NASDAQ": "^IXIC",
-        "GOLD": "GC=F",
-        "EURUSD": "EURUSD=X"
-    }
+# =========================
+# PARAMÈTRES DES INDICATEURS
+# =========================
 
-    ticker = correspondance[actif]
+RSI_PERIOD = 14
+EMA_FAST = 20
+EMA_SLOW = 50
+MACD_FAST = 12
+MACD_SLOW = 26
+MACD_SIGNAL = 9
+BOLLINGER_PERIOD = 20
 
-    with st.spinner("Analyse en cours..."):
+# =========================
+# PREDISCORE IA
+# =========================
 
+MAX_SCORE = 100
+BUY_SCORE = 75
+WAIT_SCORE = 60
+
+# =========================
+# GESTION DU RISQUE
+# =========================
+
+STOP_LOSS = 0.02
+TAKE_PROFIT = 0.04
+"""
+market.py
+Gestion des données de marché
+"""
+
+import yfinance as yf
+import pandas as pd
+
+
+def get_market_data(symbol, period="3mo", interval="1d"):
+    """
+    Télécharge les données d'un actif.
+
+    Args:
+        symbol (str): Symbole Yahoo Finance.
+        period (str): Période (ex : 1mo, 3mo, 1y).
+        interval (str): Intervalle (1d, 1h...).
+
+    Returns:
+        pandas.DataFrame
+    """
+
+    try:
         data = yf.download(
-            ticker,
-            period="3mo",
-            interval="1d",
+            symbol,
+            period=period,
+            interval=interval,
             auto_adjust=True,
-            progress=False
+            progress=False,
         )
 
-    if data.empty:
-        st.error("Impossible de récupérer les données de cet actif.")
-        st.stop()
+        if data.empty:
+            return None
+
+        return data
+
+    except Exception:
+        return None
+
+
+def get_last_price(data):
+    """
+    Retourne le dernier prix de clôture.
+    """
+
+    if data is None:
+        return None
 
     close = data["Close"]
 
     if hasattr(close, "columns"):
         close = close.iloc[:, 0]
 
-    prix_actuel = float(close.iloc[-1])
+    return float(close.iloc[-1])
 
-    st.success("Analyse terminée.")
 
-    st.metric(
-        "Prix actuel",
-        f"{prix_actuel:.2f}"
-    )
-    # ==========================
-    # INDICATEURS TECHNIQUES
-    # ==========================
+def get_close_prices(data):
+    """
+    Retourne uniquement la série des prix de clôture.
+    """
 
-    ema20 = close.ewm(span=20, adjust=False).mean()
-    ema50 = close.ewm(span=50, adjust=False).mean()
+    if data is None:
+        return None
 
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
+    close = data["Close"]
 
-    macd = ema12 - ema26
-    macd_signal = macd.ewm(span=9, adjust=False).mean()
+    if hasattr(close, "columns"):
+        close = close.iloc[:, 0]
+
+    return close
+    """
+indicators.py
+Calcul des indicateurs techniques
+"""
+
+import pandas as pd
+
+
+def calculate_rsi(close, period=14):
 
     delta = close.diff()
+
     gain = delta.clip(lower=0)
-    perte = -delta.clip(upper=0)
+    loss = -delta.clip(upper=0)
 
-    gain_moyen = gain.rolling(14).mean()
-    perte_moyenne = perte.rolling(14).mean()
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
 
-    rs = gain_moyen / perte_moyenne
+    rs = avg_gain / avg_loss
+
     rsi = 100 - (100 / (1 + rs))
 
-    moyenne = close.rolling(20).mean()
-    ecart = close.rolling(20).std()
+    return rsi
 
-    bande_sup = moyenne + (2 * ecart)
-    bande_inf = moyenne - (2 * ecart)
 
-    ema20_value = float(ema20.iloc[-1])
-    ema50_value = float(ema50.iloc[-1])
-    macd_value = float(macd.iloc[-1])
-    macd_signal_value = float(macd_signal.iloc[-1])
-    rsi_value = float(rsi.iloc[-1])
-    # ==========================
-    # CALCUL DU PREDISCORE
-    # ==========================
+def calculate_ema(close, period):
+
+    return close.ewm(
+        span=period,
+        adjust=False
+    ).mean()
+
+
+def calculate_macd(
+    close,
+    fast=12,
+    slow=26,
+    signal=9
+):
+
+    ema_fast = calculate_ema(close, fast)
+    ema_slow = calculate_ema(close, slow)
+
+    macd = ema_fast - ema_slow
+
+    signal_line = macd.ewm(
+        span=signal,
+        adjust=False
+    ).mean()
+
+    histogram = macd - signal_line
+
+    return macd, signal_line, histogram
+
+
+def calculate_bollinger(
+    close,
+    period=20
+):
+
+    middle = close.rolling(period).mean()
+
+    std = close.rolling(period).std()
+
+    upper = middle + (std * 2)
+
+    lower = middle - (std * 2)
+
+    return upper, middle, lower
+
+
+def last_value(series):
+
+    if hasattr(series, "columns"):
+        series = series.iloc[:, 0]
+
+    return float(series.iloc[-1])
+    """
+ai_engine.py
+Moteur PrediScore IA
+"""
+
+
+def calculate_prediscore(
+    rsi,
+    ema20,
+    ema50,
+    macd,
+    macd_signal
+):
+    """
+    Calcule le PrediScore IA (0 à 100)
+    """
 
     score = 50
 
-    if ema20_value > ema50_value:
+    # EMA
+    if ema20 > ema50:
         score += 15
     else:
         score -= 15
 
-    if macd_value > macd_signal_value:
-        score += 10
-    else:
-        score -= 10
-
-    if rsi_value < 30:
+    # MACD
+    if macd > macd_signal:
         score += 15
-    elif rsi_value > 70:
+    else:
         score -= 15
 
-    prediscore = max(0, min(100, int(score)))
-    st.divider()
+    # RSI
+    if rsi < 30:
+        score += 15
 
-    st.subheader("📊 Tableau de bord IA")
+    elif rsi > 70:
+        score -= 15
 
-    col1, col2, col3, col4 = st.columns(4)
+    # Limites
 
-    with col1:
-        st.metric("🎯 PrediScore", f"{prediscore}/100")
+    score = max(0, min(score, 100))
 
-    with col2:
-        st.metric("🧠 Confiance IA", f"{prediscore}%")
+    return score
 
-    with col3:
-        signal = (
-            "🟢 Achat"
-            if prediscore >= 75
-            else "🟡 Attendre"
-            if prediscore >= 60
-            else "🔴 Vente"
-        )
-        st.metric("📈 Signal", signal)
 
-    with col4:
-       st.metric("⚠️ Risque", risque)
-    st.progress(prediscore / 100)
-    st.divider()
+def signal(score):
 
-    st.subheader("🧠 Analyse IA")
+    if score >= 75:
+        return "ACHAT"
 
-    if prediscore >= 75:
-        st.success(
-            "L'IA détecte une forte probabilité de poursuite de la tendance. Les indicateurs techniques sont globalement haussiers."
-        )
+    elif score >= 60:
+        return "ATTENDRE"
 
-    elif prediscore >= 60:
-        st.info(
-            "Les signaux sont mitigés. Il est conseillé d'attendre une confirmation avant d'entrer en position."
-        )
+    return "VENTE"
 
-    else:
-        st.error(
-            "Les indicateurs techniques restent défavorables. Le risque de baisse est actuellement élevé."
+
+def confidence(score):
+
+    if score >= 90:
+        return "Très élevée"
+
+    elif score >= 75:
+        return "Élevée"
+
+    elif score >= 60:
+        return "Moyenne"
+
+    return "Faible"
+
+
+def risk(score):
+
+    if score >= 80:
+        return "Faible"
+
+    elif score >= 60:
+        return "Moyen"
+
+    return "Élevé"
+    """
+prediction.py
+Prévisions de prix PrediTrade AI
+"""
+
+
+def predict_prices(current_price, prediscore):
+
+    strength = (prediscore - 50) / 100
+
+    prediction = {
+        "24h": round(current_price * (1 + strength * 0.01), 2),
+        "7j": round(current_price * (1 + strength * 0.03), 2),
+        "30j": round(current_price * (1 + strength * 0.08), 2),
+        "90j": round(current_price * (1 + strength * 0.15), 2),
+    }
+
+    return prediction
+
+
+def potential(current_price, target_price):
+
+    return round(
+        ((target_price - current_price) / current_price) * 100,
+        2
 )
-    st.divider()
+"""
+risk.py
+Gestion du risque PrediTrade AI
+"""
 
-    st.subheader("🛡️ Gestion du risque")
 
-    stop_loss = round(current_price * 0.98, 2)
-    take_profit = round(current_price * 1.04, 2)
+def calculate_stop_loss(price, percent=2):
+    """
+    Calcule le Stop Loss.
+    """
 
-    st.metric("🛑 Stop Loss", f"${stop_loss}")
-    st.metric("🎯 Take Profit", f"${take_profit}")
-
-    risk_reward = round(
-        (take_profit - current_price) /
-        (current_price - stop_loss),
+    return round(
+        price * (1 - percent / 100),
         2
     )
 
-    st.metric(
-        "⚖️ Ratio Risque/Rendement",
-        f"{risk_reward}:1"
-)
-    st.divider()
 
-    st.subheader("🔔 Alertes intelligentes")
+def calculate_take_profit(price, percent=4):
+    """
+    Calcule le Take Profit.
+    """
 
-    if prediscore >= 75:
-        st.success("🟢 Opportunité d'achat détectée par l'IA.")
-
-    elif prediscore >= 60:
-        st.warning("🟡 Attendre une confirmation du marché.")
-
-    else:
-        st.error("🔴 Risque élevé : aucune entrée recommandée.")
-
-    if ema20_value > ema50_value:
-        st.success("📈 EMA20 est au-dessus de EMA50 : tendance haussière.")
-
-    else:
-        st.warning("📉 EMA20 est sous EMA50 : tendance baissière.")
-
-    if rsi_value < 30:
-        st.success("📉 RSI en survente : possible rebond.")
-
-    elif rsi_value > 70:
-        st.warning("📈 RSI en surachat : prudence.")
-
-    if macd_value > macd_signal_value:
-        st.success("📊 MACD confirme une dynamique haussière.")
-
-    else:
-        st.warning("📊 MACD indique une dynamique baissière.")
-    st.divider()
-
-    st.subheader("🔮 Prévisions IA")
-
-    prix_24h = round(prix * (1 + tendance / 1000), 2)
-    prix_7j = round(prix * (1 + (prob - 50) / 1000), 2)
-    prix_30j = round(prix * (1 + (prob - 50) / 300), 2)
-    prix_90j = round(prix * (1 + (prob - 50) / 120), 2)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric(
-            "📅 24 heures",
-            f"${prix_24h:,.2f}",
-            f"{round(((prix_24h-prix)/prix)*100,1)}%"
-        )
-
-        st.metric(
-            "📅 30 jours",
-            f"${prix_30j:,.2f}",
-            f"{round(((prix_30j-prix)/prix)*100,1)}%"
-        )
-
-    with col2:
-        st.metric(
-            "📅 7 jours",
-            f"${prix_7j:,.2f}",
-            f"{round(((prix_7j-prix)/prix)*100,1)}%"
-        )
-
-        st.metric(
-            "📅 90 jours",
-            f"${prix_90j:,.2f}",
-            f"{round(((prix_90j-prix)/prix)*100,1)}%"
-)
-st.divider()
-
-st.subheader("🕘 Historique des analyses")
-
-for item in reversed(st.session_state.history[-10:]):
-        st.write(
-            f"📌 {item['date']} • {item['actif']} • {item['score']}/100 • {item['signal']}"
-)
-st.divider()
-
-st.subheader("📰 Actualités du marché")
-
-try:
-    url = (
-        f"https://newsapi.org/v2/everything"
-        f"?q={actif}"
-        f"&language=fr"
-        f"&pageSize=3"
-        f"&apiKey={NEWS_API_KEY}"
-        )
-
-    response = requests.get(url, timeout=10)
-    news = response.json()
-
-    if news.get("status") == "ok" and news.get("articles"):
-
-        for article in news["articles"][:3]:
-            st.markdown(f"**📰 {article['title']}**")
-            st.caption(article["source"]["name"])
-
-    else:
-        st.info("Aucune actualité récente trouvée.")
-
-except Exception as e:
-    st.error(f"Erreur lors du chargement des actualités : {e}")
-st.divider()
-
-st.subheader("📈 Évolution du prix")
-
-st.line_chart(close)
-
-col1, col2, col3 = st.columns(3)
-prix_cible = round(
-    prix * (1 + (prediscore - 50) / 100),
-    2
-) 
-
-potentiel = round(
-    ((prix_cible - prix) / prix) * 100,
+    return round(
+        price * (1 + percent / 100),
         2
-)
-
-with col1:
-    st.metric(
-        "💲 Prix actuel",
-        f"${prix:,.2f}"
     )
-    with col2:
-        st.metric(
-            "🎯 Prix cible IA",
-            f"${prix_cible:,.2f}"
-        )
 
-    with col3:
-        st.metric(
-            "🚀 Potentiel",
-            f"{potentiel}%"
-)
-    st.divider()
 
-    st.subheader("📋 Résumé de l'analyse")
+def calculate_risk_reward(price, stop_loss, take_profit):
+    """
+    Calcule le ratio Risque/Rendement.
+    """
 
-    st.write(f"**Actif analysé :** {actif}")
-    st.write(f"**Prix actuel :** ${prix:,.2f}")
-    st.write(f"**PrediScore :** {prediscore}/100")
-    st.write(f"**Signal IA :** {'🟢 Achat' if prediscore >= 75 else '🟡 Attendre' if prediscore >= 60 else '🔴 Vente'}")
-    st.write(f"**Risque :** {risque}")
-    st.write(f"**Confiance IA :** {prediscore}%")
+    risk = price - stop_loss
 
-    if prediscore >= 75:
-        st.success(
-            "L'IA estime que les conditions sont favorables pour une prise de position."
-        )
+    reward = take_profit - price
+
+    if risk <= 0:
+        return 0
+
+    return round(
+        reward / risk,
+        2
+    )
+
+
+def risk_level(prediscore):
+    """
+    Détermine le niveau de risque.
+    """
+
+    if prediscore >= 80:
+        return "Faible"
+
     elif prediscore >= 60:
-        st.warning(
-            "Les indicateurs sont mitigés. Une confirmation est recommandée avant d'entrer."
-        )
-    else:
-        st.error(
-            "Les indicateurs techniques sont défavorables. Il est préférable d'attendre."
-)
-    st.divider()
+        return "Moyen"
 
-    st.caption(
-        "🤖 PrediTrade AI • Version 6.0"
-    )
-
-    st.caption(
-        "Analyse basée sur les données de marché, les indicateurs techniques (RSI, EMA, MACD, Bandes de Bollinger) et l'intelligence artificielle."
-    )
-
-    st.caption(
-        "⚠️ Les analyses fournies sont des aides à la décision et ne constituent pas un conseil financier."
-)
-    
+    return "Élevé"
