@@ -369,44 +369,45 @@ try:
         f"&apiKey={NEWS_API_KEY}"
         )
 
-        response = requests.get(url, timeout=10)
-        news = response.json()
+    response = requests.get(url, timeout=10)
+    news = response.json()
 
-        if news.get("status") == "ok" and news.get("articles"):
+    if news.get("status") == "ok" and news.get("articles"):
 
-            for article in news["articles"][:3]:
-                st.markdown(f"**📰 {article['title']}**")
-                st.caption(article["source"]["name"])
+        for article in news["articles"][:3]:
+            st.markdown(f"**📰 {article['title']}**")
+            st.caption(article["source"]["name"])
 
-        else:
-            st.info("Aucune actualité récente trouvée.")
+    else:
+        st.info("Aucune actualité récente trouvée.")
 
-    except Exception as e:
-        st.error(f"Erreur lors du chargement des actualités : {e}")
-    st.divider()
+except Exception as e:
+    st.error(f"Erreur lors du chargement des actualités : {e}")
+st.divider()
 
-    st.subheader("📈 Évolution du prix")
+st.subheader("📈 Évolution du prix")
 
-    st.line_chart(close_data)
+st.line_chart(close_data)
 
-    col1, col2, col3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-    prix_cible = round(
-        prix * (1 + (prob - 50) / 100),
+
+
+prix_cible = round(
+    prix * (1 + (prob - 50) / 100),
         2
-    )
+)
 
-    potentiel = round(
-        ((prix_cible - prix) / prix) * 100,
+potentiel = round(
+    ((prix_cible - prix) / prix) * 100,
         2
+)
+
+with col1:
+    st.metric(
+        "💲 Prix actuel",
+        f"${prix:,.2f}"
     )
-
-    with col1:
-        st.metric(
-            "💲 Prix actuel",
-            f"${prix:,.2f}"
-        )
-
     with col2:
         st.metric(
             "🎯 Prix cible IA",
