@@ -197,8 +197,6 @@ if analyser:
     elif rsi_value > 70:
         score -= 15
 
-    score += (prob - 50) // 2
-
     prediscore = max(0, min(100, int(score)))
     st.divider()
 
