@@ -243,7 +243,7 @@ if analyser:
         st.error(
             "Les indicateurs techniques restent défavorables. Le risque de baisse est actuellement élevé."
 )
-            st.divider()
+    st.divider()
 
     st.subheader("🛡️ Gestion du risque")
 
