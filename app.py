@@ -366,16 +366,13 @@ st.divider()
 
 st.subheader("📈 Évolution du prix")
 
-st.line_chart(close_data)
+st.line_chart(close)
 
 col1, col2, col3 = st.columns(3)
-
-
-
 prix_cible = round(
-    prix * (1 + (prob - 50) / 100),
-        2
-)
+    prix * (1 + (prediscore - 50) / 100),
+    2
+) 
 
 potentiel = round(
     ((prix_cible - prix) / prix) * 100,
