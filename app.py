@@ -333,7 +333,7 @@ st.divider()
 
 st.subheader("🕘 Historique des analyses")
 
-    nouvelle_entree = {
+nouvelle_entree = {
         "date": datetime.now().strftime("%d/%m %H:%M"),
         "actif": actif,
         "score": prediscore,
@@ -346,13 +346,13 @@ st.subheader("🕘 Historique des analyses")
         )
     }
 
-    if (
+if (
         not st.session_state.history
         or st.session_state.history[-1] != nouvelle_entree
     ):
         st.session_state.history.append(nouvelle_entree)
 
-    for item in reversed(st.session_state.history[-10:]):
+for item in reversed(st.session_state.history[-10:]):
         st.write(
             f"📌 {item['date']} • {item['actif']} • {item['score']}/100 • {item['signal']}"
 )
