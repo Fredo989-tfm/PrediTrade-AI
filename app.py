@@ -329,9 +329,9 @@ if analyser:
             f"${prix_90j:,.2f}",
             f"{round(((prix_90j-prix)/prix)*100,1)}%"
 )
-    st.divider()
+st.divider()
 
-    st.subheader("🕘 Historique des analyses")
+st.subheader("🕘 Historique des analyses")
 
     nouvelle_entree = {
         "date": datetime.now().strftime("%d/%m %H:%M"),
