@@ -356,9 +356,9 @@ for item in reversed(st.session_state.history[-10:]):
         st.write(
             f"📌 {item['date']} • {item['actif']} • {item['score']}/100 • {item['signal']}"
 )
-    st.divider()
+st.divider()
 
-    st.subheader("📰 Actualités du marché")
+st.subheader("📰 Actualités du marché")
 
     try:
         url = (
