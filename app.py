@@ -89,8 +89,7 @@ actif = st.selectbox(
     ]
 )
 
-analyser = st.button(
-    "
+analyser = st.button("Analyser") 
 # ==========================
 # ANALYSE DE L'ACTIF
 # ==========================
