@@ -419,7 +419,7 @@ with col1:
             "🚀 Potentiel",
             f"{potentiel}%"
 )
-            st.divider()
+    st.divider()
 
     st.subheader("📋 Résumé de l'analyse")
 
