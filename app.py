@@ -195,24 +195,6 @@ if st.button("Analyser"):
     st.write(f"⚠️ Risque : {risque}")
     st.write(f"🎯 Confiance : {confiance}")
 
-    score = 50
-
-if ema20_value > ema50_value:
-    score += 15
-else:
-    score -= 15
-
-if macd_value > macd_signal_value:
-    score += 10
-else:
-    score -= 10
-
-if rsi_value < 30:
-    score += 15
-elif rsi_value > 70:
-    score -= 15
-
-score += (prob - 50) // 2
 nouvelle_entree = {
     "date": datetime.now().strftime("%d/%m %H:%M"),
     "actif": actif,
@@ -359,6 +341,7 @@ if not st.session_state.history or st.session_state.history[-1] != nouvelle_entr
                         score += 15
                 elif rsi_value > 70:
                         score -= 15
+                score += (prob - 50) // 2
                 prediscore = max(0, min(100, score))
                 st.write(f"📈 RSI (14) : {rsi_value:.2f}")
                 st.progress(min(max(int(rsi_value), 0), 100))
