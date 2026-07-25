@@ -213,7 +213,7 @@ elif rsi_value > 70:
     score -= 15
 
 score += (prob - 50) // 2
-    nouvelle_entree = {
+nouvelle_entree = {
     "date": datetime.now().strftime("%d/%m %H:%M"),
     "actif": actif,
     "score": prob,
