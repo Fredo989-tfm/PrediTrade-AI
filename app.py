@@ -749,6 +749,8 @@ if analyse:
     # =========================================================
 
 st.subheader("📋 Résumé de l'analyse")
+current_price = float(close.iloc[-1])
+confidence = f"{prediscore}%"
 
 resume = f"""
 Actif analysé : {asset}
