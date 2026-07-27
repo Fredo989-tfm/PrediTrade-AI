@@ -743,10 +743,84 @@ if analyse:
     )
 
     st.divider()
+    
+        # =========================================================
+    # RÉSUMÉ INTELLIGENT
     # =========================================================
+
+st.subheader("📋 Résumé de l'analyse")
+
+resume = f"""
+Actif analysé : {asset}
+
+Prix actuel : ${current_price:.2f}
+
+PrediScore IA : {prediscore}/100
+
+Signal : {trading_signal}
+
+Confiance IA : {confidence}
+
+Stop Loss : ${stop_loss}
+
+Take Profit : ${take_profit}
+
+Ratio Risque/Rendement : {risk_reward}
+"""
+
+st.text_area(
+        "Résumé",
+        resume,
+        height=220
+    )
+
+st.download_button(
+        "📄 Télécharger le résumé",
+        resume,
+        file_name="PrediTrade_AI_Analyse.txt"
+    )
+
+st.divider()
+        # =========================================================
+    # ANALYSE AUTOMATIQUE DU MARCHÉ
+    # =========================================================
+
+st.subheader("📊 Analyse du marché")
+
+if ema20_value > ema50_value and macd_value > signal_value:
+
+    market_trend = "🟢 Tendance Haussière"
+
+    market_color = "green"
+
+elif ema20_value < ema50_value and macd_value < signal_value:
+
+    market_trend = "🔴 Tendance Baissière"
+
+    market_color = "red"
+
+else:
+
+    market_trend = "🟡 Marché Neutre"
+
+    market_color = "orange"
+
+st.markdown(
+        f"### :{market_color}[{market_trend}]"
+    )
+
+st.progress(
+        prediscore / 100
+    )
+
+st.caption(
+        f"Confiance de l'IA : {prediscore}%"
+    )
+
+st.divider()
+# =========================================================
 # 💼 PORTEFEUILLE VIRTUEL
 # =========================================================
-current_price = float(close.iloc[-1])
 
 st.subheader("💼 Portefeuille virtuel")
 
@@ -843,80 +917,6 @@ if len(st.session_state.historique) > 0:
     st.dataframe(
         pd.DataFrame(st.session_state.historique),
         use_container_width=True
-    )
-
-st.divider()
-        # =========================================================
-    # RÉSUMÉ INTELLIGENT
-    # =========================================================
-
-st.subheader("📋 Résumé de l'analyse")
-
-resume = f"""
-Actif analysé : {asset}
-
-Prix actuel : ${current_price:.2f}
-
-PrediScore IA : {prediscore}/100
-
-Signal : {trading_signal}
-
-Confiance IA : {confidence}
-
-Stop Loss : ${stop_loss}
-
-Take Profit : ${take_profit}
-
-Ratio Risque/Rendement : {risk_reward}
-"""
-
-st.text_area(
-        "Résumé",
-        resume,
-        height=220
-    )
-
-st.download_button(
-        "📄 Télécharger le résumé",
-        resume,
-        file_name="PrediTrade_AI_Analyse.txt"
-    )
-
-st.divider()
-        # =========================================================
-    # ANALYSE AUTOMATIQUE DU MARCHÉ
-    # =========================================================
-
-st.subheader("📊 Analyse du marché")
-
-if ema20_value > ema50_value and macd_value > signal_value:
-
-    market_trend = "🟢 Tendance Haussière"
-
-    market_color = "green"
-
-elif ema20_value < ema50_value and macd_value < signal_value:
-
-    market_trend = "🔴 Tendance Baissière"
-
-    market_color = "red"
-
-else:
-
-    market_trend = "🟡 Marché Neutre"
-
-    market_color = "orange"
-
-st.markdown(
-        f"### :{market_color}[{market_trend}]"
-    )
-
-st.progress(
-        prediscore / 100
-    )
-
-st.caption(
-        f"Confiance de l'IA : {prediscore}%"
     )
 
 st.divider()
