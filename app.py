@@ -259,7 +259,7 @@ if analyse:
         max(0, min(100, prediscore))
     )
     if prediscore >= 75:
-    trading_signal = "🟢 ACHAT"
+        trading_signal = "🟢 ACHAT"
     elif prediscore >= 60:
         trading_signal = "🟡 ATTENDRE"
 
