@@ -222,42 +222,42 @@ if analyse:
         "Indicateurs calculés."
 )
         # =========================================================
-    # PREDISCORE IA
+    # PREDISCORE IA V2
     # =========================================================
 
     prediscore = 50
 
-    # EMA
-    if ema20_value > ema50_value:
-        prediscore += 15
-    else:
-        prediscore -= 15
+    # EMA (0 à ±20 points)
 
-    # MACD
-    if macd_value > signal_value:
-        prediscore += 15
-    else:
-        prediscore -= 15
+    ema_gap = ((ema20_value - ema50_value) / ema50_value) * 100
 
-    # RSI
+    prediscore += max(-20, min(20, ema_gap * 5))
+
+    # MACD (0 à ±20 points)
+
+    macd_gap = macd_value - signal_value
+
+    prediscore += max(-20, min(20, macd_gap / 20))
+
+    # RSI (0 à ±20 points)
+
     if rsi_value < 30:
-        prediscore += 15
+        prediscore += 20
+
+    elif rsi_value < 40:
+        prediscore += 10
 
     elif rsi_value > 70:
-        prediscore -= 15
+        prediscore -= 20
 
-    # Limites du score
+    elif rsi_value > 60:
+        prediscore -= 10
 
-    prediscore = max(
-        0,
-        min(prediscore, 100)
+    # Arrondi et limites
+
+    prediscore = round(
+        max(0, min(100, prediscore))
     )
-
-    # Détermination du signal
-
-    if prediscore >= 75:
-        trading_signal = "🟢 ACHAT"
-
     elif prediscore >= 60:
         trading_signal = "🟡 ATTENDRE"
 
