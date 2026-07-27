@@ -746,6 +746,7 @@ if analyse:
     # =========================================================
 # 💼 PORTEFEUILLE VIRTUEL
 # =========================================================
+current_price = float(close.iloc[-1])
 
 st.subheader("💼 Portefeuille virtuel")
 
