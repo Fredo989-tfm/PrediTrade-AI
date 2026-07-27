@@ -766,7 +766,7 @@ with col1:
 with col2:
     valeur_portefeuille = (
         st.session_state.cash
-        + st.session_state.btc * current_price
+        + st.session_state.btc * price
     )
 
     st.metric(
