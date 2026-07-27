@@ -468,18 +468,17 @@ if analyse:
     fig.add_trace(
         go.Candlestick(
             x=data.index,
-            open=data["Open"],
-            high=data["High"],
-            low=data["Low"],
-            close=data["Close"],
-            name="Prix"
+            open=data["Open"].squeeze(),
+            high=data["High"].squeeze(),
+            low=data["Low"].squeeze(),
+            close=data["Close"].squeeze(), 
         )
     )
 
     fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=ema20,
+            y=ema20.squeeze(),
             mode="lines",
             name="EMA 20",
             line=dict(width=2)
@@ -489,7 +488,7 @@ if analyse:
     fig.add_trace(
         go.Scatter(
             x=data.index,
-            y=ema50,
+            y=ema50.squeeze(),
             mode="lines",
             name="EMA 50",
             line=dict(width=2)
