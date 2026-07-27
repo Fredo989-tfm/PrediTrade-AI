@@ -813,5 +813,551 @@ st.divider()
 st.caption(
     "PrediTrade AI Version Finale 1.0 | © Fredo Blong"
     )
+# ==========================================================
+# TABLEAU DE BORD DU PORTEFEUILLE
+# ==========================================================
+
+if analyse:
+
+    st.header("📊 Tableau de bord du portefeuille")
+
+    valeur_crypto = st.session_state.btc * current_price
+    valeur_totale = st.session_state.cash + valeur_crypto
+    profit = valeur_totale - 10000
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.metric(
+            "💼 Valeur du portefeuille",
+            f"${valeur_totale:,.2f}"
+        )
+
+    with c2:
+        st.metric(
+            "💵 Liquidités",
+            f"${st.session_state.cash:,.2f}"
+        )
+
+    with c3:
+        st.metric(
+            "📈 Gain / Perte",
+            f"${profit:,.2f}"
+        )
+
+    st.progress(min(valeur_totale / 20000, 1.0))
+   # ==========================================================
+# PORTEFEUILLE MULTI-ACTIFS
+# ==========================================================
+
+if "portfolio_multi" not in st.session_state:
+    st.session_state.portfolio_multi = {}
+
+if analyse:
+
+    st.header("🌍 Portefeuille Multi-Actifs")
+
+    actif = asset_name
+
+    if actif not in st.session_state.portfolio_multi:
+        st.session_state.portfolio_multi[actif] = {
+            "quantite": 0.0,
+            "prix_moyen": 0.0
+        }
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        if st.button("➕ Ajouter cet actif"):
+
+            qte = quantite
+            cout = qte * current_price
+
+            if st.session_state.cash >= cout:
+
+                ancien = st.session_state.portfolio_multi[actif]
+
+                ancienne_qte = ancien["quantite"]
+                ancien_prix = ancien["prix_moyen"]
+
+                nouvelle_qte = ancienne_qte + qte
+
+                if nouvelle_qte > 0:
+
+                    prix_moyen = (
+                        (ancienne_qte * ancien_prix)
+                        + (qte * current_price)
+                    ) / nouvelle_qte
+
+                else:
+
+                    prix_moyen = current_price
+
+                st.session_state.portfolio_multi[actif] = {
+                    "quantite": nouvelle_qte,
+                    "prix_moyen": prix_moyen
+                }
+
+                st.session_state.cash -= cout
+
+                st.success(f"{actif} ajouté au portefeuille.")
+
+            else:
+
+                st.error("Solde insuffisant.")
+
+    with col2:
+
+        if st.button("🗑️ Vider le portefeuille"):
+
+            st.session_state.portfolio_multi = {}
+
+            st.success("Portefeuille réinitialisé.")
+
+    lignes = []
+
+    valeur_totale = 0
+
+    for nom, infos in st.session_state.portfolio_multi.items():
+
+        valeur = infos["quantite"] * current_price
+
+        valeur_totale += valeur
+
+        lignes.append({
+            "Actif": nom,
+            "Quantité": round(infos["quantite"], 6),
+            "Prix moyen": round(infos["prix_moyen"], 2),
+            "Valeur actuelle": round(valeur, 2)
+        })
+
+    if len(lignes) > 0:
+
+        st.dataframe(
+            pd.DataFrame(lignes),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.metric(
+            "💎 Valeur des actifs",
+            f"${valeur_totale:,.2f}"
+        )
+
+    else:
+
+        st.info("Aucun actif dans le portefeuille.")
+        # ==========================================================
+# SENTIMENT DU MARCHÉ
+# ==========================================================
+
+if analyse:
+
+    st.header("🧠 Sentiment du marché")
+
+    if prediscore >= 80:
+        sentiment = "🟢 Très haussier"
+        couleur = "🟢"
+
+    elif prediscore >= 60:
+        sentiment = "🟡 Haussier"
+
+        couleur = "🟡"
+
+    elif prediscore >= 40:
+        sentiment = "🟠 Neutre"
+
+        couleur = "🟠"
+
+    else:
+        sentiment = "🔴 Baissier"
+
+        couleur = "🔴"
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.metric(
+            "Sentiment IA",
+            sentiment
+        )
+
+    with col2:
+
+        st.metric(
+            "Indice de confiance",
+            f"{prediscore}%"
+        )
+
+    st.progress(prediscore / 100)
+
+    if prediscore >= 80:
+
+        st.success(
+            "Les conditions de marché sont très favorables."
+        )
+
+    elif prediscore >= 60:
+
+        st.info(
+            "Le marché reste positif mais demande confirmation."
+        )
+
+    elif prediscore >= 40:
+
+        st.warning(
+            "Le marché manque de direction."
+        )
+
+    else:
+
+        st.error(
+            "Le marché présente actuellement un risque élevé."
+        )
+       # ==========================================================
+# 🎯 RADAR DES OPPORTUNITÉS IA
+# ==========================================================
+
+if analyse:
+
+    st.header("🎯 Radar des opportunités")
+
+    if prediscore >= 90:
+
+        niveau = "⭐⭐⭐⭐⭐"
+        couleur = "success"
+        message = "Excellente opportunité détectée."
+
+    elif prediscore >= 75:
+
+        niveau = "⭐⭐⭐⭐"
+        couleur = "info"
+        message = "Bonne opportunité."
+
+    elif prediscore >= 60:
+
+        niveau = "⭐⭐⭐"
+        couleur = "warning"
+        message = "Attendre une confirmation."
+
+    elif prediscore >= 40:
+
+        niveau = "⭐⭐"
+        couleur = "warning"
+        message = "Marché incertain."
+
+    else:
+
+        niveau = "⭐"
+        couleur = "error"
+        message = "Risque élevé."
+
+    st.metric(
+        "Notation IA",
+        niveau
+    )
+
+    if couleur == "success":
+        st.success(message)
+
+    elif couleur == "info":
+        st.info(message)
+
+    elif couleur == "warning":
+        st.warning(message)
+
+    else:
+        st.error(message)
+
+    st.progress(prediscore / 100)
+    # ==========================================================
+# 🔍 SCANNER MULTI-ACTIFS IA
+# ==========================================================
+
+if analyse:
+
+    st.header("🔍 Scanner Multi-Actifs IA")
+
+    scan = []
+
+    for nom, symbole in ASSETS.items():
+
+        try:
+
+            df = yf.download(
+                symbole,
+                period="1mo",
+                interval="1d",
+                auto_adjust=True,
+                progress=False
+            )
+
+            if df.empty:
+                continue
+
+            prix = df["Close"]
+
+            if isinstance(prix, pd.DataFrame):
+                prix = prix.iloc[:, 0]
+
+            ema20_scan = prix.ewm(span=20, adjust=False).mean()
+            ema50_scan = prix.ewm(span=50, adjust=False).mean()
+
+            tendance = (
+                "🟢 Hausse"
+                if ema20_scan.iloc[-1] > ema50_scan.iloc[-1]
+                else "🔴 Baisse"
+            )
+
+            variation = (
+                (prix.iloc[-1] - prix.iloc[-2])
+                / prix.iloc[-2]
+            ) * 100
+
+            scan.append({
+                "Actif": nom,
+                "Prix": round(float(prix.iloc[-1]), 2),
+                "Variation %": round(float(variation), 2),
+                "Tendance": tendance
+            })
+
+        except Exception:
+            pass
+
+    if len(scan) > 0:
+
+        scan_df = pd.DataFrame(scan)
+
+        scan_df = scan_df.sort_values(
+            by="Variation %",
+            ascending=False
+        )
+
+        st.dataframe(
+            scan_df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.warning("Impossible de scanner les actifs.")
+       # ==========================================================
+# 📈 STATISTIQUES DE PERFORMANCE
+# ==========================================================
+
+if analyse:
+
+    st.header("📈 Statistiques de performance")
+
+    rendement = (
+        (valeur_portefeuille - 10000)
+        / 10000
+    ) * 100
+
+    nb_operations = len(st.session_state.operations)
+
+    actif_principal = asset_name
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "📊 Rendement",
+            f"{rendement:.2f}%"
+        )
+
+    with col2:
+        st.metric(
+            "🔄 Nombre d'opérations",
+            nb_operations
+        )
+
+    with col3:
+        st.metric(
+            "⭐ Actif analysé",
+            actif_principal
+        )
+
+    if rendement > 0:
+
+        st.success(
+            "Le portefeuille est actuellement en gain."
+        )
+
+    elif rendement < 0:
+
+        st.error(
+            "Le portefeuille est actuellement en perte."
+        )
+
+    else:
+
+        st.info(
+            "Aucune variation enregistrée."
+)
+        # ==========================================================
+# 👤 MODE DÉBUTANT / EXPERT
+# ==========================================================
+
+st.header("👤 Mode utilisateur")
+
+mode = st.radio(
+    "Choisissez votre niveau",
+    ["Débutant", "Expert"],
+    horizontal=True
+)
+
+if mode == "Débutant":
+
+    st.success(
+        """
+Bienvenue en mode Débutant.
+
+PrediTrade AI simplifie les analyses et met en avant
+les recommandations essentielles.
+"""
+    )
+
+else:
+
+    st.info(
+        """
+Mode Expert activé.
+
+Toutes les données techniques sont utilisées pour une
+analyse avancée.
+"""
+    )
+    # ==========================================================
+# ⚠️ ANALYSE DU NIVEAU DE RISQUE
+# ==========================================================
+
+if analyse:
+
+    st.header("⚠️ Niveau de risque")
+
+    if risk_reward >= 2:
+
+        niveau_risque = "🟢 Faible"
+
+        commentaire = (
+            "Le ratio rendement/risque est favorable."
+        )
+
+    elif risk_reward >= 1:
+
+        niveau_risque = "🟡 Moyen"
+
+        commentaire = (
+            "Le risque reste acceptable."
+        )
+
+    else:
+
+        niveau_risque = "🔴 Élevé"
+
+        commentaire = (
+            "Le risque est supérieur au rendement potentiel."
+        )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.metric(
+            "Niveau de risque",
+            niveau_risque
+        )
+
+    with col2:
+
+        st.metric(
+            "Ratio R/R",
+            f"{risk_reward:.2f}"
+        )
+
+    if risk_reward >= 2:
+
+        st.success(commentaire)
+
+    elif risk_reward >= 1:
+
+        st.warning(commentaire)
+
+    else:
+
+        st.error(commentaire)
+
+    st.divider()
+    # ==========================================================
+# ⭐ TOP OPPORTUNITÉS IA
+# ==========================================================
+
+if analyse:
+
+    st.header("⭐ Top Opportunités IA")
+
+    opportunites = []
+
+    for nom, symbole in ASSETS.items():
+
+        try:
+
+            df = yf.download(
+                symbole,
+                period="5d",
+                interval="1d",
+                auto_adjust=True,
+                progress=False
+            )
+
+            if df.empty:
+                continue
+
+            prix = df["Close"]
+
+            if isinstance(prix, pd.DataFrame):
+                prix = prix.iloc[:, 0]
+
+            variation = (
+                (prix.iloc[-1] - prix.iloc[0])
+                / prix.iloc[0]
+            ) * 100
+
+            opportunites.append(
+                {
+                    "Actif": nom,
+                    "Performance (%)": round(float(variation), 2)
+                }
+            )
+
+        except Exception:
+            pass
+
+    if opportunites:
+
+        top_df = pd.DataFrame(opportunites)
+
+        top_df = top_df.sort_values(
+            by="Performance (%)",
+            ascending=False
+        )
+
+        st.dataframe(
+            top_df.head(5),
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.warning(
+            "Aucune opportunité détectée."
+        )
+
+    st.divider()
     
     
