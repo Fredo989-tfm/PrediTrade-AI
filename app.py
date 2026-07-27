@@ -280,67 +280,82 @@ if analyse:
 
     else:
         confidence = "Faible"
-            # =========================================================
-    # TABLEAU DE BORD IA
+                # =========================================================
+    # GRAPHIQUE PROFESSIONNEL
     # =========================================================
 
-    st.subheader("🧠 Tableau de bord IA")
+    st.subheader("📈 Évolution du prix")
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Candlestick(
+            x=data.index,
+            open=data["Open"],
+            high=data["High"],
+            low=data["Low"],
+            close=data["Close"],
+            name="Prix"
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index,
+            y=ema20,
+            mode="lines",
+            name="EMA 20",
+            line=dict(color="orange", width=2)
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index,
+            y=ema50,
+            mode="lines",
+            name="EMA 50",
+            line=dict(color="cyan", width=2)
+        )
+    )
+
+    fig.update_layout(
+        template="plotly_dark",
+        height=650,
+        xaxis_rangeslider_visible=False,
+        hovermode="x unified",
+        legend=dict(
+            orientation="h",
+            y=1.02,
+            x=0
+        ),
+        margin=dict(
+            l=10,
+            r=10,
+            t=40,
+            b=10
+        )
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
+
+    highest_price = round(float(close.max()), 2)
+    lowest_price = round(float(close.min()), 2)
+    average_price = round(float(close.mean()), 2)
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric(
-            "🎯 PrediScore",
-            f"{prediscore}/100"
-        )
+        st.metric("⬆️ Plus haut", f"${highest_price}")
 
     with col2:
-        st.metric(
-            "🤖 Confiance IA",
-            confidence
-        )
+        st.metric("⬇️ Plus bas", f"${lowest_price}")
 
     with col3:
-        st.metric(
-            "📊 Signal",
-            trading_signal
-        )
-
-    st.divider()
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric(
-            "RSI",
-            f"{rsi_value:.2f}"
-        )
-
-    with col2:
-        st.metric(
-            "EMA 20",
-            f"{ema20_value:.2f}"
-        )
-
-    with col3:
-        st.metric(
-            "EMA 50",
-            f"{ema50_value:.2f}"
-        )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric(
-            "MACD",
-            f"{macd_value:.4f}"
-        )
-
-    with col2:
-        st.metric(
-            "Signal MACD",
-            f"{signal_value:.4f}"
-        )
+        st.metric("📊 Moyenne", f"${average_price}")
 
     st.divider()
         # =========================================================
