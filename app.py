@@ -849,9 +849,9 @@ st.divider()
     # RÉSUMÉ INTELLIGENT
     # =========================================================
 
-    st.subheader("📋 Résumé de l'analyse")
+st.subheader("📋 Résumé de l'analyse")
 
-    resume = f"""
+resume = f"""
 Actif analysé : {asset}
 
 Prix actuel : ${current_price:.2f}
@@ -869,7 +869,7 @@ Take Profit : ${take_profit}
 Ratio Risque/Rendement : {risk_reward}
 """
 
-    st.text_area(
+st.text_area(
         "Résumé",
         resume,
         height=220
