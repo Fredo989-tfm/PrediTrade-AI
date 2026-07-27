@@ -442,32 +442,67 @@ if analyse:
 
     st.divider()
         # =========================================================
-    # GRAPHIQUE
+    # GRAPHIQUE PROFESSIONNEL
     # =========================================================
 
     st.subheader("📈 Évolution du prix")
 
-    chart_data = close.to_frame(name="Prix")
+    fig = go.Figure()
 
-    st.line_chart(
-        chart_data,
+    fig.add_trace(
+        go.Candlestick(
+            x=data.index,
+            open=data["Open"],
+            high=data["High"],
+            low=data["Low"],
+            close=data["Close"],
+            name="Prix"
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index,
+            y=ema20,
+            mode="lines",
+            name="EMA 20",
+            line=dict(width=2)
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index,
+            y=ema50,
+            mode="lines",
+            name="EMA 50",
+            line=dict(width=2)
+        )
+    )
+
+    fig.update_layout(
+        template="plotly_dark",
+        height=650,
+        xaxis_rangeslider_visible=False,
+        margin=dict(
+            l=10,
+            r=10,
+            t=40,
+            b=10
+        ),
+        legend=dict(
+            orientation="h"
+        )
+    )
+
+    st.plotly_chart(
+        fig,
         use_container_width=True
     )
 
-    highest_price = round(
-        float(close.max()),
-        2
-    )
-
-    lowest_price = round(
-        float(close.min()),
-        2
-    )
-
-    average_price = round(
-        float(close.mean()),
-        2
-    )
+    highest_price = round(float(close.max()), 2)
+    lowest_price = round(float(close.min()), 2)
+    average_price = round(float(close.mean()), 2)
 
     col1, col2, col3 = st.columns(3)
 
