@@ -743,71 +743,108 @@ if analyse:
     )
 
     st.divider()
-        # =========================================================
-    # PORTEFEUILLE VIRTUEL
     # =========================================================
+# 💼 PORTEFEUILLE VIRTUEL
+# =========================================================
 
-    st.subheader("💼 Portefeuille virtuel")
+st.subheader("💼 Portefeuille virtuel")
 
-    if "portfolio" not in st.session_state:
-        st.session_state.portfolio = []
+if "cash" not in st.session_state:
+    st.session_state.cash = 10000.0
 
-    col1, col2 = st.columns(2)
+if "btc" not in st.session_state:
+    st.session_state.btc = 0.0
 
-    with col1:
+if "historique" not in st.session_state:
+    st.session_state.historique = []
 
-        quantity = st.number_input(
-            "Quantité",
-            min_value=0.0,
-            value=1.0,
-            step=0.1
-        )
+col1, col2 = st.columns(2)
 
-    with col2:
+with col1:
+    st.metric("💵 Solde", f"${st.session_state.cash:,.2f}")
 
-        if st.button("➕ Ajouter au portefeuille"):
+with col2:
+    valeur_portefeuille = (
+        st.session_state.cash
+        + st.session_state.btc * current_price
+    )
 
-            st.session_state.portfolio.append({
-                "Actif": asset,
-                "Prix": round(current_price, 2),
-                "Quantité": quantity,
-                "Valeur": round(
-                    current_price * quantity,
-                    2
-                ),
-                "Date": datetime.now().strftime("%d/%m/%Y %H:%M")
-            })
+    st.metric(
+        "💼 Valeur totale",
+        f"${valeur_portefeuille:,.2f}"
+    )
 
-            st.success(
-                "Actif ajouté au portefeuille."
+quantite = st.number_input(
+    "Quantité BTC",
+    min_value=0.001,
+    value=0.010,
+    step=0.001,
+    format="%.3f"
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    if st.button("🟢 Acheter"):
+
+        cout = quantite * current_price
+
+        if st.session_state.cash >= cout:
+
+            st.session_state.cash -= cout
+            st.session_state.btc += quantite
+
+            st.session_state.historique.append(
+                {
+                    "Type": "ACHAT",
+                    "Quantité": quantite,
+                    "Prix": current_price
+                }
             )
 
-    if len(st.session_state.portfolio) > 0:
+            st.success("Achat effectué.")
 
-        portefeuille = pd.DataFrame(
-            st.session_state.portfolio
-        )
+        else:
+            st.error("Solde insuffisant.")
 
-        st.dataframe(
-            portefeuille,
-            use_container_width=True,
-            hide_index=True
-        )
+with col2:
 
-        total = portefeuille["Valeur"].sum()
+    if st.button("🔴 Vendre"):
 
-        st.metric(
-            "💰 Valeur totale",
-            f"${total:.2f}"
-        )
+        if st.session_state.btc >= quantite:
 
-    else:
+            st.session_state.cash += quantite * current_price
+            st.session_state.btc -= quantite
 
-        st.info(
-            "Votre portefeuille est vide."
-        )
+            st.session_state.historique.append(
+                {
+                    "Type": "VENTE",
+                    "Quantité": quantite,
+                    "Prix": current_price
+                }
+            )
 
-    st.divider()
+            st.success("Vente effectuée.")
+
+        else:
+            st.error("BTC insuffisant.")
+
+st.metric(
+    "🪙 BTC détenu",
+    f"{st.session_state.btc:.6f}"
+)
+
+if len(st.session_state.historique) > 0:
+
+    st.subheader("📋 Historique des opérations")
+
+    st.dataframe(
+        pd.DataFrame(st.session_state.historique),
+        use_container_width=True
+    )
+
+st.divider()
         # =========================================================
     # RÉSUMÉ INTELLIGENT
     # =========================================================
