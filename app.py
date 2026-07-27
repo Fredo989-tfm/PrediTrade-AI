@@ -875,47 +875,47 @@ st.text_area(
         height=220
     )
 
-    st.download_button(
+st.download_button(
         "📄 Télécharger le résumé",
         resume,
         file_name="PrediTrade_AI_Analyse.txt"
     )
 
-    st.divider()
+st.divider()
         # =========================================================
     # ANALYSE AUTOMATIQUE DU MARCHÉ
     # =========================================================
 
-    st.subheader("📊 Analyse du marché")
+st.subheader("📊 Analyse du marché")
 
-    if ema20_value > ema50_value and macd_value > signal_value:
+if ema20_value > ema50_value and macd_value > signal_value:
 
-        market_trend = "🟢 Tendance Haussière"
+    market_trend = "🟢 Tendance Haussière"
 
-        market_color = "green"
+    market_color = "green"
 
-    elif ema20_value < ema50_value and macd_value < signal_value:
+elif ema20_value < ema50_value and macd_value < signal_value:
 
-        market_trend = "🔴 Tendance Baissière"
+    market_trend = "🔴 Tendance Baissière"
 
-        market_color = "red"
+    market_color = "red"
 
-    else:
+else:
 
-        market_trend = "🟡 Marché Neutre"
+    market_trend = "🟡 Marché Neutre"
 
-        market_color = "orange"
+    market_color = "orange"
 
-    st.markdown(
+st.markdown(
         f"### :{market_color}[{market_trend}]"
     )
 
-    st.progress(
+st.progress(
         prediscore / 100
     )
 
-    st.caption(
+st.caption(
         f"Confiance de l'IA : {prediscore}%"
     )
 
-    st.divider()
+st.divider()
