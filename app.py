@@ -285,6 +285,8 @@ if analyse:
     # =========================================================
 
     st.subheader("📈 Évolution du prix")
+    st.write(type(data["Close"]))
+    st.write(data["Close"].head()) 
 
     fig = go.Figure()
 
