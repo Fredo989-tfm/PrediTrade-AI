@@ -1,8 +1,8 @@
 """
 =========================================================
-PrediTrade AI - Version Finale 1.0
+PrediTrade AI Ultimate
+Version : 1.0 Final
 Auteur : Fredo Blong
-Powered by OpenAI
 =========================================================
 """
 
@@ -12,11 +12,12 @@ import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
 import requests
+
 from datetime import datetime
 
-# =====================================================
+# ==========================================================
 # CONFIGURATION
-# =====================================================
+# ==========================================================
 
 st.set_page_config(
     page_title="PrediTrade AI",
@@ -25,35 +26,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# =====================================================
-# STYLE
-# =====================================================
-
-st.markdown(
-    """
-    <style>
-    .main{
-        background-color:#0E1117;
-    }
-
-    div[data-testid="metric-container"]{
-        border:1px solid #333;
-        border-radius:12px;
-        padding:15px;
-        background:#161B22;
-    }
-
-    h1,h2,h3{
-        color:white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# =====================================================
-# INITIALISATION
-# =====================================================
+# ==========================================================
+# VARIABLES DE SESSION
+# ==========================================================
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -61,23 +36,15 @@ if "history" not in st.session_state:
 if "cash" not in st.session_state:
     st.session_state.cash = 10000.0
 
-if "portfolio" not in st.session_state:
-    st.session_state.portfolio = {}
+if "btc" not in st.session_state:
+    st.session_state.btc = 0.0
 
-# =====================================================
-# TITRE
-# =====================================================
+if "operations" not in st.session_state:
+    st.session_state.operations = []
 
-st.title("📈 PrediTrade AI")
-
-st.caption(
-    "Assistant Intelligent d'Analyse Financière"
-)
-
-st.divider()
-# =====================================================
-# ACTIFS FINANCIERS
-# =====================================================
+# ==========================================================
+# LISTE DES ACTIFS
+# ==========================================================
 
 ASSETS = {
     "Bitcoin": "BTC-USD",
@@ -96,15 +63,56 @@ ASSETS = {
     "Google": "GOOGL",
     "SP500": "^GSPC",
     "NASDAQ": "^IXIC",
-    "Or": "GC=F",
+    "Gold": "GC=F",
     "EUR/USD": "EURUSD=X"
 }
+# ==========================================================
+# STYLE DE L'APPLICATION
+# ==========================================================
 
-# =====================================================
-# MENU LATÉRAL
-# =====================================================
+st.markdown("""
+<style>
 
-st.sidebar.title("⚙️ Paramètres")
+.main{
+    background-color:#0E1117;
+}
+
+div[data-testid="metric-container"]{
+    background:#161B22;
+    border:1px solid #30363d;
+    border-radius:12px;
+    padding:15px;
+}
+
+h1,h2,h3{
+    color:white;
+}
+
+.stButton>button{
+    width:100%;
+    border-radius:10px;
+    height:45px;
+    font-weight:bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================================
+# TITRE
+# ==========================================================
+
+st.title("📈 PrediTrade AI")
+
+st.caption("Assistant Intelligent d'Analyse Financière")
+
+st.divider()
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
+
+st.sidebar.header("⚙️ Paramètres")
 
 asset_name = st.sidebar.selectbox(
     "Choisir un actif",
@@ -129,9 +137,9 @@ analyse = st.sidebar.button(
     "🚀 Lancer l'analyse",
     use_container_width=True
 )
-# =====================================================
+# ==========================================================
 # TÉLÉCHARGEMENT DES DONNÉES
-# =====================================================
+# ==========================================================
 
 if analyse:
 
@@ -146,10 +154,11 @@ if analyse:
         )
 
     if data.empty:
+
         st.error("Impossible de récupérer les données.")
+
         st.stop()
 
-    # Conversion éventuelle DataFrame -> Series
     close = data["Close"]
 
     if isinstance(close, pd.DataFrame):
@@ -157,7 +166,7 @@ if analyse:
 
     current_price = float(close.iloc[-1])
 
-    st.success("Données téléchargées avec succès.")
+    st.success("✅ Données téléchargées avec succès.")
 
     st.metric(
         "💰 Prix actuel",
@@ -165,12 +174,19 @@ if analyse:
     )
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # INDICATEURS TECHNIQUES
-    # =====================================================
+    # ==========================================================
 
-    ema20 = close.ewm(span=20, adjust=False).mean()
-    ema50 = close.ewm(span=50, adjust=False).mean()
+    ema20 = close.ewm(
+        span=20,
+        adjust=False
+    ).mean()
+
+    ema50 = close.ewm(
+        span=50,
+        adjust=False
+    ).mean()
 
     ema20_value = float(ema20.iloc[-1])
     ema50_value = float(ema50.iloc[-1])
@@ -184,35 +200,47 @@ if analyse:
     avg_loss = loss.rolling(14).mean()
 
     rs = avg_gain / avg_loss
+
     rsi = 100 - (100 / (1 + rs))
 
     rsi_value = float(rsi.iloc[-1])
 
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
+    ema12 = close.ewm(
+        span=12,
+        adjust=False
+    ).mean()
+
+    ema26 = close.ewm(
+        span=26,
+        adjust=False
+    ).mean()
 
     macd = ema12 - ema26
-    macd_signal = macd.ewm(span=9, adjust=False).mean()
+
+    macd_signal = macd.ewm(
+        span=9,
+        adjust=False
+    ).mean()
 
     macd_value = float(macd.iloc[-1])
     signal_value = float(macd_signal.iloc[-1])
 
-    st.success("Indicateurs calculés.")
-        # =====================================================
-    # PREDISCORE IA 3.0
-    # =====================================================
+    st.success("📊 Indicateurs calculés avec succès.")
+        # ==========================================================
+    # PREDISCORE IA
+    # ==========================================================
 
     prediscore = 50
 
-    # EMA
+    # Analyse EMA
     ema_gap = ((ema20_value - ema50_value) / ema50_value) * 100
     prediscore += max(-20, min(20, ema_gap * 5))
 
-    # MACD
+    # Analyse MACD
     macd_gap = macd_value - signal_value
     prediscore += max(-20, min(20, macd_gap / 20))
 
-    # RSI
+    # Analyse RSI
     if rsi_value < 30:
         prediscore += 20
     elif rsi_value < 40:
@@ -247,34 +275,30 @@ if analyse:
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        st.metric("🎯 PrediScore", f"{prediscore}/100")
+        st.metric("🎯 PrediScore IA", f"{prediscore}/100")
 
     with c2:
         st.metric("🤖 Confiance IA", confidence)
 
     with c3:
         st.metric("📊 Signal", trading_signal)
-
-    c4, c5, c6 = st.columns(3)
-
-    with c4:
-        st.metric("RSI", f"{rsi_value:.2f}")
-
-    with c5:
-        st.metric("EMA20", f"{ema20_value:.2f}")
-
-    with c6:
-        st.metric("EMA50", f"{ema50_value:.2f}")
-
-    st.divider()
-        # =====================================================
+            # ==========================================================
     # GESTION DU RISQUE
-    # =====================================================
+    # ==========================================================
 
     st.subheader("🛡️ Gestion du risque")
 
-    stop_loss = round(current_price * 0.98, 2)
-    take_profit = round(current_price * 1.04, 2)
+    volatilite = abs(prediscore - 50) / 100
+
+    stop_loss = round(
+        current_price * (1 - (0.02 + volatilite * 0.03)),
+        2
+    )
+
+    take_profit = round(
+        current_price * (1 + (0.04 + volatilite * 0.05)),
+        2
+    )
 
     risk_reward = round(
         (take_profit - current_price)
@@ -287,80 +311,78 @@ if analyse:
     with col1:
         st.metric(
             "🛑 Stop Loss",
-            f"${stop_loss}"
+            f"${stop_loss:,.2f}"
         )
 
     with col2:
         st.metric(
             "🎯 Take Profit",
-            f"${take_profit}"
+            f"${take_profit:,.2f}"
         )
 
     with col3:
         st.metric(
             "⚖️ Ratio R/R",
-            risk_reward
+            f"{risk_reward:.2f}"
         )
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # PRÉVISIONS IA
-    # =====================================================
+    # ==========================================================
 
     st.subheader("🔮 Prévisions IA")
 
-    strength = (prediscore - 50) / 100
+    force = (prediscore - 50) / 100
 
     prediction_24h = round(
-        current_price * (1 + strength * 0.01),
+        current_price * (1 + force * 0.01),
         2
     )
 
-    prediction_7d = round(
-        current_price * (1 + strength * 0.03),
+    prediction_7j = round(
+        current_price * (1 + force * 0.03),
         2
     )
 
-    prediction_30d = round(
-        current_price * (1 + strength * 0.08),
+    prediction_30j = round(
+        current_price * (1 + force * 0.08),
         2
     )
 
-    prediction_90d = round(
-        current_price * (1 + strength * 0.15),
+    prediction_90j = round(
+        current_price * (1 + force * 0.15),
         2
     )
 
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.metric(
             "📅 Prévision 24 h",
-            f"${prediction_24h}"
+            f"${prediction_24h:,.2f}"
         )
 
         st.metric(
             "📅 Prévision 30 jours",
-            f"${prediction_30d}"
+            f"${prediction_30j:,.2f}"
         )
 
     with col2:
-
         st.metric(
             "📅 Prévision 7 jours",
-            f"${prediction_7d}"
+            f"${prediction_7j:,.2f}"
         )
 
         st.metric(
             "📅 Prévision 90 jours",
-            f"${prediction_90d}"
+            f"${prediction_90j:,.2f}"
         )
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # GRAPHIQUE PROFESSIONNEL
-    # =====================================================
+    # ==========================================================
 
     st.subheader("📈 Graphique professionnel")
 
@@ -427,18 +449,18 @@ if analyse:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("⬆️ Plus haut", f"${highest_price}")
+        st.metric("⬆️ Plus haut", f"${highest_price:,.2f}")
 
     with col2:
-        st.metric("⬇️ Plus bas", f"${lowest_price}")
+        st.metric("⬇️ Plus bas", f"${lowest_price:,.2f}")
 
     with col3:
-        st.metric("📊 Moyenne", f"${average_price}")
+        st.metric("📊 Moyenne", f"${average_price:,.2f}")
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # ACTUALITÉS DU MARCHÉ
-    # =====================================================
+    # ==========================================================
 
     st.subheader("📰 Actualités du marché")
 
@@ -447,28 +469,28 @@ if analyse:
     try:
         NEWS_API_KEY = st.secrets["NEWS_API_KEY"]
     except Exception:
-        pass
+        NEWS_API_KEY = ""
 
     if NEWS_API_KEY == "":
 
-        st.info("Aucune clé NewsAPI configurée.")
+        st.info(
+            "Ajoutez votre clé NewsAPI dans Streamlit Secrets pour afficher les actualités."
+        )
 
     else:
 
         url = (
             "https://newsapi.org/v2/everything"
-            f"?q={asset}"
+            f"?q={asset_name}"
             "&language=fr"
+            "&sortBy=publishedAt"
             "&pageSize=5"
             f"&apiKey={NEWS_API_KEY}"
         )
 
         try:
 
-            response = requests.get(
-                url,
-                timeout=10
-            )
+            response = requests.get(url, timeout=10)
 
             news = response.json()
 
@@ -476,7 +498,7 @@ if analyse:
 
                 for article in news["articles"]:
 
-                    st.markdown(f"### {article['title']}")
+                    st.markdown(f"**{article['title']}**")
 
                     st.caption(article["source"]["name"])
 
@@ -486,20 +508,16 @@ if analyse:
 
             else:
 
-                st.warning(
-                    "Impossible de récupérer les actualités."
-                )
+                st.warning("Aucune actualité disponible.")
 
         except Exception:
 
-            st.error(
-                "Erreur de connexion à NewsAPI."
-            )
+            st.error("Erreur de connexion à NewsAPI.")
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # ALERTES INTELLIGENTES
-    # =====================================================
+    # ==========================================================
 
     st.subheader("🚨 Alertes intelligentes")
 
@@ -507,59 +525,70 @@ if analyse:
 
     if prediscore >= 85:
         alerts.append("🟢 Forte opportunité détectée par l'IA.")
+
     elif prediscore <= 40:
         alerts.append("🔴 Risque élevé détecté.")
 
     if rsi_value < 30:
         alerts.append("📉 RSI en zone de survente.")
+
     elif rsi_value > 70:
         alerts.append("📈 RSI en zone de surachat.")
 
     if macd_value > signal_value:
         alerts.append("🚀 MACD haussier.")
+
     else:
         alerts.append("⚠️ MACD baissier.")
 
     if ema20_value > ema50_value:
         alerts.append("📈 Tendance haussière confirmée.")
+
     else:
         alerts.append("📉 Tendance baissière.")
 
     if alerts:
+
         for alert in alerts:
             st.write(alert)
+
     else:
+
         st.info("Aucune alerte particulière.")
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # HISTORIQUE DES ANALYSES
-    # =====================================================
+    # ==========================================================
 
     st.subheader("📋 Historique des analyses")
 
     nouvelle_analyse = {
         "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "Actif": asset,
+        "Actif": asset_name,
         "Prix": round(current_price, 2),
         "PrediScore": prediscore,
         "Signal": trading_signal
     }
 
-    st.session_state.history.append(nouvelle_analyse)
+    st.session_state.history.append(
+        nouvelle_analyse
+    )
 
-    historique = pd.DataFrame(st.session_state.history)
+    historique_df = pd.DataFrame(
+        st.session_state.history
+    )
 
     st.dataframe(
-        historique,
+        historique_df,
         use_container_width=True,
         hide_index=True
     )
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # EXPLICATION DU PREDISCORE IA
-    # =====================================================
+    # ==========================================================
 
     st.subheader("🧠 Explication du PrediScore IA")
 
@@ -567,11 +596,9 @@ if analyse:
 
         st.success(
             """
-L'IA détecte une forte probabilité de poursuite
-de la tendance actuelle.
+L'IA détecte une forte probabilité de poursuite de la tendance actuelle.
 
-Les indicateurs techniques sont globalement
-favorables à une entrée en position.
+Les indicateurs techniques sont favorables à une entrée en position.
 """
         )
 
@@ -581,8 +608,7 @@ favorables à une entrée en position.
             """
 Les signaux sont mitigés.
 
-Une confirmation supplémentaire est conseillée
-avant toute décision.
+Une confirmation supplémentaire est conseillée avant toute décision.
 """
         )
 
@@ -599,36 +625,42 @@ Le risque de baisse demeure important.
     st.write("### Analyse des indicateurs")
 
     st.write(f"• RSI : **{rsi_value:.2f}**")
+
     st.write(f"• EMA20 : **{ema20_value:.2f}**")
+
     st.write(f"• EMA50 : **{ema50_value:.2f}**")
+
     st.write(f"• MACD : **{macd_value:.4f}**")
+
     st.write(f"• Signal MACD : **{signal_value:.4f}**")
 
     st.divider()
-        # =====================================================
+        # ==========================================================
     # RÉSUMÉ DE L'ANALYSE
-    # =====================================================
+    # ==========================================================
 
     st.subheader("📋 Résumé de l'analyse")
 
-    confidence = f"{prediscore}%"
-
     resume = f"""
-Actif analysé : {asset}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Prix actuel : ${current_price:.2f}
+Actif : {asset_name}
+
+Prix actuel : ${current_price:,.2f}
 
 PrediScore IA : {prediscore}/100
 
-Signal : {trading_signal}
+Signal IA : {trading_signal}
 
-Confiance IA : {confidence}
+Confiance : {confidence}
 
-Stop Loss : ${stop_loss}
+Stop Loss : ${stop_loss:,.2f}
 
-Take Profit : ${take_profit}
+Take Profit : ${take_profit:,.2f}
 
-Ratio Risque/Rendement : {risk_reward}
+Ratio Risque / Rendement : {risk_reward:.2f}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
     st.text_area(
@@ -638,26 +670,18 @@ Ratio Risque/Rendement : {risk_reward}
     )
 
     st.download_button(
-        "📄 Télécharger le résumé",
-        resume,
-        file_name="PrediTrade_AI_Analyse.txt"
+        label="📄 Télécharger le résumé",
+        data=resume,
+        file_name="PrediTrade_AI_Analyse.txt",
+        mime="text/plain"
     )
 
     st.divider()
-        # =====================================================
-    # PORTEFEUILLE VIRTUEL
-    # =====================================================
+        # ==========================================================
+    # 💼 PORTEFEUILLE VIRTUEL
+    # ==========================================================
 
-    st.subheader("💼 Portefeuille virtuel")
-
-    if "cash" not in st.session_state:
-        st.session_state.cash = 10000.0
-
-    if "btc" not in st.session_state:
-        st.session_state.btc = 0.0
-
-    if "operations" not in st.session_state:
-        st.session_state.operations = []
+    st.subheader("💼 Portefeuille Virtuel")
 
     col1, col2 = st.columns(2)
 
@@ -668,18 +692,19 @@ Ratio Risque/Rendement : {risk_reward}
         )
 
     with col2:
-        valeur = (
+
+        valeur_portefeuille = (
             st.session_state.cash
             + st.session_state.btc * current_price
         )
 
         st.metric(
             "💼 Valeur totale",
-            f"${valeur:,.2f}"
+            f"${valeur_portefeuille:,.2f}"
         )
 
     quantite = st.number_input(
-        "Quantité",
+        "Quantité à acheter/vendre",
         min_value=0.001,
         value=0.010,
         step=0.001,
@@ -701,13 +726,14 @@ Ratio Risque/Rendement : {risk_reward}
 
                 st.session_state.operations.append(
                     {
+                        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
                         "Type": "ACHAT",
-                        "Prix": round(current_price, 2),
-                        "Quantité": quantite
+                        "Quantité": quantite,
+                        "Prix": round(current_price, 2)
                     }
                 )
 
-                st.success("Achat effectué.")
+                st.success("Achat effectué avec succès.")
 
             else:
 
@@ -724,26 +750,27 @@ Ratio Risque/Rendement : {risk_reward}
 
                 st.session_state.operations.append(
                     {
+                        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
                         "Type": "VENTE",
-                        "Prix": round(current_price, 2),
-                        "Quantité": quantite
+                        "Quantité": quantite,
+                        "Prix": round(current_price, 2)
                     }
                 )
 
-                st.success("Vente effectuée.")
+                st.success("Vente effectuée avec succès.")
 
             else:
 
-                st.error("BTC insuffisant.")
+                st.error("Vous ne possédez pas suffisamment de BTC.")
 
     st.metric(
         "🪙 BTC détenu",
         f"{st.session_state.btc:.6f}"
     )
 
-    if st.session_state.operations:
+    if len(st.session_state.operations) > 0:
 
-        st.subheader("📋 Historique des opérations")
+        st.subheader("📜 Historique des opérations")
 
         st.dataframe(
             pd.DataFrame(st.session_state.operations),
@@ -752,3 +779,39 @@ Ratio Risque/Rendement : {risk_reward}
         )
 
     st.divider()
+    # ==========================================================
+# FIN DE L'APPLICATION
+# ==========================================================
+
+else:
+
+    st.info(
+        """
+👋 Bienvenue sur PrediTrade AI.
+
+Sélectionnez un actif dans le menu de gauche puis cliquez sur :
+
+🚀 Lancer l'analyse
+
+pour obtenir :
+
+• Analyse IA complète
+• PrediScore IA
+• Graphique professionnel
+• Gestion du risque
+• Prévisions IA
+• Actualités du marché
+• Alertes intelligentes
+• Historique des analyses
+• Résumé téléchargeable
+• Portefeuille virtuel
+"""
+    )
+
+st.divider()
+
+st.caption(
+    "PrediTrade AI Version Finale 1.0 | © Fredo Blong"
+    )
+    
+    
