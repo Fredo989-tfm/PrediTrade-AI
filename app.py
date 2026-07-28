@@ -2387,5 +2387,82 @@ if analyse:
     st.caption(
         "PrediTrade AI Premium • Tableau de bord intelligent"
     )
+    # ==========================================================
+# 🚀 PREDITRADE AI VERSION FINALE
+# ==========================================================
+
+st.divider()
+
+st.markdown("---")
+
+st.markdown(
+    """
+    <div style="text-align:center;padding:25px;border-radius:15px;
+    background:linear-gradient(90deg,#0E1117,#1B263B);">
+
+    <h1 style="color:#00E5FF;">
+    🚀 PrediTrade AI
+    </h1>
+
+    <h3 style="color:white;">
+    Version Finale 1.0
+    </h3>
+
+    <br>
+
+    <p style="font-size:18px;color:#DDDDDD;">
+
+    Assistant Intelligent d'Analyse Financière
+
+    </p>
+
+    <br>
+
+    <p style="color:#AAAAAA;">
+
+    Développé avec Streamlit • Python • OpenAI
+
+    </p>
+
+    <br>
+
+    <p style="color:#66FF99;font-size:20px;">
+
+    ✅ APPLICATION OPÉRATIONNELLE
+
+    </p>
+
+    <br>
+
+    <p style="color:white;">
+
+    Auteur :
+
+    <strong>MARTHE FOTSO</strong>
+
+    </p>
+
+    <p style="color:white;">
+
+    Powered by OpenAI
+
+    </p>
+
+    <p style="color:#AAAAAA;">
+
+    © 2026 Tous droits réservés
+
+    </p>
+
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.balloons()
+
+st.success(
+    "🎉 Félicitations ! PrediTrade AI Version Finale est prête."
+        )
     
     
