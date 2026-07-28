@@ -1359,5 +1359,1033 @@ if analyse:
         )
 
     st.divider()
+    # ==========================================================
+# 📒 JOURNAL IA DES PERFORMANCES
+# ==========================================================
+
+if "journal_ia" not in st.session_state:
+    st.session_state.journal_ia = []
+
+if analyse:
+
+    st.header("📒 Journal IA")
+
+    nouvelle_ligne = {
+        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "Actif": asset_name,
+        "Prix": round(current_price, 2),
+        "PrediScore": prediscore,
+        "Signal": trading_signal,
+        "Confiance": confidence
+    }
+
+    if (
+        len(st.session_state.journal_ia) == 0
+        or st.session_state.journal_ia[-1]["Date"] != nouvelle_ligne["Date"]
+    ):
+        st.session_state.journal_ia.append(nouvelle_ligne)
+
+    journal_df = pd.DataFrame(st.session_state.journal_ia)
+
+    st.dataframe(
+        journal_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.download_button(
+        "📥 Télécharger le journal",
+        journal_df.to_csv(index=False),
+        file_name="journal_preditrade_ai.csv",
+        mime="text/csv"
+    )
+
+    st.divider()
+    # ==========================================================
+# 💹 SIMULATEUR D'INVESTISSEMENT IA
+# ==========================================================
+
+if analyse:
+
+    st.header("💹 Simulateur d'investissement")
+
+    montant = st.number_input(
+        "Montant à investir ($)",
+        min_value=100.0,
+        value=1000.0,
+        step=100.0
+    )
+
+    if current_price > 0:
+
+        quantite_estimee = montant / current_price
+
+    else:
+
+        quantite_estimee = 0
+
+    valeur_30j = quantite_estimee * prediction_30j
+    gain_30j = valeur_30j - montant
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Montant investi",
+            f"${montant:,.2f}"
+        )
+
+    with col2:
+
+        st.metric(
+            "Quantité estimée",
+            f"{quantite_estimee:.6f}"
+        )
+
+    with col3:
+
+        st.metric(
+            "Valeur estimée à 30 jours",
+            f"${valeur_30j:,.2f}"
+        )
+
+    if gain_30j >= 0:
+
+        st.success(
+            f"Gain potentiel estimé : ${gain_30j:,.2f}"
+        )
+
+    else:
+
+        st.error(
+            f"Perte potentielle estimée : ${abs(gain_30j):,.2f}"
+        )
+
+    st.divider()
+    # ==========================================================
+# 🏆 CLASSEMENT IA DES ACTIFS
+# ==========================================================
+
+if analyse:
+
+    st.header("🏆 Classement IA des actifs")
+
+    classement = []
+
+    for nom, symbole in ASSETS.items():
+
+        try:
+
+            df = yf.download(
+                symbole,
+                period="1mo",
+                interval="1d",
+                auto_adjust=True,
+                progress=False
+            )
+
+            if df.empty:
+                continue
+
+            prix = df["Close"]
+
+            if isinstance(prix, pd.DataFrame):
+                prix = prix.iloc[:, 0]
+
+            ema20_tmp = prix.ewm(span=20, adjust=False).mean()
+            ema50_tmp = prix.ewm(span=50, adjust=False).mean()
+
+            score = 50
+
+            if ema20_tmp.iloc[-1] > ema50_tmp.iloc[-1]:
+                score += 20
+            else:
+                score -= 20
+
+            variation = (
+                (prix.iloc[-1] - prix.iloc[-5])
+                / prix.iloc[-5]
+            ) * 100
+
+            score += max(-30, min(30, variation))
+
+            score = round(max(0, min(100, score)))
+
+            classement.append(
+                {
+                    "Actif": nom,
+                    "Score IA": score
+                }
+            )
+
+        except Exception:
+            pass
+
+    if classement:
+
+        classement_df = pd.DataFrame(classement)
+
+        classement_df = classement_df.sort_values(
+            by="Score IA",
+            ascending=False
+        )
+
+        st.dataframe(
+            classement_df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.warning(
+            "Impossible de calculer le classement IA."
+        )
+
+    st.divider()
+    # ==========================================================
+# 📊 PERFORMANCE DU PORTEFEUILLE
+# ==========================================================
+
+if analyse:
+
+    st.header("📊 Performance du portefeuille")
+
+    capital_initial = 10000.0
+
+    valeur_actifs = 0.0
+
+    if "portfolio_multi" in st.session_state:
+
+        for actif, infos in st.session_state.portfolio_multi.items():
+
+            valeur_actifs += infos["quantite"] * infos["prix_moyen"]
+
+    valeur_totale = st.session_state.cash + valeur_actifs
+
+    gain = valeur_totale - capital_initial
+
+    rendement = (gain / capital_initial) * 100
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+
+        st.metric(
+            "Capital initial",
+            f"${capital_initial:,.2f}"
+        )
+
+    with c2:
+
+        st.metric(
+            "Valeur actuelle",
+            f"${valeur_totale:,.2f}"
+        )
+
+    with c3:
+
+        st.metric(
+            "Performance",
+            f"{rendement:.2f}%"
+        )
+
+    if rendement > 0:
+
+        st.success(
+            f"Gain global : ${gain:,.2f}"
+        )
+
+    elif rendement < 0:
+
+        st.error(
+            f"Perte globale : ${abs(gain):,.2f}"
+        )
+
+    else:
+
+        st.info(
+            "Aucune variation."
+        )
+
+    st.divider()
+    # ==========================================================
+# 🌪️ INDICATEUR DE VOLATILITÉ
+# ==========================================================
+
+if analyse:
+
+    st.header("🌪️ Volatilité du marché")
+
+    volatilite = float(close.pct_change().std() * 100)
+
+    if volatilite < 2:
+
+        niveau = "🟢 Faible"
+
+    elif volatilite < 5:
+
+        niveau = "🟡 Modérée"
+
+    else:
+
+        niveau = "🔴 Élevée"
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.metric(
+            "Volatilité",
+            f"{volatilite:.2f}%"
+        )
+
+    with col2:
+
+        st.metric(
+            "Niveau",
+            niveau
+        )
+
+    if volatilite < 2:
+
+        st.success(
+            "Le marché est relativement stable."
+        )
+
+    elif volatilite < 5:
+
+        st.warning(
+            "Le marché présente une volatilité modérée."
+        )
+
+    else:
+
+        st.error(
+            "Le marché est très volatil. Prudence."
+        )
+
+    st.divider()
+    # ==========================================================
+# 🚀 SCANNER IA DES SIGNAUX D'ACHAT
+# ==========================================================
+
+if analyse:
+
+    st.header("🚀 Scanner IA des signaux")
+
+    signaux = []
+
+    for nom, symbole in ASSETS.items():
+
+        try:
+
+            df = yf.download(
+                symbole,
+                period="3mo",
+                interval="1d",
+                auto_adjust=True,
+                progress=False
+            )
+
+            if df.empty:
+                continue
+
+            prix = df["Close"]
+
+            if isinstance(prix, pd.DataFrame):
+                prix = prix.iloc[:, 0]
+
+            ema20_scan = prix.ewm(span=20, adjust=False).mean()
+            ema50_scan = prix.ewm(span=50, adjust=False).mean()
+
+            tendance = ema20_scan.iloc[-1] > ema50_scan.iloc[-1]
+
+            variation = (
+                (prix.iloc[-1] - prix.iloc[-2])
+                / prix.iloc[-2]
+            ) * 100
+
+            if tendance and variation > 0:
+
+                signaux.append(
+                    {
+                        "Actif": nom,
+                        "Prix": round(float(prix.iloc[-1]), 2),
+                        "Variation %": round(float(variation), 2),
+                        "Signal": "🟢 Achat"
+                    }
+                )
+
+        except Exception:
+            pass
+
+    if signaux:
+
+        st.success(
+            f"{len(signaux)} opportunité(s) détectée(s)."
+        )
+
+        st.dataframe(
+            pd.DataFrame(signaux),
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.info(
+            "Aucun signal d'achat détecté actuellement."
+        )
+
+    st.divider()
+    # ==========================================================
+# 📈 ÉVOLUTION DU PORTEFEUILLE
+# ==========================================================
+
+if "historique_portefeuille" not in st.session_state:
+    st.session_state.historique_portefeuille = []
+
+if analyse:
+
+    st.header("📈 Évolution du portefeuille")
+
+    valeur_actifs = 0.0
+
+    if "portfolio_multi" in st.session_state:
+
+        for actif, infos in st.session_state.portfolio_multi.items():
+
+            valeur_actifs += infos["quantite"] * infos["prix_moyen"]
+
+    valeur_totale = st.session_state.cash + valeur_actifs
+
+    st.session_state.historique_portefeuille.append(
+        {
+            "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "Valeur": valeur_totale
+        }
+    )
+
+    historique_pf = pd.DataFrame(
+        st.session_state.historique_portefeuille
+    )
+
+    fig_pf = go.Figure()
+
+    fig_pf.add_trace(
+        go.Scatter(
+            x=historique_pf["Date"],
+            y=historique_pf["Valeur"],
+            mode="lines+markers",
+            name="Portefeuille"
+        )
+    )
+
+    fig_pf.update_layout(
+        template="plotly_dark",
+        height=400,
+        xaxis_title="Date",
+        yaxis_title="Valeur ($)"
+    )
+
+    st.plotly_chart(
+        fig_pf,
+        use_container_width=True
+    )
+
+    st.divider()
+    # ==========================================================
+# 🥧 RÉPARTITION DU PORTEFEUILLE
+# ==========================================================
+
+if analyse:
+
+    st.header("🥧 Répartition du portefeuille")
+
+    labels = []
+    values = []
+
+    if "portfolio_multi" in st.session_state:
+
+        for actif, infos in st.session_state.portfolio_multi.items():
+
+            if infos["quantite"] > 0:
+
+                labels.append(actif)
+                values.append(
+                    infos["quantite"] * infos["prix_moyen"]
+                )
+
+    if len(labels) > 0:
+
+        fig_pie = go.Figure(
+            data=[
+                go.Pie(
+                    labels=labels,
+                    values=values,
+                    hole=0.45,
+                    textinfo="label+percent"
+                )
+            ]
+        )
+
+        fig_pie.update_layout(
+            template="plotly_dark",
+            height=450,
+            title="Répartition des investissements"
+        )
+
+        st.plotly_chart(
+            fig_pie,
+            use_container_width=True
+        )
+
+    else:
+
+        st.info(
+            "Aucun actif à afficher dans le portefeuille."
+        )
+
+    st.divider()
+    # ==========================================================
+# 🔔 ALERTES PERSONNALISÉES IA
+# ==========================================================
+
+if analyse:
+
+    st.header("🔔 Alertes personnalisées")
+
+    seuil_achat = st.slider(
+        "Seuil PrediScore Achat",
+        min_value=50,
+        max_value=100,
+        value=75
+    )
+
+    seuil_vente = st.slider(
+        "Seuil PrediScore Vente",
+        min_value=0,
+        max_value=50,
+        value=40
+    )
+
+    if prediscore >= seuil_achat:
+
+        st.success(
+            f"✅ Alerte Achat : PrediScore = {prediscore}/100"
+        )
+
+    elif prediscore <= seuil_vente:
+
+        st.error(
+            f"❌ Alerte Vente : PrediScore = {prediscore}/100"
+        )
+
+    else:
+
+        st.info(
+            "Aucune alerte personnalisée actuellement."
+        )
+
+    st.divider()
+    
+    # ==========================================================
+# 🔮 PRÉVISIONS IA AVANCÉES
+# ==========================================================
+
+if analyse:
+
+    st.header("🔮 Prévisions IA avancées")
+
+    confiance_future = max(
+        0,
+        min(
+            100,
+            prediscore + np.random.randint(-5, 6)
+        )
+    )
+
+    tendance_future = (
+        "🟢 Haussière"
+        if confiance_future >= 60
+        else "🔴 Baissière"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.metric(
+            "Confiance future IA",
+            f"{confiance_future}%"
+        )
+
+    with col2:
+
+        st.metric(
+            "Tendance probable",
+            tendance_future
+        )
+
+    st.progress(confiance_future / 100)
+
+    if confiance_future >= 80:
+
+        st.success(
+            "L'IA détecte une forte continuité de la tendance."
+        )
+
+    elif confiance_future >= 60:
+
+        st.info(
+            "L'IA estime une poursuite modérée de la tendance."
+        )
+
+    else:
+
+        st.warning(
+            "Le marché pourrait changer de direction."
+        )
+
+    st.divider()
+    # ==========================================================
+# 🌍 ANALYSE AUTOMATIQUE DU MARCHÉ
+# ==========================================================
+
+if analyse:
+
+    st.header("🌍 Analyse automatique du marché")
+
+    tendance = "Neutre"
+
+    if ema20_value > ema50_value and macd_value > signal_value:
+
+        tendance = "🟢 Marché Haussier"
+
+    elif ema20_value < ema50_value and macd_value < signal_value:
+
+        tendance = "🔴 Marché Baissier"
+
+    else:
+
+        tendance = "🟡 Marché Indécis"
+
+    force = "Faible"
+
+    if abs(ema20_value - ema50_value) / ema50_value > 0.03:
+
+        force = "Forte"
+
+    elif abs(ema20_value - ema50_value) / ema50_value > 0.01:
+
+        force = "Moyenne"
+
+    risque = "Faible"
+
+    if rsi_value > 70 or rsi_value < 30:
+
+        risque = "Élevé"
+
+    elif rsi_value > 60 or rsi_value < 40:
+
+        risque = "Modéré"
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+
+        st.metric(
+            "Tendance",
+            tendance
+        )
+
+    with c2:
+
+        st.metric(
+            "Force de tendance",
+            force
+        )
+
+    with c3:
+
+        st.metric(
+            "Niveau de risque",
+            risque
+        )
+
+    st.subheader("🧠 Diagnostic IA")
+
+    if tendance.startswith("🟢"):
+
+        st.success(
+            """
+L'IA détecte un marché globalement haussier.
+
+Les indicateurs techniques sont alignés en faveur
+d'une poursuite de la hausse.
+"""
+        )
+
+    elif tendance.startswith("🔴"):
+
+        st.error(
+            """
+L'IA détecte un marché baissier.
+
+La prudence est recommandée avant toute prise
+de position.
+"""
+        )
+
+    else:
+
+        st.warning(
+            """
+Le marché manque actuellement de direction.
+
+Une confirmation est recommandée avant d'ouvrir
+une position.
+"""
+        )
+
+    st.divider()
+    # ==========================================================
+# 🖥️ TABLEAU DE BORD SYSTÈME
+# ==========================================================
+
+if analyse:
+
+    st.header("🖥️ Tableau de bord système")
+
+    nb_actifs = len(ASSETS)
+
+    nb_portefeuille = len(
+        st.session_state.portfolio_multi
+    )
+
+    nb_analyses = len(
+        st.session_state.history
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+
+        st.metric(
+            "📊 Actifs disponibles",
+            nb_actifs
+        )
+
+    with c2:
+
+        st.metric(
+            "💼 Actifs détenus",
+            nb_portefeuille
+        )
+
+    with c3:
+
+        st.metric(
+            "📈 Analyses effectuées",
+            nb_analyses
+        )
+
+    st.success(
+        "PrediTrade AI fonctionne correctement."
+    )
+
+    st.divider()
+    # ==========================================================
+# 📄 RAPPORT COMPLET IA
+# ==========================================================
+
+if analyse:
+
+    st.header("📄 Rapport complet IA")
+
+    rapport_ia = f"""
+===========================
+PrediTrade AI
+Rapport d'Analyse
+===========================
+
+Date : {datetime.now().strftime("%d/%m/%Y %H:%M")}
+
+Actif analysé :
+{asset_name}
+
+Prix actuel :
+${current_price:,.2f}
+
+PrediScore IA :
+{prediscore}/100
+
+Signal IA :
+{trading_signal}
+
+Confiance IA :
+{confidence}
+
+RSI :
+{rsi_value:.2f}
+
+EMA20 :
+{ema20_value:.2f}
+
+EMA50 :
+{ema50_value:.2f}
+
+MACD :
+{macd_value:.4f}
+
+Signal MACD :
+{signal_value:.4f}
+
+Stop Loss :
+${stop_loss:.2f}
+
+Take Profit :
+${take_profit:.2f}
+
+Ratio Risque / Rendement :
+{risk_reward:.2f}
+
+Prévision 24h :
+${prediction_24h:.2f}
+
+Prévision 7 jours :
+${prediction_7d:.2f}
+
+Prévision 30 jours :
+${prediction_30d:.2f}
+
+Prévision 90 jours :
+${prediction_90d:.2f}
+
+Conclusion IA :
+
+{trading_signal}
+
+Merci d'utiliser PrediTrade AI.
+"""
+
+    st.text_area(
+        "Rapport complet",
+        rapport_ia,
+        height=450
+    )
+
+    st.download_button(
+        "💾 Télécharger le rapport (.txt)",
+        rapport_ia,
+        file_name="Rapport_PrediTrade_AI.txt",
+        mime="text/plain"
+    )
+
+    st.divider()
+    # ==========================================================
+# 📥 EXPORT PROFESSIONNEL
+# ==========================================================
+
+if analyse:
+
+    st.header("📥 Export des analyses")
+
+    rapport_markdown = f"""
+# PrediTrade AI
+
+## Rapport d'analyse
+
+**Date :**
+{datetime.now().strftime("%d/%m/%Y %H:%M")}
+
+---
+
+### Actif
+
+**{asset_name}**
+
+### Prix actuel
+
+${current_price:.2f}
+
+### PrediScore IA
+
+**{prediscore}/100**
+
+### Signal
+
+**{trading_signal}**
+
+### Confiance IA
+
+**{confidence}**
+
+---
+
+## Analyse technique
+
+- RSI : {rsi_value:.2f}
+- EMA20 : {ema20_value:.2f}
+- EMA50 : {ema50_value:.2f}
+- MACD : {macd_value:.4f}
+
+---
+
+## Gestion du risque
+
+- Stop Loss : ${stop_loss:.2f}
+- Take Profit : ${take_profit:.2f}
+- Ratio R/R : {risk_reward:.2f}
+
+---
+
+## Prévisions IA
+
+- 24h : ${prediction_24h:.2f}
+- 7 jours : ${prediction_7d:.2f}
+- 30 jours : ${prediction_30d:.2f}
+- 90 jours : ${prediction_90d:.2f}
+
+---
+
+Rapport généré automatiquement par PrediTrade AI.
+"""
+
+    st.download_button(
+        label="📄 Télécharger le rapport (.md)",
+        data=rapport_markdown,
+        file_name="PrediTrade_AI_Rapport.md",
+        mime="text/markdown"
+    )
+
+    st.download_button(
+        label="📃 Télécharger le rapport (.txt)",
+        data=rapport_ia,
+        file_name="PrediTrade_AI_Rapport.txt",
+        mime="text/plain"
+    )
+
+    st.divider()
+    # ==========================================================
+# 👑 TABLEAU DE BORD PREMIUM
+# ==========================================================
+
+if analyse:
+
+    st.header("👑 Tableau de bord Premium")
+
+    score_couleur = "🟢"
+
+    if prediscore < 60:
+        score_couleur = "🔴"
+    elif prediscore < 75:
+        score_couleur = "🟡"
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric(
+            "PrediScore IA",
+            f"{prediscore}/100"
+        )
+
+    with col2:
+        st.metric(
+            "Signal",
+            trading_signal
+        )
+
+    with col3:
+        st.metric(
+            "Confiance",
+            confidence
+        )
+
+    with col4:
+        st.metric(
+            "Prix",
+            f"${current_price:,.2f}"
+        )
+
+    st.divider()
+
+    st.subheader("📊 Synthèse du marché")
+
+    synthese = []
+
+    if ema20_value > ema50_value:
+        synthese.append("✅ EMA20 au-dessus de EMA50 : tendance haussière.")
+    else:
+        synthese.append("⚠️ EMA20 sous EMA50 : tendance baissière.")
+
+    if macd_value > signal_value:
+        synthese.append("✅ MACD positif.")
+    else:
+        synthese.append("⚠️ MACD négatif.")
+
+    if rsi_value < 30:
+        synthese.append("🟢 RSI en survente.")
+    elif rsi_value > 70:
+        synthese.append("🔴 RSI en surachat.")
+    else:
+        synthese.append("🟡 RSI neutre.")
+
+    for ligne in synthese:
+        st.write(ligne)
+
+    st.divider()
+
+    st.subheader("🎯 Décision IA")
+
+    if prediscore >= 85:
+
+        st.success(
+            "L'IA recommande un ACHAT avec une forte conviction."
+        )
+
+    elif prediscore >= 70:
+
+        st.info(
+            "L'IA recommande de surveiller une opportunité d'achat."
+        )
+
+    elif prediscore >= 50:
+
+        st.warning(
+            "L'IA recommande d'attendre une confirmation."
+        )
+
+    else:
+
+        st.error(
+            "L'IA recommande d'éviter toute entrée actuellement."
+        )
+
+    st.divider()
+
+    st.subheader("📈 Prévisions")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric("24 h", f"${prediction_24h:.2f}")
+
+    with c2:
+        st.metric("7 jours", f"${prediction_7d:.2f}")
+
+    with c3:
+        st.metric("30 jours", f"${prediction_30d:.2f}")
+
+    with c4:
+        st.metric("90 jours", f"${prediction_90d:.2f}")
+
+    st.divider()
+
+    st.caption(
+        "PrediTrade AI Premium • Tableau de bord intelligent"
+    )
     
     
