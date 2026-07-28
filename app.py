@@ -2188,28 +2188,24 @@ Merci d'utiliser PrediTrade AI.
     # ==========================================================
 # CORRECTION DES PRÉVISIONS IA
 # ==========================================================
-
-strength = (prediscore - 50) / 100
-
-prediction_24h = round(
-    current_price * (1 + strength * 0.01),
+if analyse:
+    strength = (prediscore - 50) / 100 
+    prediction_24h = round(
+        current_price * (1 + strength * 0.01),
     2
 )
-
-prediction_7d = round(
-    current_price * (1 + strength * 0.03),
+    prediction_7d = round(
+        current_price * (1 + strength * 0.03),
     2
 )
-
-prediction_30d = round(
-    current_price * (1 + strength * 0.08),
+    prediction_30d = round(
+        current_price * (1 + strength * 0.08),
     2
 )
-
-prediction_90d = round(
-    current_price * (1 + strength * 0.15),
+    prediction_90d = round(
+        current_price * (1 + strength * 0.15),
     2
-    )
+    ) 
     # ==========================================================
 # 📥 EXPORT PROFESSIONNEL
 # ==========================================================
