@@ -201,10 +201,15 @@ if analyse:
     st.subheader("🔍 Comparaison multi-actifs")
     assets_to_compare = st.multiselect("Choisir 2 à 4 actifs", list(ASSETS.keys()), default=["Bitcoin", "Ethereum"])
     df_comp = pd.DataFrame()
-    if len(assets_to_compare) >= 2:
-        for a in assets_to_compare:
-            df_temp = charger_donnees(ASSETS[a], "3mo", "1d")["Close"].pct_change().cumsum() * 100
-            df_comp[a] = df_temp
+
+if len(assets_to_compare) >= 2:
+    for a in assets_to_compare:
+        df_temp = charger_donnees(ASSETS[a], "3mo", "1d")
+
+        if not df_temp.empty:
+            df_comp[a] = df_temp["Close"].squeeze().pct_change().cumsum() * 100
+
+    if not df_comp.empty:
         st.line_chart(df_comp)
 
     # 22. PRÉDICTIONS IA
