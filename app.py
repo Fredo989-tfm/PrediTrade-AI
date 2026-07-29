@@ -208,7 +208,7 @@ if analyse:
         for a in assets_to_compare:
             df_temp = charger_donnees(ASSETS[a], "3mo", "1d")
             if not df_temp.empty:
-            df_comp[a] = df_temp["Close"]
+                df_comp[a] = df_temp["Close"] 
 
     if not df_comp.empty:
         st.line_chart(df_comp)
