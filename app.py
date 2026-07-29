@@ -280,7 +280,7 @@ if analyse:
     st.subheader("🔗 Corrélation entre actifs")
     if len(assets_to_compare) >= 2 and not df_comp.empty:
         corr = df_comp.corr()
-       st.dataframe(corr, use_container_width=True) 
+    st.dataframe(corr, use_container_width=True) 
     # 32. ALLOCATION DE PORTEFEUILLE
     st.subheader("🥧 Allocation de portefeuille")
     if st.session_state.portfolio_multi:
