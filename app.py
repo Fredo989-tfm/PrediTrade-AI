@@ -88,6 +88,9 @@ def faire_predictions(prix, score): # Bloc 11 + 37
     prediction_30d = round(prix * (1 + strength * 0.08), 2)
     prediction_90d = round(prix * (1 + strength * 0.15), 2)
     return prediction_24h, prediction_7d, prediction_30d, prediction_90d
+    # INIT VARIABLES GLOBALES POUR ÉVITER NameError
+    assets_to_compare = ["Bitcoin", "Ethereum"]
+    df_comp = pd.DataFrame()
 
 if analyse:
     with st.spinner("Téléchargement des données du marché..."):
