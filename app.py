@@ -232,6 +232,16 @@ elif menu == TEXT["ai"]:
         prediscore, trading_signal, confidence, rsi_value, ema20_value, ema50_value, macd_value, signal_value = calculer_prediscore(indicateurs)
         stop_loss, take_profit, risk_reward = calculer_risque(current_price, prediscore)
         prediction_24h, prediction_7d, prediction_30d, prediction_90d = faire_predictions(current_price, prediscore)
+        analyse = {
+            "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "Actif": asset_name,
+            "Prix": round(current_price, 2),
+            "Score": prediscore,
+            "Signal": trading_signal,
+            "Confiance": confidence
+        }
+
+        st.session_state.history.append(analyse)
 
         st.metric("💰 Prix actuel", f"${current_price:,.2f}")
         st.plotly_chart(go.Figure(go.Candlestick(x=data.index, open=data["Open"].squeeze(), high=data["High"].squeeze(), low=data["Low"].squeeze(), close=data["Close"].squeeze())).update_layout(template="plotly_dark", height=500), use_container_width=True)
