@@ -176,6 +176,25 @@ def assistant_gpt4(question, contexte): # NOUVEAU BLOC V4
 
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4")
+st.sidebar.markdown("### 👤 Profil utilisateur")
+
+st.sidebar.write(f"📧 Email : {st.session_state.user_email}")
+
+if st.session_state.is_premium:
+    st.sidebar.success("⭐ Statut : Premium")
+else:
+    st.sidebar.info("🆓 Statut : Gratuit")
+
+st.sidebar.write(f"📅 Connexion : {datetime.now().strftime('%d/%m/%Y')}")
+
+st.sidebar.write(f"📈 Analyses : {len(st.session_state.history)}")
+st.sidebar.divider()
+
+if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.is_premium = False
+    st.session_state.user_email = ""
+    st.rerun()
 st.sidebar.write(f"👤 {st.session_state.user_email}")
 if st.session_state.is_premium: st.sidebar.success("⭐ Compte Premium Actif")
 else: st.sidebar.warning("Compte Gratuit")
@@ -237,6 +256,15 @@ elif menu == TEXT["ai"]:
         c3.metric("Volume", f"{float(data['Volume'].squeeze().iloc[-1]):,.0f}"); c3.metric("Risque", "Modéré")
         st.warning(f"Stop Loss: ${stop_loss} | Take Profit: ${take_profit} | R/R: {risk_reward}")
         st.success(f"Prévisions: 24h: ${prediction_24h} | 7j: ${prediction_7d} | 30j: ${prediction_30d} | 90j: ${prediction_90d}")
+        historique = {
+            "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "Actif": asset_name,
+            "Prix": round(current_price, 2),
+            "PrediScore": prediscore,
+            "Signal": trading_signal,
+                "Confiance": confidence
+        }
+        st.session_state.history.append(historique) 
 
 # ============== 7. SCANNER = TON BLOC 23 ==============
 elif menu == TEXT["scanner"]:
@@ -295,6 +323,22 @@ elif menu == "🔔 Alertes":
     if not st.session_state.is_premium: st.warning("Limite: 3 alertes. Passe Premium pour 100 alertes.")
 
 # ============== 13. ASSISTANT IA = BLOC 41 V4 ==============
+elif menu == "📚 Historique":
+    st.header("📚 Historique des analyses")
+
+    if len(st.session_state.history) == 0:
+        st.info("Aucune analyse enregistrée.")
+    else:
+        df_history = pd.DataFrame(st.session_state.history)
+
+        st.dataframe(df_history, use_container_width=True)
+
+        st.download_button(
+            "📥 Télécharger l'historique CSV",
+            df_history.to_csv(index=False),
+            "historique_analyses.csv",
+            "text/csv"
+)
 elif menu == "🤖 Assistant IA":
     st.header("🤖 Assistant IA GPT-4")
     q = st.chat_input("Pose ta question: 'Pourquoi recommandes-tu cet achat?'")
@@ -309,13 +353,49 @@ elif menu == "🎓 Formation":
 
 # ============== 15. RAPPORTS = TON BLOC 26 + 40 ==============
 elif menu == "📄 Rapports":
-    st.header("📄 Rapports")
-    rapport = f"Rapport PrediTrade {datetime.now()}"
-    st.download_button("Rapport PDF", rapport, "rapport.txt")
-    st.download_button("Export CSV", pd.DataFrame(st.session_state.history).to_csv(), "historique.csv")
+    st.header("📄 Rapports IA")
 
-# ============== 16. PARAMÈTRES + STRIPE = BLOC 42 V4 ==============
-elif menu == "⚙️ Paramètres + Paiement":
+    date = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    rapport = f"""
+=============================
+      PREDITRADE AI PRO V4
+=============================
+
+Date : {date}
+Utilisateur : {st.session_state.user_email}
+
+Capital :
+${st.session_state.cash:,.2f}
+
+Nombre d'analyses :
+{len(st.session_state.history)}
+
+Version :
+PrediTrade AI Pro V4.0
+
+Auteur :
+Fredo Blong
+
+=============================
+"""
+
+    st.download_button(
+        "📄 Télécharger le rapport",
+        rapport,
+        "rapport_preditrade.txt"
+    )
+
+    if st.session_state.history:
+        df = pd.DataFrame(st.session_state.history)
+
+        st.download_button(
+            "📊 Export CSV",
+            df.to_csv(index=False),
+            "historique.csv"
+        )
+    else:
+        st.info("Aucune analyse enregistrée.")
     st.header("⚙️ Paramètres + Paiement")
     st.info("Passe en Premium pour débloquer: GPT-4, Scanner illimité, 100 Alertes, Export PDF Pro")
 
