@@ -28,8 +28,8 @@ st.set_page_config(page_title="PrediTrade AI Pro V4", page_icon="🚀", layout="
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
     def load_users():
-    with open(USERS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
 
 def save_users(users):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
