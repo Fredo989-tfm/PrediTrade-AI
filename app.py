@@ -56,7 +56,7 @@ def page_login():
                st.error("❌ Email introuvable.")
             elif users[email]["password"] != hash_password(password):
               st.error("❌ Mot de passe incorrect.")
-           else:
+            else:
                st.session_state.logged_in = True 
                st.session_state.user_email = email 
                st.session_state.is_premium = users[email]["premium"]
