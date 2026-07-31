@@ -70,11 +70,11 @@ def page_login():
     with tab2:
        email_new = st.text_input("Email", key="register_email")
        password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
-        if st.button("Créer compte gratuit"): 
+    if st.button("Créer compte gratuit"): 
             users = load_users()
-        if email_new in users:
+    if email_new in users:
             st.error("❌ Cet email existe déjà.")
-        else:
+    else:
             users[email_new] = {
             "password": hash_password(password_new),
             "premium": False
