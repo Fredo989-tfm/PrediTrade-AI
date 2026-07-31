@@ -1,6 +1,6 @@
 """
 
-PrediTrade AI Pro V4.0 - FUSION V3.0
+PrediTrade AI Pro V4.0 - FUSION V3.0 CORRIGÉ
 Auteur : Fredo Blong
 40 Blocs V2.1 + 16 Modules V3.0 + Login + Stripe + GPT4
 
@@ -15,9 +15,9 @@ from datetime import datetime
 import hashlib
 import json
 import os
+
 # Base de données des utilisateurs
 USERS_FILE = "users.json"
-
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump({}, f)
@@ -27,9 +27,10 @@ st.set_page_config(page_title="PrediTrade AI Pro V4", page_icon="🚀", layout="
 # ============== 0. LOGIN + PREMIUM SYSTEM ==============
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
-    def load_users():
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+
+def load_users(): # FIX 1: Dé-indenté
+    with open(USERS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 def save_users(users):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
@@ -54,39 +55,40 @@ def page_login():
             users = load_users()
             if email not in users:
                st.error("❌ Email introuvable.")
-            elif users[email]["password"] != hash_password(password):
-              st.error("❌ Mot de passe incorrect.")
+            elif users[email]["password"]!= hash_password(password):
+               st.error("❌ Mot de passe incorrect.")
             else:
-               st.session_state.logged_in = True 
-               st.session_state.user_email = email 
+               st.session_state.logged_in = True
+               st.session_state.user_email = email
                st.session_state.is_premium = users[email]["premium"]
                st.success("✅ Connexion réussie.")
                st.rerun()
             if remember_me:
                 st.session_state.remember_me = True
-                
-    if st.button("🔑 Mot de passe oublié ?"):
-    st.info("Fonction de réinitialisation en cours de configuration.")
-    with tab2:
+
+        if st.button("🔑 Mot de passe oublié?"): # FIX 2: Indenté
+            st.info("Fonction de réinitialisation en cours de configuration.")
+
+    with tab2: # FIX 3: Indenté correctement
        email_new = st.text_input("Email", key="register_email")
        password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
-    if st.button("Créer compte gratuit"): 
+       if st.button("Créer compte gratuit"):
             users = load_users()
-    if email_new in users:
-            st.error("❌ Cet email existe déjà.")
-    else:
-            users[email_new] = {
-            "password": hash_password(password_new),
-            "premium": False
-            }
-            save_users(users)
-            st.success("✅ Compte créé avec succès. Vous pouvez maintenant vous connecter.")
+            if email_new in users:
+                st.error("❌ Cet email existe déjà.")
+            else:
+                users[email_new] = {
+                    "password": hash_password(password_new),
+                    "premium": False
+                }
+                save_users(users)
+                st.success("✅ Compte créé avec succès. Vous pouvez maintenant vous connecter.")
+
     st.divider()
     st.subheader("Connexion rapide")
-
     if st.button("🔵 Continuer avec Google", use_container_width=True):
-        
-         st.info("Connexion Google en cours de configuration.")   
+         st.info("Connexion Google en cours de configuration.")
+
     st.divider()
     if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
         st.session_state.logged_in = True
@@ -97,6 +99,7 @@ def page_login():
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "is_premium" not in st.session_state: st.session_state.is_premium = False
+if "user_email" not in st.session_state: st.session_state.user_email = ""
 for key, val in [("history",[]),("cash",10000.0),("operations",[]),("portfolio_multi",{}),("journal_ia",[]),("historique_portefeuille",[])]:
     if key not in st.session_state: st.session_state[key] = val
 
@@ -128,7 +131,7 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 def charger_donnees(_ticker, _period, _interval):
     return yf.download(_ticker, period=_period, interval=_interval, auto_adjust=True, progress=False)
 
-def calculer_indicateurs(df): # TON CODE V3.0
+def calculer_indicateurs(df):
     close = df["Close"].squeeze()
     ema20 = close.ewm(span=20, adjust=False).mean(); ema50 = close.ewm(span=50, adjust=False).mean()
     delta = close.diff(); gain = delta.clip(lower=0); loss = -delta.clip(upper=0)
@@ -138,7 +141,7 @@ def calculer_indicateurs(df): # TON CODE V3.0
     macd = ema12 - ema26; macd_signal = macd.ewm(span=9, adjust=False).mean()
     return {"close": close, "ema20": ema20, "ema50": ema50, "rsi": rsi, "macd": macd, "signal": macd_signal}
 
-def calculer_prediscore(ind): # TON CODE V3.0
+def calculer_prediscore(ind):
     ema20_value, ema50_value = float(ind["ema20"].iloc[-1]), float(ind["ema50"].iloc[-1])
     rsi_value, macd_value, signal_value = float(ind["rsi"].iloc[-1]), float(ind["macd"].iloc[-1]), float(ind["signal"].iloc[-1])
     prediscore = 50
@@ -153,23 +156,21 @@ def calculer_prediscore(ind): # TON CODE V3.0
     confidence = "Très élevée" if prediscore >= 90 else "Élevée" if prediscore >= 75 else "Moyenne" if prediscore >= 60 else "Faible"
     return prediscore, trading_signal, confidence, rsi_value, ema20_value, ema50_value, macd_value, signal_value
 
-def calculer_risque(prix, score): # TON CODE V3.0
+def calculer_risque(prix, score):
     volatilite = abs(score - 50) / 100
     stop_loss = round(prix * (1 - (0.02 + volatilite * 0.03)), 2)
     take_profit = round(prix * (1 + (0.04 + volatilite * 0.05)), 2)
     risk_reward = round((take_profit - prix) / (prix - stop_loss), 2) if prix!= stop_loss else 0
     return stop_loss, take_profit, risk_reward
 
-def faire_predictions(prix, score): # TON CODE V3.0
+def faire_predictions(prix, score):
     strength = (score - 50) / 100
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
-def assistant_gpt4(question, contexte): # NOUVEAU BLOC V4
-    """Assistant GPT-4 pour Premium"""
+def assistant_gpt4(question, contexte):
     if not st.session_state.is_premium:
         return "⚠️ Fonction réservée Premium. Passe à Premium pour débloquer GPT-4."
     try:
-        # Remplace par ta vraie clé dans secrets.toml
         api_key = st.secrets.get("OPENAI_API_KEY", "demo")
         return f"🤖 GPT-4 Analyse: Basé sur {contexte}, probabilité de hausse 78%. Tendance: Haussière. Risque: Modéré."
     except: return "Ajoute OPENAI_API_KEY dans.streamlit/secrets.toml"
@@ -177,33 +178,24 @@ def assistant_gpt4(question, contexte): # NOUVEAU BLOC V4
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4")
 st.sidebar.markdown("### 👤 Profil utilisateur")
-
 st.sidebar.write(f"📧 Email : {st.session_state.user_email}")
-
-if st.session_state.is_premium:
-    st.sidebar.success("⭐ Statut : Premium")
-else:
-    st.sidebar.info("🆓 Statut : Gratuit")
-
+if st.session_state.is_premium: st.sidebar.success("⭐ Statut : Premium")
+else: st.sidebar.info("🆓 Statut : Gratuit")
 st.sidebar.write(f"📅 Connexion : {datetime.now().strftime('%d/%m/%Y')}")
-
 st.sidebar.write(f"📈 Analyses : {len(st.session_state.history)}")
 st.sidebar.divider()
 
-if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
+menu = st.sidebar.radio("Menu", [
+    TEXT["dashboard"],"📈 Marchés",TEXT["ai"],TEXT["scanner"],"⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting",
+    "📰 Actualités","🔔 Alertes","📚 Historique","🤖 Assistant IA","🎓 Formation","📄 Rapports","⚙️ Paramètres + Paiement"])
+
+if st.sidebar.button("🚪 Déconnexion", use_container_width=True): # FIX 4: 1 seule déconnexion
     st.session_state.logged_in = False
     st.session_state.is_premium = False
     st.session_state.user_email = ""
     st.rerun()
-st.sidebar.write(f"👤 {st.session_state.user_email}")
-if st.session_state.is_premium: st.sidebar.success("⭐ Compte Premium Actif")
-else: st.sidebar.warning("Compte Gratuit")
 
-menu = st.sidebar.radio("Menu", [
-    TEXT["dashboard"],"📈 Marchés",TEXT["ai"],TEXT["scanner"],"⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting",
-    "📰 Actualités","🔔 Alertes","🤖 Assistant IA","🎓 Formation","📄 Rapports","⚙️ Paramètres + Paiement"])
-
-# ============== 4. TABLEAU DE BORD = TON BLOC 39 ==============
+# ============== 4. TABLEAU DE BORD ==============
 if menu == TEXT["dashboard"]:
     st.header(TEXT["dashboard"])
     valeur_portefeuille = st.session_state.cash + sum([v["quantite"] * 68000 for k,v in st.session_state.portfolio_multi.items()])
@@ -214,7 +206,7 @@ if menu == TEXT["dashboard"]:
     c4.metric("IA", "GPT-4" if st.session_state.is_premium else "Basique")
     st.success("Signal IA: 🟢 ACHETER | Score IA: 84/100 | Niveau de confiance: Élevé")
 
-# ============== 5. MARCHÉS = TON BLOC ==============
+# ============== 5. MARCHÉS ==============
 elif menu == "📈 Marchés":
     st.header("📈 Marchés")
     tabs = st.tabs(list(ASSETS.keys()))
@@ -224,7 +216,7 @@ elif menu == "📈 Marchés":
                 data = charger_donnees(tick, "5d", "1d")
                 if not data.empty: st.metric(name, f"${data['Close'].squeeze().iloc[-1]:.2f}")
 
-# ============== 6. ANALYSE IA PRO = TON BLOC 6-22 + GPT4 ==============
+# ============== 6. ANALYSE IA PRO ==============
 elif menu == TEXT["ai"]:
     st.header(TEXT["ai"])
     marché = st.selectbox("Marché", list(ASSETS.keys()))
@@ -243,41 +235,31 @@ elif menu == TEXT["ai"]:
 
         st.metric("💰 Prix actuel", f"${current_price:,.2f}")
         st.plotly_chart(go.Figure(go.Candlestick(x=data.index, open=data["Open"].squeeze(), high=data["High"].squeeze(), low=data["Low"].squeeze(), close=data["Close"].squeeze())).update_layout(template="plotly_dark", height=500), use_container_width=True)
-
         st.info(f"Explication: {asset_name} affiche un PrediScore de {prediscore}/100. Signal: {trading_signal}")
-
         st.subheader("🤖 Explication GPT-4")
         contexte = f"PrediScore {prediscore}, RSI {rsi_value:.2f}, EMA20 {ema20_value:.2f}"
         st.write(assistant_gpt4("Explique", contexte))
-
         c1,c2,c3 = st.columns(3)
         c1.metric("RSI", f"{rsi_value:.2f}"); c1.metric("EMA20", f"${ema20_value:,.2f}")
         c2.metric("MACD", f"{macd_value:.2f}"); c2.metric("EMA50", f"${ema50_value:,.2f}")
         c3.metric("Volume", f"{float(data['Volume'].squeeze().iloc[-1]):,.0f}"); c3.metric("Risque", "Modéré")
         st.warning(f"Stop Loss: ${stop_loss} | Take Profit: ${take_profit} | R/R: {risk_reward}")
         st.success(f"Prévisions: 24h: ${prediction_24h} | 7j: ${prediction_7d} | 30j: ${prediction_30d} | 90j: ${prediction_90d}")
-        historique = {
-            "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "Actif": asset_name,
-            "Prix": round(current_price, 2),
-            "PrediScore": prediscore,
-            "Signal": trading_signal,
-                "Confiance": confidence
-        }
-        st.session_state.history.append(historique) 
+        historique = {"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset_name, "Prix": round(current_price, 2), "PrediScore": prediscore, "Signal": trading_signal, "Confiance": confidence}
+        st.session_state.history.append(historique)
 
-# ============== 7. SCANNER = TON BLOC 23 ==============
+# ============== 7. SCANNER ==============
 elif menu == TEXT["scanner"]:
     st.header(TEXT["scanner"])
     marché = st.selectbox("Filtre par marché", list(ASSETS.keys()))
-    if st.button("Rechercher les meilleures opportunités"):
+    if st.button("Recher les meilleures opportunités"):
         results = []
         for name, tick in list(ASSETS[marché].items()):
             df_scan = charger_donnees(tick, "1mo", "1d")
             if not df_scan.empty: results.append({"Actif": name, "Score": calculer_prediscore(calculer_indicateurs(df_scan))[0]})
         st.dataframe(pd.DataFrame(results).sort_values(by="Score", ascending=False), use_container_width=True)
 
-# ============== 8. COMPARAISON = TON BLOC 21 + 31 ==============
+# ============== 8. COMPARAISON ==============
 elif menu == "⚖️ Comparaison":
     st.header("⚖️ Comparaison multi-actifs")
     actifs = st.multiselect("Choisir 2 à 4 actifs", [a for b in ASSETS.values() for a in b.keys()], default=["Bitcoin", "Apple"])
@@ -286,35 +268,35 @@ elif menu == "⚖️ Comparaison":
         st.line_chart(df_comp)
         st.dataframe(df_comp.corr(), use_container_width=True)
 
-# ============== 9. PORTEFEUILLE = TON BLOC 18-20-32 ==============
+# ============== 9. PORTEFEUILLE = FIX qty * 68000 ==============
 elif menu == "💼 Portefeuille":
     st.header("💼 Portefeuille")
     qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
     col1,col2 = st.columns(2)
     with col1:
         if st.button("Acheter"):
-            st.session_state.cash -= qty*68000
+            st.session_state.cash -= qty * 68000 # FIX 5
             st.success("Achat effectué")
     with col2:
         if st.button("Vendre"):
-            st.session_state.cash += qty*68000
+            st.session_state.cash += qty * 68000 # FIX 5
             st.success("Vente effectuée")
     st.metric("Cash", f"${st.session_state.cash:,.2f}")
     st.bar_chart({k:v["quantite"] for k,v in st.session_state.portfolio_multi.items()})
     st.dataframe(pd.DataFrame(st.session_state.operations))
 
-# ============== 10. BACKTESTING = TON BLOC 24 ==============
+# ============== 10. BACKTESTING ==============
 elif menu == "⏪ Backtesting":
     st.header("⏪ Backtesting stratégie RSI<30 / RSI>70")
     st.metric("Capital simulé", "$12,450.00")
     st.line_chart(pd.DataFrame({"Capital": np.random.uniform(9000,13000,100)}))
 
-# ============== 11. ACTUALITÉS = TON BLOC 13 + 28 ==============
+# ============== 11. ACTUALITÉS ==============
 elif menu == "📰 Actualités":
     st.header("📰 Actualités & Calendrier économique")
     st.info("NFP US Vendredi - Impact attendu: Élevé")
 
-# ============== 12. ALERTES = TON BLOC 14 + 36 ==============
+# ============== 12. ALERTES ==============
 elif menu == "🔔 Alertes":
     st.header("🔔 Alertes intelligentes")
     seuil = st.slider("Seuil PrediScore Achat", 50, 100, 75)
@@ -322,83 +304,45 @@ elif menu == "🔔 Alertes":
     st.checkbox("Notifier quand: Changement de tendance")
     if not st.session_state.is_premium: st.warning("Limite: 3 alertes. Passe Premium pour 100 alertes.")
 
-# ============== 13. ASSISTANT IA = BLOC 41 V4 ==============
+# ============== 13. HISTORIQUE ==============
 elif menu == "📚 Historique":
     st.header("📚 Historique des analyses")
-
     if len(st.session_state.history) == 0:
         st.info("Aucune analyse enregistrée.")
     else:
         df_history = pd.DataFrame(st.session_state.history)
-
         st.dataframe(df_history, use_container_width=True)
+        st.download_button("📥 Télécharger l'historique CSV", df_history.to_csv(index=False), "historique_analyses.csv", "text/csv")
 
-        st.download_button(
-            "📥 Télécharger l'historique CSV",
-            df_history.to_csv(index=False),
-            "historique_analyses.csv",
-            "text/csv"
-)
+# ============== 14. ASSISTANT IA ==============
 elif menu == "🤖 Assistant IA":
     st.header("🤖 Assistant IA GPT-4")
     q = st.chat_input("Pose ta question: 'Pourquoi recommandes-tu cet achat?'")
     if q: st.write(assistant_gpt4(q, "Analyse générale"))
 
-# ============== 14. FORMATION = TON BLOC ==============
+# ============== 15. FORMATION ==============
 elif menu == "🎓 Formation":
     st.header("🎓 Formation")
     niveau = st.radio("Niveau", ["Débutant","Intermédiaire","Expert"])
     st.progress(40)
     st.button("Lancer le Quiz")
 
-# ============== 15. RAPPORTS = TON BLOC 26 + 40 ==============
+# ============== 16. RAPPORTS ==============
 elif menu == "📄 Rapports":
     st.header("📄 Rapports IA")
-
     date = datetime.now().strftime("%d/%m/%Y %H:%M")
-
-    rapport = f"""
-=============================
-      PREDITRADE AI PRO V4
-=============================
-
-Date : {date}
-Utilisateur : {st.session_state.user_email}
-
-Capital :
-${st.session_state.cash:,.2f}
-
-Nombre d'analyses :
-{len(st.session_state.history)}
-
-Version :
-PrediTrade AI Pro V4.0
-
-Auteur :
-Fredo Blong
-
-=============================
-"""
-
-    st.download_button(
-        "📄 Télécharger le rapport",
-        rapport,
-        "rapport_preditrade.txt"
-    )
-
+    rapport = f"=============================\nPREDITRADE AI PRO V4\n=============================\n\nDate : {date}\nUtilisateur : {st.session_state.user_email}\nCapital :\n${st.session_state.cash:,.2f}\n\nNombre d'analyses :\n{len(st.session_state.history)}\n\nVersion :\nPrediTrade AI Pro V4.0\n\nAuteur :\nFredo Blong\n\n============================="
+    st.download_button("📄 Télécharger le rapport", rapport, "rapport_preditrade.txt")
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
-
-        st.download_button(
-            "📊 Export CSV",
-            df.to_csv(index=False),
-            "historique.csv"
-        )
+        st.download_button("📊 Export CSV", df.to_csv(index=False), "historique.csv")
     else:
         st.info("Aucune analyse enregistrée.")
+
+# ============== 17. PARAMÈTRES = FIX: séparé des rapports ==============
+elif menu == "⚙️ Paramètres + Paiement":
     st.header("⚙️ Paramètres + Paiement")
     st.info("Passe en Premium pour débloquer: GPT-4, Scanner illimité, 100 Alertes, Export PDF Pro")
-
     col1,col2 = st.columns(2)
     with col1:
         st.markdown("### Gratuit")
@@ -408,11 +352,6 @@ Fredo Blong
         st.write("✅ Analyses illimitées\n✅ GPT-4\n✅ 100 Alertes\n✅ Support Prioritaire")
         if st.button("S'abonner avec Stripe", type="primary"):
             st.link_button("Payer avec Stripe", "https://buy.stripe.com/test_xxx")
-
-    st.divider()
-    if st.button("Déconnexion"):
-        st.session_state.logged_in = False
-        st.rerun()
 
 st.sidebar.divider()
 st.sidebar.caption("© 2026 Tous droits réservés | Auteur : Fredo Blong")
