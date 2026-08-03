@@ -1,8 +1,7 @@
-"" "
-PrediTrade AI Pro V4.0 - FUSION V3.0 CORRIGÉ
+"""
+PrediTrade AI Pro V4.1 - FUSION V3.0 CORRIGÉ
 Auteur : Fredo Blong
-40 Blocs V2.1 + 16 Modules V3.0 + Login + Stripe + GPT4
-
+40 Blocs V2.1 + 16 Modules V3.0 + Login + CamPay + Gemini
 """
 import streamlit as st
 import pandas as pd
@@ -14,7 +13,7 @@ from datetime import datetime
 import hashlib
 import json
 import os
-import campay
+import time
 from campay.api import Client as CamPayClient
 
 # Base de données des utilisateurs
@@ -37,13 +36,19 @@ def save_users(users):
     with open(USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(users, f, indent=4)
 
+def activate_premium_user(email):
+    users = load_users()
+    if email in users:
+        users[email]["premium"] = True
+        save_users(users)
+
 def page_login():
     st.markdown(
     f"""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);">
-    <h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4</h1>
-    <h3 style="color:white;">Version Finale 4.0</h3><br>
+    <h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.1</h1>
+    <h3 style="color:white;">Version Finale 4.1</h3><br>
     <p style="font-size:18px;color:#DDDDDD;">Assistant Intelligent d'Analyse Financière</p><br>
-    <p style="color:#66FF99;font-size:20px;">✅ AVEC GEMINI + STRIPE</p><br>
+    <p style="color:#66FF99;font-size:20px;">✅ AVEC GEMINI + CAMPAY</p><br>
     <p style="color:white;">Auteur : <strong>Fredo Blong</strong></p>
     <p style="color:#AAAAAA;">© 2026 Tous droits réservés</p></div>""", unsafe_allow_html=True)
 
@@ -107,10 +112,12 @@ for key, val in [("history",[]),("cash",10000.0),("operations",[]),("portfolio_m
 if not st.session_state.logged_in:
     page_login()
     st.stop()
+
+# Init CamPay Client
 campay_client = CamPayClient(
     app_username=st.secrets["CAMPAY_USERNAME"],
     app_password=st.secrets["CAMPAY_PASSWORD"],
-    environment="PROD"
+    environment="PROD" # Met "DEV" pour tester
 )
 
 # ============== 1. STYLE + LANGUE V4 ==============
@@ -132,7 +139,7 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"},
 "ETF": {}}
 
-# ============== 2. FONCTIONS V3.0 + GEMINI ==============
+# ============== 2. FONCTIONS V3.0 + GEMINI + CAMPAY ==============
 @st.cache_data
 def charger_donnees(_ticker, _period, _interval):
     return yf.download(_ticker, period=_period, interval=_interval, auto_adjust=True, progress=False)
@@ -192,12 +199,15 @@ Explique : - la tendance, - les points forts, - les risques, - puis termine par 
         return response.text
     except Exception as e:
         return f"❌ Erreur Gemini : {e}"
-        def paiement_campay(numero, montant):
+
+# FIX: fonction sortie de l'autre fonction
+def paiement_campay(numero, montant):
     try:
         paiement = campay_client.collect({
             "amount": str(montant),
             "currency": "XAF",
             "from": numero,
+            "operator": "MTN" if numero.startswith("6") else "ORANGE", # Auto detect
             "description": "Abonnement Premium PrediTrade AI"
         })
         return paiement
@@ -206,7 +216,7 @@ Explique : - la tendance, - les points forts, - les risques, - puis termine par 
         return None
 
 # ============== 3. SIDEBAR V4.0 ==============
-st.sidebar.title("🚀 PrediTrade AI V4")
+st.sidebar.title("🚀 PrediTrade AI V4.1")
 st.sidebar.markdown("### 👤 Profil utilisateur")
 st.sidebar.write(f"📧 Email : {st.session_state.user_email}")
 if st.session_state.is_premium: st.sidebar.success("⭐ Statut : Premium")
@@ -290,7 +300,7 @@ elif menu == TEXT["scanner"]:
             if not df_scan.empty: results.append({"Actif": name, "Score": calculer_prediscore(calculer_indicateurs(df_scan))[0]})
         st.dataframe(pd.DataFrame(results).sort_values(by="Score", ascending=False), use_container_width=True)
 
-# ============== 8. COMPARAISON = FIX: remis dans le elif ==============
+# ============== 8. COMPARAISON ==============
 elif menu == "⚖️ Comparaison":
     st.header("⚖️ Comparaison multi-actifs")
     actifs = st.multiselect(
@@ -311,14 +321,11 @@ elif menu == "⚖️ Comparaison":
             st.subheader("Corrélation")
             st.dataframe(df_comp.corr(), use_container_width=True)
 
-# ============== 9. PORTEFEUILLE = FIX: indentation + ajout selectbox actif ==============
+# ============== 9. PORTEFEUILLE ==============
 elif menu == "💼 Portefeuille":
     st.header("💼 Portefeuille")
-
-    # FIX: il faut choisir l'actif pour acheter/vendre
-    actif_portefeuille = st.selectbox("Choisir l'actif", list(ASSETS["Crypto"].keys()) + list(ASSETS["Actions"].keys()))
-    prix_actuel = 68000 if "Bitcoin" in actif_portefeuille else 150 # prix demo
-
+    actif_portefeuille = st.selectbox("Choisir l'actif", [a for b in ASSETS.values() for a in b.keys()])
+    prix_actuel = 68000 # prix demo. A remplacer par get_current_price()
     qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
     col1,col2 = st.columns(2)
     with col1:
@@ -351,7 +358,9 @@ elif menu == "💼 Portefeuille":
                 st.error("Cet actif n'est pas dans votre portefeuille.")
 
     st.metric("Cash", f"${st.session_state.cash:,.2f}")
-    st.bar_chart({k:v["quantite"] for k,v in st.session_state.portfolio_multi.items()})
+    if st.session_state.portfolio_multi:
+        df_port = pd.DataFrame({"Actif": list(st.session_state.portfolio_multi.keys()), "Quantité": [v["quantite"] for v in st.session_state.portfolio_multi.values()]})
+        st.bar_chart(df_port.set_index("Actif"))
     st.dataframe(pd.DataFrame(st.session_state.operations))
 
 # ============== 10. BACKTESTING ==============
@@ -400,7 +409,7 @@ elif menu == "🎓 Formation":
 elif menu == "📄 Rapports":
     st.header("📄 Rapports IA")
     date = datetime.now().strftime("%d/%m/%Y %H:%M")
-    rapport = f"=============================\nPREDITRADE AI PRO V4\n=============================\n\nDate : {date}\nUtilisateur : {st.session_state.user_email}\nCapital :\n${st.session_state.cash:,.2f}\n\nNombre d'analyses :\n{len(st.session_state.history)}\n\nVersion :\nPrediTrade AI Pro V4.0\nAuteur :\nFredo Blong\n============================="
+    rapport = f"=============================\nPREDITRADE AI PRO V4.1\n=============================\n\nDate : {date}\nUtilisateur : {st.session_state.user_email}\nCapital :\n${st.session_state.cash:,.2f}\n\nNombre d'analyses :\n{len(st.session_state.history)}\n\nVersion :\nPrediTrade AI Pro V4.1\nAuteur :\nFredo Blong\n============================="
     st.download_button("📄 Télécharger le rapport", rapport, "rapport_preditrade.txt")
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
@@ -408,7 +417,7 @@ elif menu == "📄 Rapports":
     else:
         st.info("Aucune analyse enregistrée.")
 
-# ============== 17. PARAMÈTRES ==============
+# ============== 17. PARAMÈTRES + CAMPAY = FIX PRINCIPAL ==============
 elif menu == "⚙️ Paramètres + Paiement":
     st.header("⚙️ Paramètres + Paiement")
     st.info("Passe en Premium pour débloquer: Gemini, Scanner illimité, 100 Alertes, Export PDF Pro")
@@ -417,22 +426,37 @@ elif menu == "⚙️ Paramètres + Paiement":
         st.markdown("### Gratuit")
         st.write("✅ 5 Analyses/jour\n❌ Pas de Gemini\n❌ 3 Alertes max")
     with col2:
-        st.markdown("### ⭐ Premium $19.99/mois")
+        st.markdown("### ⭐ Premium 19990 XAF/mois")
         st.write("✅ Analyses illimitées\n✅ Gemini\n✅ 100 Alertes\n✅ Support Prioritaire")
-        numero = st.text_input(
-    "Numéro MTN ou Orange Money",
-    placeholder="2376XXXXXXXX"
-)
 
-if st.button("💳 Payer avec MTN / Orange Money", type="primary"):
-    if numero == "":
-        st.warning("Veuillez entrer votre numéro.")
-    else:
-        resultat = paiement_campay(numero, 19990)
+        if not st.session_state.is_premium:
+            numero = st.text_input("Numéro MTN ou Orange Money", placeholder="2376XXXXXXXX")
+            if st.button("💳 Payer avec MTN / Orange Money", type="primary"):
+                if numero == "":
+                    st.warning("Veuillez entrer votre numéro.")
+                else:
+                    with st.spinner("Envoi de la demande de paiement..."):
+                        resultat = paiement_campay(numero, 19990)
 
-        if resultat:
-            st.success("✅ Une demande de paiement a été envoyée sur votre téléphone.")
-        else:
-            st.error("❌ Impossible de lancer le paiement.")
+                    if resultat and resultat.get("status") == "SUCCESS":
+                        reference = resultat.get("reference")
+                        st.success("✅ Demande envoyée! Validez sur votre téléphone.")
+
+                        with st.spinner("En attente de confirmation..."):
+                            for i in range(20): # 2 minutes max
+                                time.sleep(6)
+                                status_check = campay_client.get_transaction(reference)
+                                if status_check.get("status") == "SUCCESSFUL":
+                                    activate_premium_user(st.session_state.user_email)
+                                    st.session_state.is_premium = True
+                                    st.balloons()
+                                    st.success("✅ Paiement reçu! Compte Premium activé.")
+                                    st.rerun()
+                                    break
+                            else:
+                                st.warning("⏳ Paiement en attente. Recharge la page dans 1 min.")
+                    else:
+                        st.error("❌ Impossible de lancer le paiement.")
+
 st.sidebar.divider()
 st.sidebar.caption("© 2026 Tous droits réservés | Auteur : Fredo Blong")
