@@ -5,4 +5,5 @@ yfinance
 plotly>=5.22.0
 requests
 google-generativeai==0.8.5
+Campay 
 Authlib
