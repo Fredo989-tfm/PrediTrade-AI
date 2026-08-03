@@ -115,13 +115,19 @@ for key, val in [("history",[]),("cash",10000.0),("operations",[]),("portfolio_m
 if not st.session_state.logged_in:
     page_login()
     st.stop()
+    if not st.session_state.is_premium:
 
-# Init CamPay Client
-#campay_client = CamPayClient(
-    #app_username=st.secrets["CAMPAY_USERNAME"],
-    #app_password=st.secrets["CAMPAY_PASSWORD"],
-    #environment="DEV" # MET "PROD" QUAND TU VEUX VRAI ARGENT
-#)
+    st.warning("⭐ Passe Premium pour débloquer toutes les fonctionnalités.")
+
+    if st.button("🚀 Activer Premium (Démo)"):
+
+        activate_premium_user(st.session_state.user_email)
+
+        st.session_state.is_premium = True
+
+        st.success("✅ Compte Premium activé.")
+
+        st.rerun()
 
 # ============== 1. STYLE + LANGUE V4 ==============
 def appliquer_style():
@@ -202,20 +208,6 @@ Explique : - la tendance, - les points forts, - les risques, - puis termine par 
         return response.text
     except Exception as e:
         return f"❌ Erreur Gemini : {e}"
-
-def paiement_campay(numero, montant):
-    try:
-        paiement = campay_client.collect({
-            "amount": str(montant),
-            "currency": "XAF",
-            "from": numero,
-            "operator": "MTN" if numero.startswith("6") else "ORANGE",
-            "description": "Abonnement Premium PrediTrade AI"
-        })
-        return paiement
-    except Exception as e:
-        st.error(f"Erreur CamPay : {e}")
-        return None
 
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4.2")
