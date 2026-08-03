@@ -14,7 +14,7 @@ import hashlib
 import json
 import os
 import time
-from campay.api import Client as CamPayClient
+#from campay.api import Client as CamPayClient
 
 # Base de données des utilisateurs
 USERS_FILE = "users.json"
@@ -269,7 +269,7 @@ elif menu == TEXT["ai"]:
         data = charger_donnees(ticker, period, interval)
         indicateurs = calculer_indicateurs(data)
         current_price = float(data["Close"].squeeze().iloc[-1])
-        prediscore, trading_signal, confidence, rsi_value, ema20_value, ema50_value, macd_value, signal_value = calculer_prediscore(indicateurs)
+        prediscore, tradi7ng_signal, confidence, rsi_value, ema20_value, ema50_value, macd_value, signal_value = calculer_prediscore(indicateurs)
         stop_loss, take_profit, risk_reward = calculer_risque(current_price, prediscore)
         prediction_24h, prediction_7d, prediction_30d, prediction_90d = faire_predictions(current_price, prediscore)
 
