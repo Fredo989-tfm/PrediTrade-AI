@@ -168,13 +168,41 @@ def faire_predictions(prix, score):
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
 def assistant_gpt4(question, contexte):
-    if not st.session_state.is_premium:
-        return "⚠️ Fonction réservée Premium. Passe à Premium pour débloquer GPT-4."
-    try:
-        api_key = st.secrets.get("OPENAI_API_KEY", "demo")
-        return f"🤖 GPT-4 Analyse: Basé sur {contexte}, probabilité de hausse 78%. Tendance: Haussière. Risque: Modéré."
-    except: return "Ajoute OPENAI_API_KEY dans.streamlit/secrets.toml"
+    import google.generativeai as genai
 
+    def assistant_gpt4(question, contexte):
+        if not st.session_state.is_premium:
+            return "⚠️ Fonction réservée aux utilisateurs Premium."
+
+        try:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            
+            genai.configure(api_key=api_key)
+            
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = f"""
+Tu es PrediTrade AI. 
+
+Question :
+{question}
+
+Contexte :
+{contexte}
+
+Donne une analyse claire en français.
+Explique :
+- la tendance,
+- les points forts,
+- les risques,
+- puis termine par une recommandation (Acheter, Attendre ou Vendre).
+"""
+
+        response = model.generate_content(prompt)
+
+        return response.text
+
+    except Exception as e:
+        return f"❌ Erreur Gemini : {e}"
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4")
 st.sidebar.markdown("### 👤 Profil utilisateur")
