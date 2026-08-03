@@ -14,7 +14,7 @@ import hashlib
 import json
 import os
 import time
-from campay.api import Client as CamPayClient # <-- DÉCOMMENTÉ
+#from campay.api import Client as CamPayClient # <-- DÉCOMMENTÉ
 
 # Base de données des utilisateurs
 USERS_FILE = "users.json"
@@ -117,11 +117,11 @@ if not st.session_state.logged_in:
     st.stop()
 
 # Init CamPay Client
-campay_client = CamPayClient(
-    app_username=st.secrets["CAMPAY_USERNAME"],
-    app_password=st.secrets["CAMPAY_PASSWORD"],
-    environment="DEV" # MET "PROD" QUAND TU VEUX VRAI ARGENT
-)
+#campay_client = CamPayClient(
+    #app_username=st.secrets["CAMPAY_USERNAME"],
+    #app_password=st.secrets["CAMPAY_PASSWORD"],
+    #environment="DEV" # MET "PROD" QUAND TU VEUX VRAI ARGENT
+#)
 
 # ============== 1. STYLE + LANGUE V4 ==============
 def appliquer_style():
