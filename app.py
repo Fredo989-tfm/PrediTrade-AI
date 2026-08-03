@@ -28,7 +28,7 @@ st.set_page_config(page_title="PrediTrade AI Pro V4", page_icon="🚀", layout="
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def load_users(): # FIX 1: Dé-indenté
+def load_users():
     with open(USERS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -42,7 +42,7 @@ def page_login():
     <h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4</h1>
     <h3 style="color:white;">Version Finale 4.0</h3><br>
     <p style="font-size:18px;color:#DDDDDD;">Assistant Intelligent d'Analyse Financière</p><br>
-    <p style="color:#66FF99;font-size:20px;">✅ AVEC GPT-4 + STRIPE</p><br>
+    <p style="color:#66FF99;font-size:20px;">✅ AVEC GEMINI + STRIPE</p><br>
     <p style="color:white;">Auteur : <strong>Fredo Blong</strong></p>
     <p style="color:#AAAAAA;">© 2026 Tous droits réservés</p></div>""", unsafe_allow_html=True)
 
@@ -66,10 +66,10 @@ def page_login():
             if remember_me:
                 st.session_state.remember_me = True
 
-        if st.button("🔑 Mot de passe oublié?"): # FIX 2: Indenté
+        if st.button("🔑 Mot de passe oublié?"):
             st.info("Fonction de réinitialisation en cours de configuration.")
 
-    with tab2: # FIX 3: Indenté correctement
+    with tab2:
        email_new = st.text_input("Email", key="register_email")
        password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
        if st.button("Créer compte gratuit"):
@@ -126,7 +126,7 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"},
 "ETF": {}}
 
-# ============== 2. FONCTIONS V3.0 + GPT4 ==============
+# ============== 2. FONCTIONS V3.0 + GEMINI ==============
 @st.cache_data
 def charger_donnees(_ticker, _period, _interval):
     return yf.download(_ticker, period=_period, interval=_interval, auto_adjust=True, progress=False)
@@ -167,42 +167,26 @@ def faire_predictions(prix, score):
     strength = (score - 50) / 100
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
-def assistant_gpt4(question, contexte):
-    import google.generativeai as genai
-
-    def assistant_gpt4(question, contexte):
-        if not st.session_state.is_premium:
-            return "⚠️ Fonction réservée aux utilisateurs Premium."
-
-        try:
-            api_key = st.secrets["GEMINI_API_KEY"]
-            
-            genai.configure(api_key=api_key)
-            
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = f"""
-Tu es PrediTrade AI. 
-
-Question :
-{question}
-
-Contexte :
-{contexte}
-
+def assistant_gpt4(question, contexte): # FIX: 1 seule fonction, avec Gemini
+    if not st.session_state.is_premium:
+        return "⚠️ Fonction réservée aux utilisateurs Premium."
+    try:
+        import google.generativeai as genai
+        api_key = st.secrets["GEMINI_API_KEY"]
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = f"""
+Tu es PrediTrade AI.
+Question : {question}
+Contexte : {contexte}
 Donne une analyse claire en français.
-Explique :
-- la tendance,
-- les points forts,
-- les risques,
-- puis termine par une recommandation (Acheter, Attendre ou Vendre).
+Explique : - la tendance, - les points forts, - les risques, - puis termine par une recommandation.
 """
-
-        response = model.generate_content(prompt)
-
+        response = model.generate_content(prompt) # FIX: Indenté dans le try
         return response.text
-
     except Exception as e:
         return f"❌ Erreur Gemini : {e}"
+
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4")
 st.sidebar.markdown("### 👤 Profil utilisateur")
@@ -217,7 +201,7 @@ menu = st.sidebar.radio("Menu", [
     TEXT["dashboard"],"📈 Marchés",TEXT["ai"],TEXT["scanner"],"⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting",
     "📰 Actualités","🔔 Alertes","📚 Historique","🤖 Assistant IA","🎓 Formation","📄 Rapports","⚙️ Paramètres + Paiement"])
 
-if st.sidebar.button("🚪 Déconnexion", use_container_width=True): # FIX 4: 1 seule déconnexion
+if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
     st.session_state.logged_in = False
     st.session_state.is_premium = False
     st.session_state.user_email = ""
@@ -231,7 +215,7 @@ if menu == TEXT["dashboard"]:
     c1.metric("Valeur du portefeuille", f"${valeur_portefeuille:,.2f}")
     c2.metric("Profit / Perte du jour", "+$284.50", "+2.32%")
     c3.metric("Actifs détenus", len([k for k,v in st.session_state.portfolio_multi.items() if v["quantite"]>0]))
-    c4.metric("IA", "GPT-4" if st.session_state.is_premium else "Basique")
+    c4.metric("IA", "Gemini" if st.session_state.is_premium else "Basique")
     st.success("Signal IA: 🟢 ACHETER | Score IA: 84/100 | Niveau de confiance: Élevé")
 
 # ============== 5. MARCHÉS ==============
@@ -260,21 +244,14 @@ elif menu == TEXT["ai"]:
         prediscore, trading_signal, confidence, rsi_value, ema20_value, ema50_value, macd_value, signal_value = calculer_prediscore(indicateurs)
         stop_loss, take_profit, risk_reward = calculer_risque(current_price, prediscore)
         prediction_24h, prediction_7d, prediction_30d, prediction_90d = faire_predictions(current_price, prediscore)
-        analyse = {
-            "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "Actif": asset_name,
-            "Prix": round(current_price, 2),
-            "Score": prediscore,
-            "Signal": trading_signal,
-            "Confiance": confidence
-        }
 
-        st.session_state.history.append(analyse)
+        analyse = {"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset_name, "Prix": round(current_price, 2), "Score": prediscore, "Signal": trading_signal, "Confiance": confidence}
+        st.session_state.history.append(analyse) # FIX: 1 seul ajout
 
         st.metric("💰 Prix actuel", f"${current_price:,.2f}")
         st.plotly_chart(go.Figure(go.Candlestick(x=data.index, open=data["Open"].squeeze(), high=data["High"].squeeze(), low=data["Low"].squeeze(), close=data["Close"].squeeze())).update_layout(template="plotly_dark", height=500), use_container_width=True)
         st.info(f"Explication: {asset_name} affiche un PrediScore de {prediscore}/100. Signal: {trading_signal}")
-        st.subheader("🤖 Explication GPT-4")
+        st.subheader("🤖 Explication IA")
         contexte = f"PrediScore {prediscore}, RSI {rsi_value:.2f}, EMA20 {ema20_value:.2f}"
         st.write(assistant_gpt4("Explique", contexte))
         c1,c2,c3 = st.columns(3)
@@ -283,14 +260,12 @@ elif menu == TEXT["ai"]:
         c3.metric("Volume", f"{float(data['Volume'].squeeze().iloc[-1]):,.0f}"); c3.metric("Risque", "Modéré")
         st.warning(f"Stop Loss: ${stop_loss} | Take Profit: ${take_profit} | R/R: {risk_reward}")
         st.success(f"Prévisions: 24h: ${prediction_24h} | 7j: ${prediction_7d} | 30j: ${prediction_30d} | 90j: ${prediction_90d}")
-        historique = {"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset_name, "Prix": round(current_price, 2), "PrediScore": prediscore, "Signal": trading_signal, "Confiance": confidence}
-        st.session_state.history.append(historique)
 
 # ============== 7. SCANNER ==============
 elif menu == TEXT["scanner"]:
     st.header(TEXT["scanner"])
     marché = st.selectbox("Filtre par marché", list(ASSETS.keys()))
-    if st.button("Recher les meilleures opportunités"):
+    if st.button("Recher les meilleures opportunités"): # FIX
         results = []
         for name, tick in list(ASSETS[marché].items()):
             df_scan = charger_donnees(tick, "1mo", "1d")
@@ -298,27 +273,81 @@ elif menu == TEXT["scanner"]:
         st.dataframe(pd.DataFrame(results).sort_values(by="Score", ascending=False), use_container_width=True)
 
 # ============== 8. COMPARAISON ==============
-elif menu == "⚖️ Comparaison":
-    st.header("⚖️ Comparaison multi-actifs")
-    actifs = st.multiselect("Choisir 2 à 4 actifs", [a for b in ASSETS.values() for a in b.keys()], default=["Bitcoin", "Apple"])
-    df_comp = pd.DataFrame({a: charger_donnees(ASSETS[cat][a], "3mo", "1d")["Close"] for cat in ASSETS for a in actifs if a in ASSETS[cat]})
+actifs = st.multiselect(
+    "Choisir 2 à 4 actifs",
+    [a for categorie in ASSETS.values() for a in categorie.keys()],
+    default=["Bitcoin", "Apple"]
+)
+
+if len(actifs) >= 2:
+
+    df_comp = pd.DataFrame()
+
+    for categorie in ASSETS.values():
+        for nom, ticker in categorie.items():
+
+            if nom in actifs:
+
+                data = charger_donnees(ticker, "3mo", "1d")
+
+                if not data.empty:
+                    df_comp[nom] = data["Close"].squeeze()
+
     if not df_comp.empty:
         st.line_chart(df_comp)
+        st.subheader("Corrélation")
         st.dataframe(df_comp.corr(), use_container_width=True)
 
-# ============== 9. PORTEFEUILLE = FIX qty * 68000 ==============
+# ============== 9. PORTEFEUILLE ==============
 elif menu == "💼 Portefeuille":
     st.header("💼 Portefeuille")
     qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
     col1,col2 = st.columns(2)
     with col1:
         if st.button("Acheter"):
-            st.session_state.cash -= qty * 68000 # FIX 5
-            st.success("Achat effectué")
+    if asset_name not in st.session_state.portfolio_multi:
+        st.session_state.portfolio_multi[asset_name] = {
+            "quantite": 0
+        }
+
+    st.session_state.portfolio_multi[asset_name]["quantite"] += qty
+
+    st.session_state.cash -= qty * current_price
+
+    st.session_state.operations.append({
+        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "Type": "Achat",
+        "Actif": asset_name,
+        "Quantité": qty,
+        "Prix": current_price
+    })
+
+    st.success("✅ Achat effectué")
     with col2:
         if st.button("Vendre"):
-            st.session_state.cash += qty * 68000 # FIX 5
-            st.success("Vente effectuée")
+    if asset_name in st.session_state.portfolio_multi:
+
+        if st.session_state.portfolio_multi[asset_name]["quantite"] >= qty:
+
+            st.session_state.portfolio_multi[asset_name]["quantite"] -= qty
+
+            st.session_state.cash += qty * current_price
+
+            st.session_state.operations.append({
+                "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "Type": "Vente",
+                "Actif": asset_name,
+                "Quantité": qty,
+                "Prix": current_price
+            })
+
+            st.success("✅ Vente effectuée")
+
+        else:
+            st.error("Quantité insuffisante.")
+
+    else:
+        st.error("Cet actif n'est pas dans votre portefeuille.")
     st.metric("Cash", f"${st.session_state.cash:,.2f}")
     st.bar_chart({k:v["quantite"] for k,v in st.session_state.portfolio_multi.items()})
     st.dataframe(pd.DataFrame(st.session_state.operations))
@@ -354,7 +383,7 @@ elif menu == "📚 Historique":
 
 # ============== 14. ASSISTANT IA ==============
 elif menu == "🤖 Assistant IA":
-    st.header("🤖 Assistant IA GPT-4")
+    st.header("🤖 Assistant IA Gemini")
     q = st.chat_input("Pose ta question: 'Pourquoi recommandes-tu cet achat?'")
     if q: st.write(assistant_gpt4(q, "Analyse générale"))
 
@@ -369,7 +398,7 @@ elif menu == "🎓 Formation":
 elif menu == "📄 Rapports":
     st.header("📄 Rapports IA")
     date = datetime.now().strftime("%d/%m/%Y %H:%M")
-    rapport = f"=============================\nPREDITRADE AI PRO V4\n=============================\n\nDate : {date}\nUtilisateur : {st.session_state.user_email}\nCapital :\n${st.session_state.cash:,.2f}\n\nNombre d'analyses :\n{len(st.session_state.history)}\n\nVersion :\nPrediTrade AI Pro V4.0\n\nAuteur :\nFredo Blong\n\n============================="
+    rapport = f"=============================\nPREDITRADE AI PRO V4\n=============================\n\nDate : {date}\nUtilisateur : {st.session_state.user_email}\nCapital :\n${st.session_state.cash:,.2f}\n\nNombre d'analyses :\n{len(st.session_state.history)}\n\nVersion :\nPrediTrade AI Pro V4.0\nAuteur :\nFredo Blong\n============================="
     st.download_button("📄 Télécharger le rapport", rapport, "rapport_preditrade.txt")
     if st.session_state.history:
         df = pd.DataFrame(st.session_state.history)
@@ -377,17 +406,17 @@ elif menu == "📄 Rapports":
     else:
         st.info("Aucune analyse enregistrée.")
 
-# ============== 17. PARAMÈTRES = FIX: séparé des rapports ==============
+# ============== 17. PARAMÈTRES ==============
 elif menu == "⚙️ Paramètres + Paiement":
     st.header("⚙️ Paramètres + Paiement")
-    st.info("Passe en Premium pour débloquer: GPT-4, Scanner illimité, 100 Alertes, Export PDF Pro")
+    st.info("Passe en Premium pour débloquer: Gemini, Scanner illimité, 100 Alertes, Export PDF Pro")
     col1,col2 = st.columns(2)
     with col1:
         st.markdown("### Gratuit")
-        st.write("✅ 5 Analyses/jour\n❌ Pas de GPT-4\n❌ 3 Alertes max")
+        st.write("✅ 5 Analyses/jour\n❌ Pas de Gemini\n❌ 3 Alertes max")
     with col2:
         st.markdown("### ⭐ Premium $19.99/mois")
-        st.write("✅ Analyses illimitées\n✅ GPT-4\n✅ 100 Alertes\n✅ Support Prioritaire")
+        st.write("✅ Analyses illimitées\n✅ Gemini\n✅ 100 Alertes\n✅ Support Prioritaire")
         if st.button("S'abonner avec Stripe", type="primary"):
             st.link_button("Payer avec Stripe", "https://buy.stripe.com/test_xxx")
 
