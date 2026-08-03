@@ -23,7 +23,7 @@ if not os.path.exists(USERS_FILE):
         json.dump({}, f)
 
 st.set_page_config(page_title="PrediTrade AI Pro V4", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
-
+st.write("✅ PrediTrade AI démarre correctement")
 # ============== 0. LOGIN + PREMIUM SYSTEM ==============
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
