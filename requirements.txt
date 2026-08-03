@@ -4,6 +4,5 @@ numpy
 yfinance
 plotly>=5.22.0
 requests
-campay-sdk
 google-generativeai
-from campay.api import Client as CamPayClient
+campay-sdk 
