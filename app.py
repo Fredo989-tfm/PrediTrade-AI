@@ -167,7 +167,7 @@ def faire_predictions(prix, score):
     strength = (score - 50) / 100
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
-def assistant_gpt4(question, contexte): # FIX: 1 seule fonction, avec Gemini
+def assistant_gpt4(question, contexte):
     if not st.session_state.is_premium:
         return "⚠️ Fonction réservée aux utilisateurs Premium."
     try:
@@ -182,7 +182,7 @@ Contexte : {contexte}
 Donne une analyse claire en français.
 Explique : - la tendance, - les points forts, - les risques, - puis termine par une recommandation.
 """
-        response = model.generate_content(prompt) # FIX: Indenté dans le try
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"❌ Erreur Gemini : {e}"
@@ -246,7 +246,7 @@ elif menu == TEXT["ai"]:
         prediction_24h, prediction_7d, prediction_30d, prediction_90d = faire_predictions(current_price, prediscore)
 
         analyse = {"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset_name, "Prix": round(current_price, 2), "Score": prediscore, "Signal": trading_signal, "Confiance": confidence}
-        st.session_state.history.append(analyse) # FIX: 1 seul ajout
+        st.session_state.history.append(analyse)
 
         st.metric("💰 Prix actuel", f"${current_price:,.2f}")
         st.plotly_chart(go.Figure(go.Candlestick(x=data.index, open=data["Open"].squeeze(), high=data["High"].squeeze(), low=data["Low"].squeeze(), close=data["Close"].squeeze())).update_layout(template="plotly_dark", height=500), use_container_width=True)
@@ -265,89 +265,73 @@ elif menu == TEXT["ai"]:
 elif menu == TEXT["scanner"]:
     st.header(TEXT["scanner"])
     marché = st.selectbox("Filtre par marché", list(ASSETS.keys()))
-    if st.button("Recher les meilleures opportunités"): # FIX
+    if st.button("Recher les meilleures opportunités"):
         results = []
         for name, tick in list(ASSETS[marché].items()):
             df_scan = charger_donnees(tick, "1mo", "1d")
             if not df_scan.empty: results.append({"Actif": name, "Score": calculer_prediscore(calculer_indicateurs(df_scan))[0]})
         st.dataframe(pd.DataFrame(results).sort_values(by="Score", ascending=False), use_container_width=True)
 
-# ============== 8. COMPARAISON ==============
-actifs = st.multiselect(
-    "Choisir 2 à 4 actifs",
-    [a for categorie in ASSETS.values() for a in categorie.keys()],
-    default=["Bitcoin", "Apple"]
-)
+# ============== 8. COMPARAISON = FIX: remis dans le elif ==============
+elif menu == "⚖️ Comparaison":
+    st.header("⚖️ Comparaison multi-actifs")
+    actifs = st.multiselect(
+        "Choisir 2 à 4 actifs",
+        [a for categorie in ASSETS.values() for a in categorie.keys()],
+        default=["Bitcoin", "Apple"]
+    )
+    if len(actifs) >= 2:
+        df_comp = pd.DataFrame()
+        for categorie in ASSETS.values():
+            for nom, ticker in categorie.items():
+                if nom in actifs:
+                    data = charger_donnees(ticker, "3mo", "1d")
+                    if not data.empty:
+                        df_comp[nom] = data["Close"].squeeze()
+        if not df_comp.empty:
+            st.line_chart(df_comp)
+            st.subheader("Corrélation")
+            st.dataframe(df_comp.corr(), use_container_width=True)
 
-if len(actifs) >= 2:
-
-    df_comp = pd.DataFrame()
-
-    for categorie in ASSETS.values():
-        for nom, ticker in categorie.items():
-
-            if nom in actifs:
-
-                data = charger_donnees(ticker, "3mo", "1d")
-
-                if not data.empty:
-                    df_comp[nom] = data["Close"].squeeze()
-
-    if not df_comp.empty:
-        st.line_chart(df_comp)
-        st.subheader("Corrélation")
-        st.dataframe(df_comp.corr(), use_container_width=True)
-
-# ============== 9. PORTEFEUILLE ==============
+# ============== 9. PORTEFEUILLE = FIX: indentation + ajout selectbox actif ==============
 elif menu == "💼 Portefeuille":
     st.header("💼 Portefeuille")
+
+    # FIX: il faut choisir l'actif pour acheter/vendre
+    actif_portefeuille = st.selectbox("Choisir l'actif", list(ASSETS["Crypto"].keys()) + list(ASSETS["Actions"].keys()))
+    prix_actuel = 68000 if "Bitcoin" in actif_portefeuille else 150 # prix demo
+
     qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
     col1,col2 = st.columns(2)
     with col1:
         if st.button("Acheter"):
-    if asset_name not in st.session_state.portfolio_multi:
-        st.session_state.portfolio_multi[asset_name] = {
-            "quantite": 0
-        }
-
-    st.session_state.portfolio_multi[asset_name]["quantite"] += qty
-
-    st.session_state.cash -= qty * current_price
-
-    st.session_state.operations.append({
-        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "Type": "Achat",
-        "Actif": asset_name,
-        "Quantité": qty,
-        "Prix": current_price
-    })
-
-    st.success("✅ Achat effectué")
-    with col2:
-        if st.button("Vendre"):
-    if asset_name in st.session_state.portfolio_multi:
-
-        if st.session_state.portfolio_multi[asset_name]["quantite"] >= qty:
-
-            st.session_state.portfolio_multi[asset_name]["quantite"] -= qty
-
-            st.session_state.cash += qty * current_price
-
+            if actif_portefeuille not in st.session_state.portfolio_multi:
+                st.session_state.portfolio_multi[actif_portefeuille] = {"quantite": 0}
+            st.session_state.portfolio_multi[actif_portefeuille]["quantite"] += qty
+            st.session_state.cash -= qty * prix_actuel
             st.session_state.operations.append({
                 "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "Type": "Vente",
-                "Actif": asset_name,
-                "Quantité": qty,
-                "Prix": current_price
+                "Type": "Achat", "Actif": actif_portefeuille,
+                "Quantité": qty, "Prix": prix_actuel
             })
+            st.success("✅ Achat effectué")
+    with col2:
+        if st.button("Vendre"):
+            if actif_portefeuille in st.session_state.portfolio_multi:
+                if st.session_state.portfolio_multi[actif_portefeuille]["quantite"] >= qty:
+                    st.session_state.portfolio_multi[actif_portefeuille]["quantite"] -= qty
+                    st.session_state.cash += qty * prix_actuel
+                    st.session_state.operations.append({
+                        "Date": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "Type": "Vente", "Actif": actif_portefeuille,
+                        "Quantité": qty, "Prix": prix_actuel
+                    })
+                    st.success("✅ Vente effectuée")
+                else:
+                    st.error("Quantité insuffisante.")
+            else:
+                st.error("Cet actif n'est pas dans votre portefeuille.")
 
-            st.success("✅ Vente effectuée")
-
-        else:
-            st.error("Quantité insuffisante.")
-
-    else:
-        st.error("Cet actif n'est pas dans votre portefeuille.")
     st.metric("Cash", f"${st.session_state.cash:,.2f}")
     st.bar_chart({k:v["quantite"] for k,v in st.session_state.portfolio_multi.items()})
     st.dataframe(pd.DataFrame(st.session_state.operations))
