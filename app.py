@@ -1,5 +1,4 @@
-"""
-
+"" "
 PrediTrade AI Pro V4.0 - FUSION V3.0 CORRIGÉ
 Auteur : Fredo Blong
 40 Blocs V2.1 + 16 Modules V3.0 + Login + Stripe + GPT4
@@ -15,6 +14,8 @@ from datetime import datetime
 import hashlib
 import json
 import os
+import campay
+from campay.api import Client as CamPayClient
 
 # Base de données des utilisateurs
 USERS_FILE = "users.json"
@@ -106,6 +107,11 @@ for key, val in [("history",[]),("cash",10000.0),("operations",[]),("portfolio_m
 if not st.session_state.logged_in:
     page_login()
     st.stop()
+campay_client = CamPayClient(
+    app_username=st.secrets["CAMPAY_USERNAME"],
+    app_password=st.secrets["CAMPAY_PASSWORD"],
+    environment="PROD"
+)
 
 # ============== 1. STYLE + LANGUE V4 ==============
 def appliquer_style():
@@ -186,6 +192,18 @@ Explique : - la tendance, - les points forts, - les risques, - puis termine par 
         return response.text
     except Exception as e:
         return f"❌ Erreur Gemini : {e}"
+        def paiement_campay(numero, montant):
+    try:
+        paiement = campay_client.collect({
+            "amount": str(montant),
+            "currency": "XAF",
+            "from": numero,
+            "description": "Abonnement Premium PrediTrade AI"
+        })
+        return paiement
+    except Exception as e:
+        st.error(f"Erreur CamPay : {e}")
+        return None
 
 # ============== 3. SIDEBAR V4.0 ==============
 st.sidebar.title("🚀 PrediTrade AI V4")
@@ -401,8 +419,20 @@ elif menu == "⚙️ Paramètres + Paiement":
     with col2:
         st.markdown("### ⭐ Premium $19.99/mois")
         st.write("✅ Analyses illimitées\n✅ Gemini\n✅ 100 Alertes\n✅ Support Prioritaire")
-        if st.button("S'abonner avec Stripe", type="primary"):
-            st.link_button("Payer avec Stripe", "https://buy.stripe.com/test_xxx")
+        numero = st.text_input(
+    "Numéro MTN ou Orange Money",
+    placeholder="2376XXXXXXXX"
+)
 
+if st.button("💳 Payer avec MTN / Orange Money", type="primary"):
+    if numero == "":
+        st.warning("Veuillez entrer votre numéro.")
+    else:
+        resultat = paiement_campay(numero, 19990)
+
+        if resultat:
+            st.success("✅ Une demande de paiement a été envoyée sur votre téléphone.")
+        else:
+            st.error("❌ Impossible de lancer le paiement.")
 st.sidebar.divider()
 st.sidebar.caption("© 2026 Tous droits réservés | Auteur : Fredo Blong")
