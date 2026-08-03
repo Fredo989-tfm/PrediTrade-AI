@@ -35,6 +35,11 @@ def activate_premium_user(email):
 
 def page_login():
     st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.5</h1><h3 style="color:white;">Version Finale 4.5</h3></div>""", unsafe_allow_html=True)
+    st.button(
+    "🔵 Se connecter avec Google",
+    use_container_width=True,
+    key="google_login"
+    )
     tab1, tab2 = st.tabs(["🔐 Connexion", "📝 Inscription"])
     with tab1:
         email = st.text_input("Email", key="login_email")
