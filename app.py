@@ -137,7 +137,10 @@ def paiement_campay(numero, montant):
 # ============== 2. SIDEBAR ==============
 st.sidebar.title("🚀 PrediTrade AI V4.5")
 st.sidebar.write(f"📧 {st.session_state.user_email}")
-st.sidebar.success("⭐ Premium") if st.session_state.is_premium else st.sidebar.info("🆓 Gratuit")
+if st.session_state.is_premium:
+    st.sidebar.success("⭐ Premium") 
+else:
+    st.sidebar.info("🆓 Gratuit")
 st.sidebar.write(f"💰 Cash: ${st.session_state.cash:,.2f}")
 st.sidebar.write(f"📈 Analyses: {len(st.session_state.history)}")
 menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","📈 Marchés","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📰 Actualités","🔔 Alertes","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
