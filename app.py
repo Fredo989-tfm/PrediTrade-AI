@@ -1,32 +1,30 @@
-"""
-PrediTrade AI Pro V4.5 - FUSION V3.0 COMPLÈTE
-Auteur : Fredo Blong
-40 Blocs V2.1 + 16 Modules V3.0 + Login + CamPay + Gemini + Prix Live
-"""
 import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime
 import hashlib
 import json
 import os
 import time
 import random
-from io import BytesIO
-from authlib.integrations.requests_client import OAuth2Session
-import streamlit.components.v1 as components
-import secrets
+import requests 
 
 USERS_FILE = "users.json"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
-st.set_page_config(page_title="PrediTrade AI Pro V4.5", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
-st.markdown("""<style>.main{background-color:#0E1117;}div[data-testid="metric-container"]{background:#161B22;border:1px solid #30363d;border-radius:12px;padding:15px;}h1,h2,h3{color:white;}</style>""", unsafe_allow_html=True)
+st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
+st.markdown("""<meta charset="UTF-8"><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+html, body, [class*="st-"] {font-family: 'Inter', sans-serif;}
+.main{background-color:#0E1117;}div[data-testid="metric-container"]{background:#161B22;border:1px solid #30363d;border-radius:12px;padding:15px;}h1,h2,h3{color:white;}</style>""", unsafe_allow_html=True)
 
-# ============== 0. LOGIN + PREMIUM ==============
+# ============== 0. LOGIN + GOOGLE OAUTH ==============
+GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
+GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
+REDIRECT_URI = "https://eai.streamlit.app/" # <-- DOIT ÊTRE ICI AVANT page_login
+
 def hash_password(p): return hashlib.sha256(p.encode()).hexdigest()
 def load_users():
     with open(USERS_FILE, "r", encoding="utf-8") as f: return json.load(f)
@@ -36,6 +34,44 @@ def activate_premium_user(email):
     users = load_users()
     if email in users: users[email]["premium"] = True; save_users(users)
 
+def page_login():
+    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.2</h1></div>""", unsafe_allow_html=True)
+    
+    # BOUTON GOOGLE - MAINTENANT REDIRECT_URI EXISTE
+    google_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=openid%20email%20profile"
+    st.markdown(f'<a href="{google_url}" target="_self"><button style="width:100%;padding:12px;background:#4285F4;color:white;border:none;border-radius:8px;font-size:16px;">🔵 Se connecter avec Google</button></a>', unsafe_allow_html=True)
+    
+    # CHECK SI RETOUR GOOGLE
+    query_params = st.query_params
+    if "code" in query_params:
+        try:
+            data = {
+                "code": query_params["code"],
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uri": REDIRECT_URI,
+                "grant_type": "authorization_code"
+            }
+            r = requests.post("https://oauth2.googleapis.com/token", data=data)
+            token = r.json()
+            user_info = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"}).json()
+            
+            google_email = user_info["email"]
+            users = load_users()
+            if google_email not in users:
+                users[google_email] = {"password": "", "premium": False}
+                save_users(users)
+            st.session_state.logged_in = True
+            st.session_state.user_email = google_email
+            st.session_state.is_premium = users[google_email]["premium"]
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erreur Google: {e}")
+
+    st.divider()
+    tab1, tab2 = st.tabs(["🔐 Connexion Email", "📝 Inscription"])
+    #... le reste identique
 def page_login():
     st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.1</h1></div>""", unsafe_allow_html=True)
     
