@@ -1,4 +1,24 @@
 import streamlit as st
+from streamlit_oauth import OAuth2Component
+
+# Mets tes secrets
+CLIENT_ID = st.secrets["auth"]["client_id"]
+CLIENT_SECRET = st.secrets["auth"]["client_secret"]
+
+oauth2 = OAuth2Component(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    "https://accounts.google.com/o/oauth2/auth",
+    "https://oauth2.googleapis.com/token",
+    "https://www.googleapis.com/oauth2/v1/userinfo",
+    "https://accounts.google.com/o/oauth2/revoke",
+)
+
+result = oauth2.authorize_button("Se connecter avec Google", redirect_uri="https://preditradeai.streamlit.app/oauth2callback")
+
+if result and 'token' in result:
+    st.success(f"Connecté : {result['email']}")
+import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
