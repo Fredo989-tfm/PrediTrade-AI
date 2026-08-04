@@ -57,24 +57,24 @@ st.link_button(
     authorization_url,
     use_container_width=True,
 )
-    tab1, tab2 = st.tabs(["🔐 Connexion", "📝 Inscription"])
-    with tab1:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Mot de passe", type="password", key="login_password")
-        if st.button("Se connecter", type="primary", use_container_width=True):
-            users = load_users()
-            if email in users and users[email]["password"] == hash_password(password):
-               st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = users[email]["premium"]; st.rerun()
-            else: st.error("❌ Email ou mot de passe incorrect.")
-    with tab2:
-       email_new = st.text_input("Email", key="register_email")
-       password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
-       if st.button("Créer compte gratuit"):
-            users = load_users()
-            if email_new in users: st.error("❌ Cet email existe déjà.")
-            else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
-    if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
-        st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
+tab1, tab2 = st.tabs(["🔐 Connexion", "📝 Inscription"])
+with tab1:
+    email = st.text_input("Email", key="login_email")
+    password = st.text_input("Mot de passe", type="password", key="login_password")
+    if st.button("Se connecter", type="primary", use_container_width=True):
+        users = load_users()
+        if email in users and users[email]["password"] == hash_password(password):
+            st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = users[email]["premium"]; st.rerun()
+        else: st.error("❌ Email ou mot de passe incorrect.")
+with tab2:
+    email_new = st.text_input("Email", key="register_email")
+    password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
+    if st.button("Créer compte gratuit"):
+        users = load_users()
+        if email_new in users: st.error("❌ Cet email existe déjà.")
+        else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
+if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
+    st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
 
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "is_premium" not in st.session_state: st.session_state.is_premium = False
