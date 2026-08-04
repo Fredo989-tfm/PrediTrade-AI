@@ -9,17 +9,33 @@ oauth2 = OAuth2Component(
     CLIENT_ID,
     CLIENT_SECRET,
     "https://accounts.google.com/o/oauth2/auth",
+    import streamlit as st
+from streamlit_oauth import OAuth2Component
+
+st.set_page_config(page_title="PrediTrade AI")
+
+CLIENT_ID = st.secrets["auth"]["client_id"]
+CLIENT_SECRET = st.secrets["auth"]["client_secret"]
+REDIRECT_URI = "https://preditradeai.streamlit.app/oauth2callback"
+
+oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, 
+    "https://accounts.google.com/o/oauth2/auth",
     "https://oauth2.googleapis.com/token",
-    "https://www.googleapis.com/oauth2/v1/userinfo",
-    "https://accounts.google.com/o/oauth2/revoke",
+    "https://www.googleapis.com/oauth2/v1/userinfo")
+
+result = oauth2.authorize_button(
+    name="🔒 Se connecter avec Google",
+    redirect_uri=REDIRECT_URI,
+    scope="openid email profile"
 )
 
-result = oauth2.authorize_button("Se connecter avec Google", redirect_uri="https://preditradeai.streamlit.app/oauth2callback")
+if not result:
+    st.stop() # Bloque l'app si pas connecté
 
-if result and 'token' in result:
-    st.success(f"Connecté : {result['email']}")
-import streamlit as st
-import pandas as pd
+if 'email' in result:
+    st.success(f"Bienvenue {result['email']}")
+    st.divider()
+
 import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
