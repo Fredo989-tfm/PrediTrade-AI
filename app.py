@@ -9,17 +9,20 @@ import json
 import os
 import time
 import random
-import requests 
+import requests
 
 USERS_FILE = "users.json"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
-st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide") st.markdown("""
+st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
+
+# FIX CSS : 1 SEUL BLOC, PAS DE DOUBLON
+st.markdown("""
 <meta charset="UTF-8">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
- 
+
 html, body, [class*="st-"] {
     font-family: 'Inter', sans-serif;
 }
@@ -35,27 +38,11 @@ div[data-testid="metric-container"] {
 h1,h2,h3 {
     color:white;
 }
+/* FIX pour les accents coupés sur mobile */
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 </style>
-""", unsafe_allow_html=True).main {
-background-color:#0E1117;
-}
-div[data-testid="metric-container"] {
-    background:#161B22;
-    border:1px solid #30363d;
-    border-radius:12px;
-    padding:15px;
-}
-h1,h2,h3 {
-    color:white;
-}
-/* FIX pour les accents coupés sur mobile */
-* {
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-</style>
 """, unsafe_allow_html=True)
+
 # ============== 0. LOGIN + GOOGLE OAUTH ==============
 GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
@@ -70,13 +57,14 @@ def activate_premium_user(email):
     users = load_users()
     if email in users: users[email]["premium"] = True; save_users(users)
 
+# UNE SEULE FONCTION page_login
 def page_login():
-    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.2</h1></div>""", unsafe_allow_html=True)
-    
-    # BOUTON GOOGLE - MAINTENANT REDIRECT_URI EXISTE
+    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.3</h1></div>""", unsafe_allow_html=True)
+
+    # BOUTON GOOGLE
     google_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=openid%20email%20profile"
     st.markdown(f'<a href="{google_url}" target="_self"><button style="width:100%;padding:12px;background:#4285F4;color:white;border:none;border-radius:8px;font-size:16px;">🔵 Se connecter avec Google</button></a>', unsafe_allow_html=True)
-    
+
     # CHECK SI RETOUR GOOGLE
     query_params = st.query_params
     if "code" in query_params:
@@ -91,45 +79,7 @@ def page_login():
             r = requests.post("https://oauth2.googleapis.com/token", data=data)
             token = r.json()
             user_info = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"}).json()
-            
-            google_email = user_info["email"]
-            users = load_users()
-            if google_email not in users:
-                users[google_email] = {"password": "", "premium": False}
-                save_users(users)
-            st.session_state.logged_in = True
-            st.session_state.user_email = google_email
-            st.session_state.is_premium = users[google_email]["premium"]
-            st.query_params.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erreur Google: {e}")
 
-    st.divider()
-    tab1, tab2 = st.tabs(["🔐 Connexion Email", "📝 Inscription"])
-    #... le reste identique
-def page_login():
-    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.1</h1></div>""", unsafe_allow_html=True)
-    
-    # BOUTON GOOGLE SIMPLE - PAS BESOIN D'AUTHLIB
-    st.markdown(f'<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={st.secrets["GOOGLE_CLIENT_ID"]}&redirect_uri={REDIRECT_URI}&response_type=code&scope=openid%20email%20profile" target="_self"><button style="width:100%;padding:12px;background:#4285F4;color:white;border:none;border-radius:8px;font-size:16px;">🔵 Se connecter avec Google</button></a>', unsafe_allow_html=True)
-    
-    # CHECK SI RETOUR GOOGLE
-    query_params = st.query_params
-    if "code" in query_params:
-        try:
-            import requests
-            data = {
-                "code": query_params["code"],
-                "client_id": st.secrets["GOOGLE_CLIENT_ID"],
-                "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
-                "redirect_uri": REDIRECT_URI,
-                "grant_type": "authorization_code"
-            }
-            r = requests.post("https://oauth2.googleapis.com/token", data=data)
-            token = r.json()
-            user_info = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"}).json()
-            
             google_email = user_info["email"]
             users = load_users()
             if google_email not in users:
@@ -160,9 +110,10 @@ def page_login():
             users = load_users()
             if email_new in users: st.error("❌ Cet email existe déjà.")
             else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
-    
+
     if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
         st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
+
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "is_premium" not in st.session_state: st.session_state.is_premium = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
@@ -244,10 +195,10 @@ def paiement_campay(numero, montant):
     return campay_client.collect({"amount": str(montant), "currency": "XAF", "from": numero, "operator": "MTN" if numero.startswith("6") else "ORANGE"})
 
 # ============== 2. SIDEBAR ==============
-st.sidebar.title("🚀 PrediTrade AI V4.5")
+st.sidebar.title("🚀 PrediTrade AI V4.6.3")
 st.sidebar.write(f"📧 {st.session_state.user_email}")
 if st.session_state.is_premium:
-    st.sidebar.success("⭐ Premium") 
+    st.sidebar.success("⭐ Premium")
 else:
     st.sidebar.info("🆓 Gratuit")
 st.sidebar.write(f"💰 Cash: ${st.session_state.cash:,.2f}")
@@ -370,7 +321,7 @@ elif menu == "📚 Historique":
 
 elif menu == "📄 Rapports":
     st.header("📄 Rapports IA Pro")
-    rapport = f"PREDITRADE AI PRO V4.5\nDate: {datetime.now()}\nUser: {st.session_state.user_email}\nCapital: ${st.session_state.cash}\nAnalyses: {len(st.session_state.history)}"
+    rapport = f"PREDITRADE AI PRO V4.6.3\nDate: {datetime.now()}\nUser: {st.session_state.user_email}\nCapital: ${st.session_state.cash}\nAnalyses: {len(st.session_state.history)}"
     st.download_button("📄 Télécharger Rapport TXT", rapport, "rapport.txt")
 
 # ============== 10. PAIEMENT ==============
