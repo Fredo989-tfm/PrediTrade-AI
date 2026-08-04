@@ -15,12 +15,11 @@ USERS_FILE = "users.json"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
-st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
-st.markdown("""
+st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide") st.markdown("""
 <meta charset="UTF-8">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
+ 
 html, body, [class*="st-"] {
     font-family: 'Inter', sans-serif;
 }
@@ -38,12 +37,8 @@ h1,h2,h3 {
 }
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 </style>
-""", unsafe_allow_html=True)
-html, body, [class*="st-"] {
-    font-family: 'Inter', sans-serif;
-}
-.main {
-    background-color:#0E1117;
+""", unsafe_allow_html=True).main {
+background-color:#0E1117;
 }
 div[data-testid="metric-container"] {
     background:#161B22;
