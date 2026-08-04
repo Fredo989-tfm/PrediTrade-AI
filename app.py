@@ -16,10 +16,33 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
 st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
-st.markdown("""<meta charset="UTF-8"><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-html, body, [class*="st-"] {font-family: 'Inter', sans-serif;}
-.main{background-color:#0E1117;}div[data-testid="metric-container"]{background:#161B22;border:1px solid #30363d;border-radius:12px;padding:15px;}h1,h2,h3{color:white;}</style>""", unsafe_allow_html=True)
+st.markdown("""
+<meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
+html, body, [class*="st-"] {
+    font-family: 'Inter', sans-serif;
+}
+.main {
+    background-color:#0E1117;
+}
+div[data-testid="metric-container"] {
+    background:#161B22;
+    border:1px solid #30363d;
+    border-radius:12px;
+    padding:15px;
+}
+h1,h2,h3 {
+    color:white;
+}
+/* FIX pour les accents coupés sur mobile */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+</style>
+""", unsafe_allow_html=True)
 # ============== 0. LOGIN + GOOGLE OAUTH ==============
 GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
