@@ -37,45 +37,60 @@ def activate_premium_user(email):
     if email in users: users[email]["premium"] = True; save_users(users)
 
 def page_login():
-    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.5</h1><h3 style="color:white;">Version Finale 4.5</h3></div>""", unsafe_allow_html=True)
-    oauth = OAuth2Session(
-    GOOGLE_CLIENT_ID,
-    redirect_uri=REDIRECT_URI,
-    scope=SCOPE,
-)
+    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.1</h1></div>""", unsafe_allow_html=True)
+    
+    # BOUTON GOOGLE SIMPLE - PAS BESOIN D'AUTHLIB
+    st.markdown(f'<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={st.secrets["GOOGLE_CLIENT_ID"]}&redirect_uri={REDIRECT_URI}&response_type=code&scope=openid%20email%20profile" target="_self"><button style="width:100%;padding:12px;background:#4285F4;color:white;border:none;border-radius:8px;font-size:16px;">🔵 Se connecter avec Google</button></a>', unsafe_allow_html=True)
+    
+    # CHECK SI RETOUR GOOGLE
+    query_params = st.query_params
+    if "code" in query_params:
+        try:
+            import requests
+            data = {
+                "code": query_params["code"],
+                "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+                "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
+                "redirect_uri": REDIRECT_URI,
+                "grant_type": "authorization_code"
+            }
+            r = requests.post("https://oauth2.googleapis.com/token", data=data)
+            token = r.json()
+            user_info = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {token['access_token']}"}).json()
+            
+            google_email = user_info["email"]
+            users = load_users()
+            if google_email not in users:
+                users[google_email] = {"password": "", "premium": False}
+                save_users(users)
+            st.session_state.logged_in = True
+            st.session_state.user_email = google_email
+            st.session_state.is_premium = users[google_email]["premium"]
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Erreur Google: {e}")
 
-authorization_url, state = oauth.create_authorization_url(
-    AUTHORIZATION_URL,
-    access_type="offline",
-    prompt="select_account"
-)
-
-st.session_state["oauth_state"] = state
-
-st.link_button(
-    "🔵 Continuer avec Google",
-    authorization_url,
-    use_container_width=True,
-)
-tab1, tab2 = st.tabs(["🔐 Connexion", "📝 Inscription"])
-with tab1:
-    email = st.text_input("Email", key="login_email")
-    password = st.text_input("Mot de passe", type="password", key="login_password")
-    if st.button("Se connecter", type="primary", use_container_width=True):
-        users = load_users()
-        if email in users and users[email]["password"] == hash_password(password):
-            st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = users[email]["premium"]; st.rerun()
-        else: st.error("❌ Email ou mot de passe incorrect.")
-with tab2:
-    email_new = st.text_input("Email", key="register_email")
-    password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
-    if st.button("Créer compte gratuit"):
-        users = load_users()
-        if email_new in users: st.error("❌ Cet email existe déjà.")
-        else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
-if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
-    st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
-
+    st.divider()
+    tab1, tab2 = st.tabs(["🔐 Connexion Email", "📝 Inscription"])
+    with tab1:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Mot de passe", type="password", key="login_password")
+        if st.button("Se connecter", type="primary", use_container_width=True):
+            users = load_users()
+            if email in users and users[email]["password"] == hash_password(password):
+               st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = users[email]["premium"]; st.rerun()
+            else: st.error("❌ Email ou mot de passe incorrect.")
+    with tab2:
+       email_new = st.text_input("Email", key="register_email")
+       password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
+       if st.button("Créer compte gratuit"):
+            users = load_users()
+            if email_new in users: st.error("❌ Cet email existe déjà.")
+            else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
+    
+    if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
+        st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "is_premium" not in st.session_state: st.session_state.is_premium = False
 if "user_email" not in st.session_state: st.session_state.user_email = ""
