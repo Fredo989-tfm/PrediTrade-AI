@@ -36,6 +36,24 @@ div[data-testid="metric-container"] {
 h1,h2,h3 {
     color:white;
 }
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+</style>
+""", unsafe_allow_html=True)
+html, body, [class*="st-"] {
+    font-family: 'Inter', sans-serif;
+}
+.main {
+    background-color:#0E1117;
+}
+div[data-testid="metric-container"] {
+    background:#161B22;
+    border:1px solid #30363d;
+    border-radius:12px;
+    padding:15px;
+}
+h1,h2,h3 {
+    color:white;
+}
 /* FIX pour les accents coupés sur mobile */
 * {
     -webkit-font-smoothing: antialiased;
