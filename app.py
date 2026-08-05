@@ -17,7 +17,7 @@ st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout
 
 CLIENT_ID = st.secrets["auth"]["client_id"]
 CLIENT_SECRET = st.secrets["auth"]["client_secret"]
-REDIRECT_URI = "https://preditradeai.streamlit.app/
+REDIRECT_URI = "https://preditradeai.streamlit.app/oauth2callback" 
 
 oauth2 = OAuth2Component(
     CLIENT_ID, CLIENT_SECRET,
