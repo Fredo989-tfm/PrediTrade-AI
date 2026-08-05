@@ -191,6 +191,30 @@ if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_
 # ============== 3. DASHBOARD ==============
 if menu == "📊 Tableau de bord":
     st.header("📊 Tableau de bord")
+    st.subheader("⭐ Ma Watchlist")
+
+col1, col2 = st.columns([3,1])
+
+with col1:
+    actif_watch = st.selectbox(
+        "Ajouter un actif à la Watchlist",
+        [a for categorie in ASSETS.values() for a in categorie.keys()],
+        key="watch_select"
+    )
+
+with col2:
+    if st.button("➕ Ajouter"):
+        if actif_watch not in st.session_state.watchlist:
+            st.session_state.watchlist.append(actif_watch)
+
+if st.session_state.watchlist:
+    st.write("### Mes actifs favoris")
+    for actif in st.session_state.watchlist:
+        ticker = [v for cat in ASSETS.values() for nom, v in cat.items() if nom == actif][0]
+        prix = get_price(ticker)
+        st.metric(actif, f"${prix:,.2f}")
+else:
+    st.info("Aucun actif favori.")
     valeur_actifs = sum([d["quantite"] * get_price([v for k in ASSETS.values() for a,v in k.items() if a == actif][0]) for actif, d in st.session_state.portfolio_multi.items()])
     valeur_totale = st.session_state.cash + valeur_actifs; pnl = valeur_totale - 100000
     c1,c2,c3,c4 = st.columns(4)
@@ -207,6 +231,8 @@ elif menu == "🧠 Analyse IA Pro":
     marché = st.selectbox("Marché", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS[marché].keys()))
     ticker = ASSETS[marché][asset_name]
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = []
     if st.button("🚀 Lancer l'analyse"):
 
         # BLOCAGE 5 ANALYSES GRATUITES
