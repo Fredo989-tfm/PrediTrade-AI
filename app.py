@@ -119,6 +119,15 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
 
 @st.cache_data(ttl=120)
+@st.cache_data(ttl=900)
+def get_market_news():
+    return [
+        "📰 Bitcoin reste au-dessus de son support principal.",
+        "📰 Nvidia publie des résultats solides.",
+        "📰 Les marchés attendent la décision de la Fed.",
+        "📰 L'or progresse avec les incertitudes économiques.",
+        "📰 L'EUR/USD évolue dans une zone de consolidation."
+    ]
 def get_price(ticker):
     data = yf.download(ticker, period="1d", interval="1m", progress=False)
     return float(data["Close"].squeeze().iloc[-1]) if not data.empty else 0
@@ -209,6 +218,10 @@ with col2:
 
 if st.session_state.watchlist:
     st.write("### Mes actifs favoris")
+    st.subheader("📰 Actualités du marché")
+
+for news in get_market_news():
+    st.info(news)
     for actif in st.session_state.watchlist:
         ticker = [v for cat in ASSETS.values() for nom, v in cat.items() if nom == actif][0]
         prix = get_price(ticker)
