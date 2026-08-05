@@ -18,13 +18,14 @@ st.set_page_config(page_title="PrediTrade AI Pro V5.0", page_icon="🚀", layout
 #CLIENT_ID = st.secrets["auth"]["client_id"]
 #CLIENT_SECRET = st.secrets["auth"]["client_secret"]
 #REDIRECT_URI = "https://preditradeai.streamlit.app/oauth2callback"
-
 #oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, "https://accounts.google.com/o/oauth2/auth", "https://oauth2.googleapis.com/token", "https://www.googleapis.com/oauth2/v1/userinfo")
 
 USERS_FILE = "users.json"
 WATCHLIST_FILE = "watchlist.csv"
 if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
+if not os.path.exists(WATCHLIST_FILE): # <-- CORRECTION 1: Init watchlist
+    pd.DataFrame(columns=['email', 'watchlist']).to_csv(WATCHLIST_FILE, index=False)
 
 # ============== CSS ==============
 st.markdown("""
@@ -82,11 +83,8 @@ def render_watchlist():
             save_watchlist(st.session_state.user_email, selected); st.success("Watchlist mise à jour!"); st.rerun()
 
 # ============== LOGIN ==============
-def page_login():
-    def page_login():
-    st.title("PrediTrade AI")
-    st.success("Application lancée avec succès")
-    st.stop()   
+def page_login(): # <-- CORRECTION 2: Supprimé le def en double et le st.stop()
+    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V5.0</h1></div>""", unsafe_allow_html=True)
     st.divider()
     tab1, tab2 = st.tabs(["🔐 Connexion Email", "📝 Inscription"])
     with tab1:
@@ -241,9 +239,10 @@ elif menu == "💼 Portefeuille":
 elif menu == "⏪ Backtesting":
     st.header("⏪ Backtesting Stratégie: Achat si RSI<30, Vente si RSI>70")
     marché = st.selectbox("Actif Backtest", ["Bitcoin", "Apple"]); ticker = [v for k in ASSETS.values() for a,v in k.items() if a == marché][0]; data = charger_donnees(ticker, "2y", "1d"); capital = 10000
-    for i in range(50, len(data)): rsi = calculer_indicateurs(data.iloc[:i])["rsi"].iloc[-1]
-    if rsi < 30: capital *= 1.02
-    elif rsi > 70: capital *= 0.98
+    for i in range(50, len(data)): # <-- CORRECTION 3: Indentation
+        rsi = calculer_indicateurs(data.iloc[:i])["rsi"].iloc[-1]
+        if rsi < 30: capital *= 1.02
+        elif rsi > 70: capital *= 0.98
     st.metric("Capital Final Simulé", f"${capital:,.2f}"); st.line_chart(pd.DataFrame({"Capital": np.linspace(10000, capital, 100)}))
 
 # ============== 9. HISTORIQUE ==============
@@ -275,4 +274,4 @@ elif menu == "⚙️ Paramètres + Paiement":
                 if campay_client.get_transaction(res["reference"])["status"] == "SUCCESSFUL": activate_premium_user(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium Activé!"); st.rerun()
     else: st.success("Vous êtes déjà Premium ⭐")
 
-st.sidebar.caption("© 2026 Fredo Blong - PrediTrade AI V5.0")
+st.sidebar.caption("© 2026 Fredo Blong - PrediTrade AI V5.0") 
