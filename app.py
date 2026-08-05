@@ -189,9 +189,5 @@ st.sidebar.write(f"📈 Analyses: {len(st.session_state.history)}")
 menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","📈 Marchés","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📰 Actualités","🔔 Alertes","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
 if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_state.logged_in = False; st.session_state.is_premium = False; st.rerun()
 
-# ============== LE RESTE DE TON APP ==============
-# Colle ici tout ton code dashboard, analyse, etc...
-# J'ai coupé pour ne pas faire 1000 lignes mais garde tout ce que tu avais après
-
 st.header("Bienvenue sur PrediTrade AI")
 st.write("Ton app marche maintenant ✅")
