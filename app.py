@@ -10,7 +10,7 @@ import os
 import time
 import random
 import requests
-from streamlit_oauth import OAuth2Component
+#from streamlit_oauth import OAuth2Component
 
 # ============== 0. CONFIG + SECRETS ==============
 st.set_page_config(page_title="PrediTrade AI Pro V5.0", page_icon="🚀", layout="wide")
@@ -19,7 +19,7 @@ CLIENT_ID = st.secrets["auth"]["client_id"]
 CLIENT_SECRET = st.secrets["auth"]["client_secret"]
 REDIRECT_URI = "https://preditradeai.streamlit.app/oauth2callback"
 
-oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, "https://accounts.google.com/o/oauth2/auth", "https://oauth2.googleapis.com/token", "https://www.googleapis.com/oauth2/v1/userinfo")
+#oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, "https://accounts.google.com/o/oauth2/auth", "https://oauth2.googleapis.com/token", "https://www.googleapis.com/oauth2/v1/userinfo")
 
 USERS_FILE = "users.json"
 WATCHLIST_FILE = "watchlist.csv"
@@ -84,7 +84,7 @@ def render_watchlist():
 # ============== LOGIN ==============
 def page_login():
     st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V5.0</h1></div>""", unsafe_allow_html=True)
-    result = oauth2.authorize_button(name="🔒 Se connecter avec Google", redirect_uri=REDIRECT_URI, scope="openid email profile")
+    #result = oauth2.authorize_button(name="🔒 Se connecter avec Google", redirect_uri=REDIRECT_URI, scope="openid email profile")
     if result and 'email' in result:
         google_email = result['email']; users = load_users()
         if google_email not in users: users[google_email] = {"password": "", "premium": False}; save_users(users)
