@@ -163,7 +163,7 @@ def faire_predictions(prix, score):
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
 def assistant_gpt4(question, contexte):
-    if not st.session_state.is_premium: 
+    if not st.session_state.is_premium:
         return "⚠️ Fonction réservée aux utilisateurs Premium."
     try:
         import google.generativeai as genai
@@ -172,7 +172,7 @@ def assistant_gpt4(question, contexte):
         model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(f"Tu es PrediTrade AI expert trading. Réponds en 3 phrases max en français. {question} Contexte: {contexte}")
         return response.text
-    except Exception as e: 
+    except Exception as e:
         if "429" in str(e) or "quota" in str(e).lower():
             return f"⚠️ Quota Gemini atteint. Analyse basique: {contexte}. Passe demain ou active la facturation sur aistudio.google.com"
         else:
@@ -190,7 +190,7 @@ else:
     st.sidebar.info("🆓 Gratuit")
 st.sidebar.write(f"💰 Cash: ${st.session_state.cash:,.2f}")
 st.sidebar.write(f"📈 Analyses: {len(st.session_state.history)}")
-menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
+menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
 if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_state.logged_in = False; st.session_state.is_premium = False; st.rerun()
 
 # ============== 3. DASHBOARD ==============
@@ -342,10 +342,9 @@ elif menu == "⚙️ Paramètres + Paiement":
                     if campay_client.get_transaction(res["reference"])["status"] == "SUCCESSFUL":
                         activate_premium_user(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium Activé!"); st.rerun()
     else:
-    st.success("Vous êtes déjà Premium ⭐")
-        
-        # === MODULE 5: BACKTEST ===
-elif menu == "📊 Backtest":
+        st.success("Vous êtes déjà Premium ⭐")
+
+# ============== MODULE 5: BACKTEST V5.0 ==============
 elif menu == "📊 Backtest":
     st.header("📊 Backtest Automatique V5.0")
     st.write("Teste la stratégie 'Score > 70 ACHAT / Score < 30 VENTE' sur 30 jours")
@@ -357,43 +356,43 @@ elif menu == "📊 Backtest":
         with st.spinner("Simulation en cours sur 30 jours..."):
             ticker_bt = yf.Ticker(ticker_sym_bt)
             hist = ticker_bt.history(period="30d", interval="1d")
-            
+
             capital = 1000
             position = 0
             trades = []
             equity_curve = [1000]
-            
+
             for i in range(14, len(hist)):
                 data_slice = hist.iloc[:i+1]
                 ind = calculer_indicateurs(data_slice)
 
-score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
+                score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
 
-last_price = float(data_slice["Close"].iloc[-1])
-                
+                last_price = float(data_slice["Close"].iloc[-1])
+
                 if score > 70 and position == 0:
                     position = 1
                     buy_price = last_price
                     trades.append({"Date": data_slice.index[-1].date(), "Type": "ACHAT", "Prix": round(buy_price, 5)})
-                
+
                 elif score < 30 and position == 1:
                     position = 0
                     sell_price = last_price
                     profit = (sell_price - buy_price) / buy_price * 100
                     trades.append({"Date": data_slice.index[-1].date(), "Type": "VENTE", "Prix": round(sell_price, 5), "Profit%": round(profit, 2)})
                     capital = capital * (1 + profit/100)
-                
+
                 equity_curve.append(capital)
-            
+
             st.success(f"Backtest terminé sur {ticker_sym_bt}")
-            
+
             col1, col2, col3 = st.columns(3)
             col1.metric("Capital Final", f"${round(capital, 2)}")
             col2.metric("Profit Total", f"{round((capital-1000)/10, 2)}%")
             col3.metric("Nombre de Trades", f"{len(trades)//2}")
-            
+
             st.line_chart(pd.DataFrame(equity_curve, columns=["Capital"]))
-            
+
             if trades:
                 st.dataframe(pd.DataFrame(trades))
 
