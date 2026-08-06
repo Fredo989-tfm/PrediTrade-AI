@@ -12,6 +12,25 @@ import random
 import requests
 from streamlit_oauth import OAuth2Component
 from firebase_admin import credentials, initialize_app, messaging
+import firebase_admin
+import json
+from firebase_admin import credentials, messaging
+
+if not firebase_admin._apps:
+    firebase_config = json.loads(st.secrets["FIREBASE_CREDENTIALS"])
+    cred = credentials.Certificate(firebase_config)
+    firebase_admin.initialize_app(cred)
+def envoyer_notification(token, titre, message):
+    notification = messaging.Message(
+        notification=messaging.Notification(
+            title=titre,
+            body=message
+        ),
+        token=token
+    )
+
+    response = messaging.send(notification)
+    return response
 
 # ============== 0. CONFIG + SECRETS ==============
 st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
