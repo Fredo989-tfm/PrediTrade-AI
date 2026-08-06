@@ -169,7 +169,7 @@ def assistant_gpt4(question, contexte):
         import google.generativeai as genai
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.0-flash")
         response = model.generate_content(f"Tu es PrediTrade AI expert trading. Réponds en 3 phrases max en français. {question} Contexte: {contexte}")
         return response.text
     except Exception as e: 
