@@ -168,7 +168,7 @@ def assistant_gpt4(question, contexte):
         import google.generativeai as genai
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash-latest")
+        model = genai.GenerativeModel("gemini-2.0-flash-latest")
         response = model.generate_content(f"Tu es PrediTrade AI. {question} Contexte: {contexte}")
         return response.text
     except Exception as e: return f"❌ Erreur Gemini : {e}"
