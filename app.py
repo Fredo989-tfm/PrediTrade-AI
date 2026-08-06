@@ -11,6 +11,7 @@ import time
 import random
 import requests
 from streamlit_oauth import OAuth2Component
+from firebase_admin import credentials, initialize_app, messaging
 
 # ============== 0. CONFIG + SECRETS ==============
 st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
