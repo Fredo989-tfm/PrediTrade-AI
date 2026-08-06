@@ -341,9 +341,11 @@ elif menu == "⚙️ Paramètres + Paiement":
                     time.sleep(3)
                     if campay_client.get_transaction(res["reference"])["status"] == "SUCCESSFUL":
                         activate_premium_user(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium Activé!"); st.rerun()
-    else: st.success("Vous êtes déjà Premium ⭐")
+    else:
+    st.success("Vous êtes déjà Premium ⭐")
         
-        # === MODULE 5: BACKTEST V5.0 CORRIGÉ ===
+        # === MODULE 5: BACKTEST ===
+elif menu == "📊 Backtest":
 elif menu == "📊 Backtest":
     st.header("📊 Backtest Automatique V5.0")
     st.write("Teste la stratégie 'Score > 70 ACHAT / Score < 30 VENTE' sur 30 jours")
@@ -363,7 +365,11 @@ elif menu == "📊 Backtest":
             
             for i in range(14, len(hist)):
                 data_slice = hist.iloc[:i+1]
-                score, rsi, last_price = calculate_score(data_slice)
+                ind = calculer_indicateurs(data_slice)
+
+score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
+
+last_price = float(data_slice["Close"].iloc[-1])
                 
                 if score > 70 and position == 0:
                     position = 1
