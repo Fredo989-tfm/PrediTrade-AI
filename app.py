@@ -163,15 +163,20 @@ def faire_predictions(prix, score):
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
 def assistant_gpt4(question, contexte):
-    if not st.session_state.is_premium: return "⚠️ Fonction réservée aux utilisateurs Premium."
+    if not st.session_state.is_premium: 
+        return "⚠️ Fonction réservée aux utilisateurs Premium."
     try:
         import google.generativeai as genai
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(f"Tu es PrediTrade AI. {question} Contexte: {contexte}")
+        model = genai.GenerativeModel("gemini-1.0-pro-latest")
+        response = model.generate_content(f"Tu es PrediTrade AI expert trading. Réponds en 3 phrases max en français. {question} Contexte: {contexte}")
         return response.text
-    except Exception as e: return f"❌ Erreur Gemini : {e}"
+    except Exception as e: 
+        if "429" in str(e) or "quota" in str(e).lower():
+            return f"⚠️ Quota Gemini atteint. Analyse basique: {contexte}. Passe demain ou active la facturation sur aistudio.google.com"
+        else:
+            return f"❌ Erreur Gemini : {e}"
 
 def paiement_campay(numero, montant):
     return campay_client.collect({"amount": str(montant), "currency": "XAF", "from": numero, "operator": "MTN" if numero.startswith("6") else "ORANGE"})
