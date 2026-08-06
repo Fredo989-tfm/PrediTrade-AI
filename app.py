@@ -190,7 +190,22 @@ else:
     st.sidebar.info("🆓 Gratuit")
 st.sidebar.write(f"💰 Cash: ${st.session_state.cash:,.2f}")
 st.sidebar.write(f"📈 Analyses: {len(st.session_state.history)}")
-menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
+menu = st.sidebar.radio(
+    "Menu",
+    [
+        "📊 Dashboard",
+        "🧠 Analyse IA",
+        "🔍 Scanner",
+        "⚖️ Comparaison",
+        "💼 Portefeuille",
+        "⏪ Backtesting",
+        "📈 Backtest",
+        "📚 Historique",
+        "🤖 Assistant",
+        "📄 Rapports",
+        "⚙️ Paramètres"
+    ]
+)
 if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_state.logged_in = False; st.session_state.is_premium = False; st.rerun()
 
 # ============== 3. DASHBOARD ==============
