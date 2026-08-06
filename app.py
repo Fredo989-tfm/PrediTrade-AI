@@ -342,5 +342,51 @@ elif menu == "⚙️ Paramètres + Paiement":
                     if campay_client.get_transaction(res["reference"])["status"] == "SUCCESSFUL":
                         activate_premium_user(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium Activé!"); st.rerun()
     else: st.success("Vous êtes déjà Premium ⭐")
+        
+        # === MODULE 5: BACKTEST V5.0 ===
+with st.expander("📊 Backtest Automatique V5.0 - Cliquer pour ouvrir"):
+    st.write("Teste la stratégie 'Score > 70 ACHAT / Score < 30 VENTE' sur 30 jours")
+
+    if st.button("🚀 Lancer le Backtest"):
+        if 'ticker' not in locals() and 'ticker' not in globals():
+            st.warning("Choisis d'abord une paire dans la sidebar")
+        else:
+            with st.spinner("Simulation en cours sur 30 jours..."):
+                hist = ticker.history(period="30d", interval="1d")
+                
+                capital = 1000
+                position = 0
+                trades = []
+                equity_curve = [1000]
+                
+                for i in range(14, len(hist)):
+                    data_slice = hist.iloc[:i+1]
+                    score, rsi, last_price = calculate_score(data_slice)
+                    
+                    if score > 70 and position == 0:
+                        position = 1
+                        buy_price = last_price
+                        trades.append({"Date": data_slice.index[-1].date(), "Type": "ACHAT", "Prix": round(buy_price, 5)})
+                    
+                    elif score < 30 and position == 1:
+                        position = 0
+                        sell_price = last_price
+                        profit = (sell_price - buy_price) / buy_price * 100
+                        trades.append({"Date": data_slice.index[-1].date(), "Type": "VENTE", "Prix": round(sell_price, 5), "Profit%": round(profit, 2)})
+                        capital = capital * (1 + profit/100)
+                    
+                    equity_curve.append(capital)
+                
+                st.success(f"Backtest terminé sur {ticker_sym}")
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Capital Final", f"${round(capital, 2)}")
+                col2.metric("Profit Total", f"{round((capital-1000)/10, 2)}%")
+                col3.metric("Nombre de Trades", f"{len(trades)//2}")
+                
+                st.line_chart(pd.DataFrame(equity_curve, columns=["Capital"]))
+                
+                if trades:
+                    st.dataframe(pd.DataFrame(trades))
 
 st.sidebar.caption("© 2026 Fredo Blong")
