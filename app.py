@@ -11,21 +11,14 @@ import time
 import random
 import requests
 from streamlit_oauth import OAuth2Component
-from firebase_admin import credentials, initialize_app, messaging
+from firebase_admin import credentials, messaging
 import firebase_admin
 import json
-from firebase_admin import credentials, messaging
-
 if not firebase_admin._apps:
-    firebase_config = dict(st.secrets["FIREBASE"])
+    firebase_config = dict(st.secrets["firebase"])
+    firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n")
     cred = credentials.Certificate(firebase_config)
     firebase_admin.initialize_app(cred)
-def envoyer_notification(token, titre, message):
-    notification = messaging.Message(
-        notification=messaging.Notification(
-            title=titre,
-            body=message
-        ),
         token=token
     )
 
