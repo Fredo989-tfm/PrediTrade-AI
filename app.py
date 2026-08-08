@@ -281,20 +281,59 @@ elif menu == "🧠 Analyse IA Pro":
 
 # ============== 5. SCANNER ==============
 elif menu == "🔍 Scanner intelligent":
-    st.header("🔍 Scanner intelligent")
+    st.header("🔍 Scanner intelligent V2")
+    st.write("Scan de 13 actifs avec filtrage des erreurs")
+    
     if st.button("🚀 Scanner tous les actifs"):
-        with st.spinner("Scan de 13 actifs..."):
+        with st.spinner("Scan en cours... 10-20 secondes"):
             results = []
+            progress_bar = st.progress(0)
+            
+            total_assets = sum(len(v) for v in ASSETS.values())
+            count = 0
+            
             for marché, actifs in ASSETS.items():
                 for name, tick in actifs.items():
-                    df = charger_donnees(tick, "3mo", "1d")
-                    if not df.empty:
-                        score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(calculer_indicateurs(df))
+                    try:
+                        df = charger_donnees(tick, "3mo", "1d")
                         prix = get_price(tick)
-                        results.append({"Marché": marché, "Actif": name, "Prix": f"${prix:,.2f}", "Score": score, "Signal": signal})
-            df_res = pd.DataFrame(results).sort_values(by="Score", ascending=False)
-            st.dataframe(df_res, use_container_width=True)
-
+                        
+                        if df.empty or prix == 0:
+                            continue # On saute si pas de données
+                            
+                        ind = calculer_indicateurs(df)
+                        score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
+                        
+                        results.append({
+                            "Marché": marché, 
+                            "Actif": name, 
+                            "Prix": f"${prix:,.2f}", 
+                            "Score": score, 
+                            "RSI": f"{rsi:.1f}",
+                            "Signal": signal
+                        })
+                    except:
+                        pass # Si erreur on passe au suivant
+                    
+                    count += 1
+                    progress_bar.progress(count / total_assets)
+            
+            if results:
+                df_res = pd.DataFrame(results).sort_values(by="Score", ascending=False)
+                
+                # On met des couleurs
+                def color_signal(val):
+                    if "ACHAT" in val: return 'background-color: #004d00; color: white'
+                    elif "ATTENDRE" in val: return 'background-color: #664d00; color: white'
+                    else: return 'background-color: #660000; color: white'
+                    
+                st.dataframe(df_res.style.applymap(color_signal, subset=['Signal']), use_container_width=True)
+                
+                top_achat = df_res[df_res['Signal'].str.contains("ACHAT")]
+                if not top_achat.empty:
+                    st.success(f"🔥 Top Opportunité: {top_achat.iloc[0]['Actif']} avec Score {top_achat.iloc[0]['Score']}")
+            else:
+                st.error("Aucune donnée trouvée. Réessaie dans 1 min, Yahoo Finance est peut-être en maintenance")
 # ============== 6. COMPARAISON ==============
 elif menu == "⚖️ Comparaison":
     st.header("⚖️ Comparaison multi-actifs")
