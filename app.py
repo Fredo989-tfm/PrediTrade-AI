@@ -31,7 +31,7 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
 # ============== CSS ==============
-st.markdown("""
+st. markdown ( """
 <meta charset="UTF-8">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -299,7 +299,7 @@ elif menu == "🔍 Scanner intelligent":
                         prix = get_price(tick)
                         
                         if df.empty or prix == 0:
-                            continue # On saute si pas de données
+                            continue
                             
                         ind = calculer_indicateurs(df)
                         score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
@@ -313,7 +313,7 @@ elif menu == "🔍 Scanner intelligent":
                             "Signal": signal
                         })
                     except:
-                        pass # Si erreur on passe au suivant
+                        pass
                     
                     count += 1
                     progress_bar.progress(count / total_assets)
@@ -321,17 +321,14 @@ elif menu == "🔍 Scanner intelligent":
             if results:
                 df_res = pd.DataFrame(results).sort_values(by="Score", ascending=False)
                 
-                # On met des couleurs
-                def color_signal(val):
-                    if "ACHAT" in val: return 'background-color: #004d00; color: white'
-                    elif "ATTENDRE" in val: return 'background-color: #664d00; color: white'
-                    else: return 'background-color: #660000; color: white'
-                    
-                st.dataframe(df_res.style.applymap(color_signal, subset=['Signal']), use_container_width=True)
+                # VERSION SANS COULEUR QUI MARCHE 100%
+                st.dataframe(df_res, use_container_width=True)
                 
                 top_achat = df_res[df_res['Signal'].str.contains("ACHAT")]
                 if not top_achat.empty:
                     st.success(f"🔥 Top Opportunité: {top_achat.iloc[0]['Actif']} avec Score {top_achat.iloc[0]['Score']}")
+                else:
+                    st.info("Aucun signal d'achat fort pour le moment. Marché en consolidation.")
             else:
                 st.error("Aucune donnée trouvée. Réessaie dans 1 min, Yahoo Finance est peut-être en maintenance")
 # ============== 6. COMPARAISON ==============
