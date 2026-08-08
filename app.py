@@ -19,7 +19,7 @@ if not firebase_admin._apps:
     firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n")
     cred = credentials.Certificate(firebase_config)
     firebase_admin.initialize_app(cred)
-        token=token
+    token=token
     )
 
     response = messaging.send(notification)
