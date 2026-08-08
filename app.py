@@ -163,21 +163,61 @@ def faire_predictions(prix, score):
     return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
 
 def assistant_gpt4(question, contexte):
+    """Assistant IA avec fallback si quota Gemini atteint"""
+    
+    # Si l'utilisateur n'est pas premium, on bloque direct
     if not st.session_state.is_premium:
-        return "⚠️ Fonction réservée aux utilisateurs Premium."
+        return "⚠️ Fonction réservée aux utilisateurs Premium. Passe Premium pour l'IA illimitée."
+    
     try:
         import google.generativeai as genai
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(f"Tu es PrediTrade AI expert trading. Réponds en 3 phrases max en français. {question} Contexte: {contexte}")
+        
+        prompt = f"""
+        Tu es PrediTrade AI, expert en trading et finance. 
+        Réponds en français, 4 phrases max, clair et direct.
+        Question: {question}
+        Contexte marché: {contexte}
+        """
+        response = model.generate_content(prompt)
         return response.text
+        
     except Exception as e:
-        if "429" in str(e) or "quota" in str(e).lower():
-            return f"⚠️ Quota Gemini atteint. Analyse basique: {contexte}. Passe demain ou active la facturation sur aistudio.google.com"
-        else:
-            return f"❌ Erreur Gemini : {e}"
-
+        # ========== FALLBACK INTELLIGENT ==========
+        st.warning("⚠️ Quota Gemini atteint. Analyse basique activée.")
+        
+        # On analyse le contexte pour donner une réponse quand même
+        if "Score" in contexte:
+            try:
+                score = int(contexte.split("Score")[1].split(",")[0])
+                rsi = float(contexte.split("RSI")[1].split(")")[0])
+                
+                if score >= 75:
+                    analyse = f"**Analyse Basique:** Tendance HAUSSIÈRE. Score {score}/100 très bon. RSI à {rsi:.1f}. Signal: ACHAT. Le marché montre une forte dynamique positive."
+                elif score >= 60:
+                    analyse = f"**Analyse Basique:** Tendance NEUTRE à HAUSSIÈRE. Score {score}/100 correct. RSI à {rsi:.1f}. Signal: ATTENDRE. Confirme avec un autre indicateur."
+                elif score >= 40:
+                    analyse = f"**Analyse Basique:** Tendance INCERTAINE. Score {score}/100 moyen. RSI à {rsi:.1f}. Signal: ATTENDRE. Évite de trader maintenant."
+                else:
+                    analyse = f"**Analyse Basique:** Tendance BAISSIÈRE. Score {score}/100 faible. RSI à {rsi:.1f}. Signal: VENTE. Risque élevé."
+                
+                return analyse + "\n\n*Note: Passe demain pour l'analyse IA complète de Gemini*"
+                
+            except:
+                pass
+        
+        # Réponse par défaut si on ne peut pas parser
+        return f"""**Analyse Basique activée**
+        Je ne peux pas accéder à Gemini pour le moment à cause du quota.
+        
+        **Conseils généraux:**
+        1. Regarde le PrediScore et le RSI sur le graphique
+        2. Score > 75 = Achat potentiel | Score < 30 = Vente potentiel
+        3. Gère toujours ton risque avec un Stop Loss
+        
+        Reviens demain pour l'analyse IA complète."""
 def paiement_campay(numero, montant):
     return campay_client.collect({"amount": str(montant), "currency": "XAF", "from": numero, "operator": "MTN" if numero.startswith("6") else "ORANGE"})
 
