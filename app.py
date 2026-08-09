@@ -1,4 +1,5 @@
 import streamlit as st
+from campay.sdk import Client as CamPayClient
 st.set_page_config(page_title="PrediTrade AI Pro V5.0", page_icon="🚀", layout="wide")
 
 import pandas as pd
