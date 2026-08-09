@@ -203,7 +203,7 @@ def assistant_gemini(question, context):
         prompt = f"Tu es PrediTrade AI. Réponds en français en maximum 4 phrases.\nQuestion : {question}\nContexte : {context}"
         response = client.models.generate_content(model="gemini-3.5-flash", contents=prompt) # FIX: 2.0 -> 3.5
         return response.text
-    except Exception as e: return f"⚠️ Erreur Gemini : {e}
+    except Exception as e: return f"⚠️ Erreur Gemini : {e}"
     # =========================================================
 # CAMPAY
 # =========================================================
