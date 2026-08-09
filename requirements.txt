@@ -4,6 +4,7 @@ numpy==1.26.4
 requests==2.32.3
 plotly==5.23.1
 streamlit-oauth==0.2.3
-google-genai==0.4.1
+google-genai==0.3.0  # DOWNGRADE: 0.4.1 -> 0.3.0 plus stable avec streamlit 1.39
 campay-python==1.0.0
 regex==2024.9.11
+protobuf==4.25.3     # FORCER version compatible streamlit
