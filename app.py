@@ -291,46 +291,89 @@ def alpha_url(symbol, market):
         f"&symbol={symbol}&outputsize=compact"
         f"&apikey={ALPHA_KEY}"
     )
-
-
-@st.cache_data(ttl=300)
-def charger_donnees(symbol, market):
-
+@st.cache_data(ttl=3600)
+def charger_donnees(symbol, asset_type):
     try:
-        r = requests.get(
-            alpha_url(symbol, market),
-            timeout=15
-        )
-        data = r.json()
+        if asset_type == "Crypto":
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=DIGITAL_CURRENCY_DAILY"
+                f"&symbol={symbol}"
+                f"&market=USD"
+                f"&apikey={ALPHA_KEY}"
+            )
+            key = "Time Series (Digital Currency Daily)"
 
+        elif asset_type == "Forex":
+            from_curr, to_curr = symbol.split("/")
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=FX_DAILY"
+                f"&from_symbol={from_curr}"
+                f"&to_symbol={to_curr}"
+                f"&apikey={ALPHA_KEY}"
+            )
+            key = "Time Series FX (Daily)"
+
+        elif asset_type == "Matières Premières":
+            if symbol == "XAU":
+                url = (
+                    "https://www.alphavantage.co/query"
+                    f"?function=GOLD_SILVER_HISTORY"
+                    f"&symbol=XAU"
+                    f"&interval=daily"
+                    f"&apikey={ALPHA_KEY}"
+                )
+            elif symbol == "WTI":
+                url = (
+                    "https://www.alphavantage.co/query"
+                    f"?function=WTI"
+                    f"&interval=daily"
+                    f"&apikey={ALPHA_KEY}"
+                )
+            key = "data"
+
+        else:
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=TIME_SERIES_DAILY"
+                f"&symbol={symbol}"
+                f"&apikey={ALPHA_KEY}"
+                f"&outputsize=compact"
+            )
+            key = "Time Series (Daily)"
+
+        response = requests.get(url, timeout=20)
+        response.raise_for_status()
+        data = response.json()
+
+        # Limite API
         if "Note" in data:
-            st.warning("⚠️ Limite Alpha Vantage atteinte.")
+            st.warning(
+                "⚠️ Limite Alpha Vantage atteinte. "
+                "Réessaie plus tard ou utilise une offre avec une limite supérieure."
+            )
             return pd.DataFrame()
 
+        # Message d'information / quota
         if "Information" in data:
-            st.warning(data["Information"])
+            st.warning(f"⚠️ Alpha Vantage : {data['Information']}")
             return pd.DataFrame()
 
         if "Error Message" in data:
-            st.error(data["Error Message"])
+            st.error(f"❌ Alpha Vantage : {data['Error Message']}")
             return pd.DataFrame()
 
-        if market == "Crypto":
-            key = "Time Series (Digital Currency Daily)"
-        elif market == "Forex":
-            key = "Time Series FX (Daily)"
-        elif market == "Matières Premières":
-            key = "data"
-        else:
-            key = "Time Series (Daily)"
-
         if key not in data:
-            st.error(f"❌ Données introuvables pour {symbol}.")
+            st.error(
+                f"❌ Aucune donnée reçue pour {symbol}. "
+                f"Réponse Alpha : {list(data.keys())}"
+            )
             return pd.DataFrame()
 
         df = pd.DataFrame(data[key]).T
 
-        if market == "Crypto":
+        if asset_type == "Crypto":
             df = df.rename(columns={
                 "1b. open (USD)": "Open",
                 "2b. high (USD)": "High",
@@ -339,17 +382,17 @@ def charger_donnees(symbol, market):
                 "6. volume": "Volume"
             })
 
-        elif market == "Forex":
+        elif asset_type == "Forex":
             df = df.rename(columns={
                 "1. open": "Open",
                 "2. high": "High",
                 "3. low": "Low",
                 "4. close": "Close"
             })
-            df["Volume"] = 0
 
-        elif market == "Matières Premières":
-            df = df.rename(columns={"value": "Close"})
+        elif asset_type == "Matières Premières":
+            if "value" in df.columns:
+                df = df.rename(columns={"value": "Close"})
             df["Open"] = df["Close"]
             df["High"] = df["Close"]
             df["Low"] = df["Close"]
@@ -364,18 +407,31 @@ def charger_donnees(symbol, market):
                 "5. volume": "Volume"
             })
 
-        for col in ["Open", "High", "Low", "Close", "Volume"]:
-            if col not in df:
-                df[col] = 0
+        required = ["Open", "High", "Low", "Close"]
 
-        df = df[["Open", "High", "Low", "Close", "Volume"]]
-        df = df.apply(pd.to_numeric, errors="coerce")
-        df.index = pd.to_datetime(df.index)
-        return df.dropna(subset=["Close"]).sort_index()
+        if not all(col in df.columns for col in required):
+            st.error(f"❌ Colonnes manquantes pour {symbol}: {list(df.columns)}")
+            return pd.DataFrame()
+
+        df[required] = df[required].apply(pd.to_numeric, errors="coerce")
+
+        if "Volume" in df.columns:
+            df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0)
+
+        df.index = pd.to_datetime(df.index, errors="coerce")
+        df = df.dropna(subset=["Close"])
+        df = df.sort_index()
+
+        return df
+
+    except requests.RequestException as e:
+        st.error(f"❌ Erreur réseau Alpha Vantage : {e}")
+        return pd.DataFrame()
 
     except Exception as e:
-        st.error(f"❌ Erreur données : {e}")
+        st.error(f"❌ Erreur chargement {symbol} : {e}")
         return pd.DataFrame()
+
 
 # =========================================================
 # INDICATEURS
