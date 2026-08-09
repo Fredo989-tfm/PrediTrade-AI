@@ -1,497 +1,1417 @@
 import streamlit as st
+st.set_page_config(page_title="PrediTrade AI Pro V5.0", page_icon="🚀", layout="wide")
+
 import pandas as pd
 import numpy as np
-import requests
-import time
+import requests, time, hashlib, json, os, re
+from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from datetime import datetime
-import hashlib
-import json
-import os
-import random
-import requests
-from streamlit_oauth import OAuth2Component
+
+APP_VERSION = "5.0.0"
 ALPHA_KEY = st.secrets["ALPHA_VANTAGE_KEY"]
-st.success(f"Clé chargée: {ALPHA_KEY[:4]}...")
-
-# ============== 0. CONFIG + SECRETS ==============
-st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
-
-CLIENT_ID = st.secrets["auth"]["client_id"]
-CLIENT_SECRET = st.secrets["auth"]["client_secret"]
-REDIRECT_URI = "https://preditradeai.streamlit.app/oauth2callback"
-
-oauth2 = OAuth2Component(
-    CLIENT_ID, CLIENT_SECRET,
-    "https://accounts.google.com/o/oauth2/auth",
-    "https://oauth2.googleapis.com/token",
-    "https://www.googleapis.com/oauth2/v1/userinfo"
-)
-
 USERS_FILE = "users.json"
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump({}, f)
 
-# ============== CSS ==============
-st. markdown ( """
-<meta charset="UTF-8">
+# =========================================================
+# CONFIG
+# =========================================================
+
+ASSETS = {
+    "Crypto": {
+        "Bitcoin": "BTC", "Ethereum": "ETH",
+        "Solana": "SOL", "BNB": "BNB"
+    },
+    "Actions": {
+        "Apple": "AAPL", "Microsoft": "MSFT", "Tesla": "TSLA"
+    },
+    "Forex": {
+        "EUR/USD": "EUR/USD", "GBP/USD": "GBP/USD"
+    },
+    "Matières Premières": {
+        "Or": "XAU", "Pétrole": "WTI"
+    }
+}
+
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-html, body, [class*="st-"] { font-family: 'Inter', sans-serif; }
-.main { background-color:#0E1117; }
-div[data-testid="metric-container"] { background:#161B22; border:1px solid #30363d; border-radius:12px; padding:15px; }
-h1,h2,h3 { color:white; }
+html,body,[class*="st-"]{font-family:Inter,sans-serif}
+.main{background:#0E1117}
+div[data-testid="metric-container"]{
+    background:#161B22;
+    border:1px solid #30363d;
+    border-radius:12px;
+    padding:15px
+}
+h1,h2,h3{color:white}
 </style>
 """, unsafe_allow_html=True)
 
-# ============== FONCTIONS UTILS ==============
-def hash_password(p): return hashlib.sha256(p.encode()).hexdigest()
+# =========================================================
+# USERS
+# =========================================================
+
 def load_users():
-    with open(USERS_FILE, "r", encoding="utf-8") as f: return json.load(f)
-def save_users(u):
-    with open(USERS_FILE, "w", encoding="utf-8") as f: json.dump(u, f, indent=4)
-def activate_premium_user(email):
+    try:
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_users(users):
+    try:
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users, f, indent=4)
+    except Exception as e:
+        st.error(f"Erreur sauvegarde : {e}")
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def activate_premium(email):
     users = load_users()
-    if email in users: users[email]["premium"] = True; save_users(users)
+    if email in users:
+        users[email]["premium"] = True
+        save_users(users)
 
-# ============== LOGIN ==============
-def page_login():
-    st.markdown("""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B);"><h1 style="color:#00E5FF;">🚀 PrediTrade AI Pro V4.6.3</h1></div>""", unsafe_allow_html=True)
+def trial_active():
+    until = st.session_state.get("trial_until")
+    return bool(until and datetime.now() < until)
 
-    result = oauth2.authorize_button(
-        name="🔒 Se connecter avec Google",
-        redirect_uri=REDIRECT_URI,
-        scope="openid email profile"
+# =========================================================
+# SESSION
+# =========================================================
+
+defaults = {
+    "logged_in": False,
+    "is_premium": False,
+    "user_email": "",
+    "history": [],
+    "cash": 100000.0,
+    "operations": [],
+    "portfolio": {},
+    "analyses_count": {}
+}
+
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# =========================================================
+# GOOGLE LOGIN
+# =========================================================
+
+from streamlit_oauth import OAuth2Component
+
+CLIENT_ID = st.secrets["auth"]["client_id"]
+CLIENT_SECRET = st.secrets["auth"]["client_secret"]
+
+oauth = OAuth2Component(
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    authorize_endpoint="https://accounts.google.com/o/oauth2/auth",
+    token_endpoint="https://oauth2.googleapis.com/token",
+    refresh_token_endpoint="https://oauth2.googleapis.com/token",
+    revoke_token_endpoint="https://oauth2.googleapis.com/revoke"
+)
+
+REDIRECT_URI = (
+    "https://preditradeai.streamlit.app/"
+    "component/streamlit_oauth.authorize_button"
+)
+
+def login_page():
+
+    st.markdown(
+        f"""
+        <div style="text-align:center;padding:25px;
+        border-radius:15px;
+        background:linear-gradient(90deg,#0E1117,#1B263B)">
+        <h1 style="color:#00E5FF">
+        🚀 PrediTrade AI Pro V{APP_VERSION}
+        </h1>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    if result and 'email' in result:
-        google_email = result['email']
-        users = load_users()
-        if google_email not in users:
-            users[google_email] = {"password": "", "premium": False}
-            save_users(users)
-        st.session_state.logged_in = True
-        st.session_state.user_email = google_email
-        st.session_state.is_premium = users[google_email]["premium"]
-        st.rerun()
+    try:
+        result = oauth.authorize_button(
+            name="🔒 Se connecter avec Google",
+            redirect_uri=REDIRECT_URI,
+            scope="openid email profile",
+            key="google_login",
+            use_container_width=True,
+            pkce="S256"
+        )
+
+        if result and "token" in result:
+            token = result["token"]
+            access = token.get("access_token")
+
+            if access:
+                r = requests.get(
+                    "https://www.googleapis.com/oauth2/v1/userinfo",
+                    headers={"Authorization": f"Bearer {access}"},
+                    timeout=10
+                )
+
+                if r.ok:
+                    email = r.json().get("email")
+
+                    if email:
+                        users = load_users()
+
+                        if email not in users:
+                            users[email] = {
+                                "password": "",
+                                "premium": False
+                            }
+                            save_users(users)
+
+                        st.session_state.logged_in = True
+                        st.session_state.user_email = email
+                        st.session_state.is_premium = users[email].get(
+                            "premium", False
+                        )
+                        st.rerun()
+
+    except Exception as e:
+        st.warning(f"Connexion Google indisponible : {e}")
 
     st.divider()
-    tab1, tab2 = st.tabs(["🔐 Connexion Email", "📝 Inscription"])
+
+    tab1, tab2 = st.tabs(
+        ["🔐 Connexion", "📝 Inscription"]
+    )
+
     with tab1:
         email = st.text_input("Email", key="login_email")
-        password = st.text_input("Mot de passe", type="password", key="login_password")
-        if st.button("Se connecter", type="primary", use_container_width=True):
+        password = st.text_input(
+            "Mot de passe",
+            type="password",
+            key="login_password"
+        )
+
+        if st.button(
+            "Se connecter",
+            type="primary",
+            use_container_width=True
+        ):
             users = load_users()
-            if email in users and users[email]["password"] == hash_password(password):
-               st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = users[email]["premium"]; st.rerun()
-            else: st.error("❌ Email ou mot de passe incorrect.")
+
+            if (
+                email in users
+                and users[email]["password"] == hash_password(password)
+            ):
+                st.session_state.logged_in = True
+                st.session_state.user_email = email
+                st.session_state.is_premium = users[email].get(
+                    "premium", False
+                )
+                st.rerun()
+            else:
+                st.error("❌ Email ou mot de passe incorrect.")
+
     with tab2:
-       email_new = st.text_input("Email", key="register_email")
-       password_new = st.text_input("Créer mot de passe", type="password", key="register_password")
-       if st.button("Créer compte gratuit"):
+        email = st.text_input("Email", key="register_email")
+        password = st.text_input(
+            "Créer un mot de passe",
+            type="password",
+            key="register_password"
+        )
+
+        if st.button("Créer compte gratuit"):
             users = load_users()
-            if email_new in users: st.error("❌ Cet email existe déjà.")
-            else: users[email_new] = {"password": hash_password(password_new), "premium": False}; save_users(users); st.success("✅ Compte créé")
 
-    if st.button("🚀 Essai Gratuit 3 Jours Premium", use_container_width=True):
-        st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.rerun()
+            if not email or not password:
+                st.error("❌ Remplis tous les champs.")
+            elif email in users:
+                st.error("❌ Cet email existe déjà.")
+            else:
+                users[email] = {
+                    "password": hash_password(password),
+                    "premium": False
+                }
+                save_users(users)
+                st.success("✅ Compte créé.")
 
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if "is_premium" not in st.session_state: st.session_state.is_premium = False
-if "user_email" not in st.session_state: st.session_state.user_email = ""
-for key, val in [("history",[]),("cash",100000.0),("operations",[]),("portfolio_multi",{}),("analyses_count",{})]:
-    if key not in st.session_state: st.session_state[key] = val
+    if st.button(
+        "🚀 Essai gratuit 3 jours Premium",
+        use_container_width=True
+    ):
+        st.session_state.logged_in = True
+        st.session_state.is_premium = True
+        st.session_state.user_email = "essai@preditrade.ai"
+        st.session_state.trial_until = (
+            datetime.now() + timedelta(days=3)
+        )
+        st.rerun()
+
 
 if not st.session_state.logged_in:
-    page_login()
+    login_page()
     st.stop()
 
-# ============== CAMPAY ==============
-class FakeCamPayClient:
-    def collect(self, data): return {"status": "SUCCESS", "reference": str(random.randint(100000,999))}
-    def get_transaction(self, reference): time.sleep(3); return {"status": "SUCCESSFUL"}
+if not st.session_state.is_premium and trial_active():
+    st.session_state.is_premium = True
+
+# =========================================================
+# ALPHA VANTAGE
+# =========================================================
+
+def alpha_url(symbol, market):
+
+    if market == "Crypto":
+        return (
+            f"https://www.alphavantage.co/query?"
+            f"function=DIGITAL_CURRENCY_DAILY"
+            f"&symbol={symbol}&market=USD"
+            f"&apikey={ALPHA_KEY}"
+        )
+
+    if market == "Forex":
+        a, b = symbol.split("/")
+        return (
+            f"https://www.alphavantage.co/query?"
+            f"function=FX_DAILY&from_symbol={a}"
+            f"&to_symbol={b}&apikey={ALPHA_KEY}"
+        )
+
+    if market == "Matières Premières":
+        function = "GOLD_SILVER_HISTORY" if symbol == "XAU" else "WTI"
+        return (
+            f"https://www.alphavantage.co/query?"
+            f"function={function}&interval=daily"
+            f"&apikey={ALPHA_KEY}"
+        )
+
+    return (
+        f"https://www.alphavantage.co/query?"
+        f"function=TIME_SERIES_DAILY"
+        f"&symbol={symbol}&outputsize=compact"
+        f"&apikey={ALPHA_KEY}"
+    )
+
+
+@st.cache_data(ttl=300)
+def charger_donnees(symbol, market):
+
+    try:
+        r = requests.get(
+            alpha_url(symbol, market),
+            timeout=15
+        )
+        data = r.json()
+
+        if "Note" in data:
+            st.warning("⚠️ Limite Alpha Vantage atteinte.")
+            return pd.DataFrame()
+
+        if "Information" in data:
+            st.warning(data["Information"])
+            return pd.DataFrame()
+
+        if "Error Message" in data:
+            st.error(data["Error Message"])
+            return pd.DataFrame()
+
+        if market == "Crypto":
+            key = "Time Series (Digital Currency Daily)"
+        elif market == "Forex":
+            key = "Time Series FX (Daily)"
+        elif market == "Matières Premières":
+            key = "data"
+        else:
+            key = "Time Series (Daily)"
+
+        if key not in data:
+            st.error(f"❌ Données introuvables pour {symbol}.")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data[key]).T
+
+        if market == "Crypto":
+            df = df.rename(columns={
+                "1b. open (USD)": "Open",
+                "2b. high (USD)": "High",
+                "3b. low (USD)": "Low",
+                "4b. close (USD)": "Close",
+                "6. volume": "Volume"
+            })
+
+        elif market == "Forex":
+            df = df.rename(columns={
+                "1. open": "Open",
+                "2. high": "High",
+                "3. low": "Low",
+                "4. close": "Close"
+            })
+            df["Volume"] = 0
+
+        elif market == "Matières Premières":
+            df = df.rename(columns={"value": "Close"})
+            df["Open"] = df["Close"]
+            df["High"] = df["Close"]
+            df["Low"] = df["Close"]
+            df["Volume"] = 0
+
+        else:
+            df = df.rename(columns={
+                "1. open": "Open",
+                "2. high": "High",
+                "3. low": "Low",
+                "4. close": "Close",
+                "5. volume": "Volume"
+            })
+
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
+            if col not in df:
+                df[col] = 0
+
+        df = df[["Open", "High", "Low", "Close", "Volume"]]
+        df = df.apply(pd.to_numeric, errors="coerce")
+        df.index = pd.to_datetime(df.index)
+        return df.dropna(subset=["Close"]).sort_index()
+
+    except Exception as e:
+        st.error(f"❌ Erreur données : {e}")
+        return pd.DataFrame()
+
+# =========================================================
+# INDICATEURS
+# =========================================================
+
+def indicateurs(df):
+
+    close = df["Close"]
+
+    ema20 = close.ewm(
+        span=20,
+        adjust=False
+    ).mean()
+
+    ema50 = close.ewm(
+        span=50,
+        adjust=False
+    ).mean()
+
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.rolling(14).mean()
+    avg_loss = loss.rolling(14).mean()
+
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    rsi = 100 - (100 / (1 + rs))
+
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+
+    return {
+        "close": close,
+        "ema20": ema20,
+        "ema50": ema50,
+        "rsi": rsi,
+        "macd": macd,
+        "signal": signal
+    }
+
+def prediscore(ind):
+
+    if len(ind["close"]) < 50:
+        return 50, "🟡 ATTENDRE", "Faible", 50, 0, 0, 0, 0
+
+    ema20 = float(ind["ema20"].iloc[-1])
+    ema50 = float(ind["ema50"].iloc[-1])
+    rsi = float(ind["rsi"].iloc[-1])
+    macd = float(ind["macd"].iloc[-1])
+    signal = float(ind["signal"].iloc[-1])
+
+    if np.isnan(rsi):
+        rsi = 50
+
+    score = 50
+
+    ema_gap = (
+        (ema20 - ema50) / ema50 * 100
+        if ema50 else 0
+    )
+
+    macd_gap = (
+        (macd - signal) / ema20 * 100
+        if ema20 else 0
+    )
+
+    score += np.clip(ema_gap * 5, -20, 20)
+    score += np.clip(macd_gap * 10, -20, 20)
+
+    if rsi < 30:
+        score += 20
+    elif rsi < 40:
+        score += 10
+    elif rsi > 70:
+        score -= 20
+    elif rsi > 60:
+        score -= 10
+
+    score = int(np.clip(round(score), 0, 100))
+
+    signal_txt = (
+        "🟢 ACHAT" if score >= 75
+        else "🟡 ATTENDRE" if score >= 60
+        else "🔴 VENTE"
+    )
+
+    confidence = (
+        "Très élevée" if score >= 90
+        else "Élevée" if score >= 75
+        else "Moyenne" if score >= 60
+        else "Faible"
+    )
+
+    return score, signal_txt, confidence, rsi, ema20, ema50, macd, signal
+
+def risque(price, score):
+
+    force = abs(score - 50) / 100
+    sl_dist = 0.02 + force * 0.03
+    tp_dist = 0.04 + force * 0.05
+
+    if score >= 60:
+        sl = price * (1 - sl_dist)
+        tp = price * (1 + tp_dist)
+    else:
+        sl = price * (1 + sl_dist)
+        tp = price * (1 - tp_dist)
+
+    rr = (
+        abs(tp - price) / abs(price - sl)
+        if price != sl else 0
+    )
+
+    return round(sl, 2), round(tp, 2), round(rr, 2)
+
+def predictions(price, score):
+
+    force = (score - 50) / 100
+
+    return [
+        round(price * (1 + force * x), 2)
+        for x in [0.01, 0.03, 0.08, 0.15]
+    ]
+
+# =========================================================
+# GEMINI
+# =========================================================
+
+@st.cache_resource
+def gemini_client():
+
+    try:
+        from google import genai
+
+        return genai.Client(
+            api_key=st.secrets["GEMINI_API_KEY"]
+        )
+
+    except Exception:
+        return None
+
+def assistant_gemini(question, context):
+
+    if not st.session_state.is_premium:
+        return "⚠️ Fonction réservée aux Premium."
+
+    client = gemini_client()
+
+    if client is None:
+        return "⚠️ Gemini n'est pas configuré."
+
+    try:
+        prompt = f"""
+Tu es PrediTrade AI.
+Réponds en français en maximum 4 phrases.
+
+Question : {question}
+Contexte : {context}
+"""
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
+
+        return response.text
+
+    except Exception as e:
+        return f"⚠️ Erreur Gemini : {e}"
+
+# =========================================================
+# CAMPAY
+# =========================================================
+
 try:
     from campay.api import Client as CamPayClient
-    campay_client = CamPayClient(app_username=st.secrets["CAMPAY_USERNAME"], app_password=st.secrets["CAMPAY_PASSWORD"], environment="DEV")
-except: campay_client = FakeCamPayClient()
 
-# ============== 1. DONNÉES + FONCTIONS ==============
-ASSETS = {
-    "Crypto": {
-        "Bitcoin": "BTC", 
-        "Ethereum": "ETH",
-        "Solana": "SOL",
-        "BNB": "BNB"
-    },
-    "Actions": {
-        "Apple": "AAPL", 
-        "Microsoft": "MSFT",
-        "Tesla": "TSLA"
-    },
-    "Forex": {
-        "EUR/USD": "EUR/USD", 
-        "GBP/USD": "GBP/USD"
-    },
-    "Matières Premières": {
-        "Or": "XAU/USD",
-        "Pétrole": "WTI"
-    }
-} 
-@st.cache_data(ttl=300) # Cache 5 min
-def charger_donnees(symbol, period="1y", interval="1d"):
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=full"
-    r = requests.get(url, timeout=10)
-    time.sleep(12) # TRÈS IMPORTANT: Alpha limite à 5 appels/min. Sinon erreur.
-    data = r.json()
-    
-    if "Time Series (Daily)" not in data:
-        st.warning(f"Alpha n'a pas renvoyé de données pour {symbol}")
-        return pd.DataFrame()
-        
-    df = pd.DataFrame(data["Time Series (Daily)"]).T
-    df = df.rename(columns={
-        "1. open": "Open", "2. high": "High", 
-        "3. low": "Low", "4. close": "Close", "5. volume": "Volume"
-    })
-    df = df.astype(float)
-    df.index = pd.to_datetime(df.index)
-    return df.sort_index() 
-@st.cache_data(ttl=60) # Cache 1 min
-def get_price(symbol):
-    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}'
-    r = requests.get(url, timeout=10)
-    data = r.json()
-    return float(data.get("Global Quote", {}).get("05. price", 0))
-def calculer_indicateurs(df):
-    close = df["Close"].squeeze()
-    ema20 = close.ewm(span=20, adjust=False).mean(); ema50 = close.ewm(span=50, adjust=False).mean()
-    delta = close.diff(); gain = delta.clip(lower=0); loss = -delta.clip(upper=0)
-    avg_gain = gain.rolling(14).mean(); avg_loss = loss.rolling(14).mean()
-    rs = avg_gain / avg_loss; rsi = 100 - (100 / (1 + rs))
-    ema12 = close.ewm(span=12, adjust=False).mean(); ema26 = close.ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26; macd_signal = macd.ewm(span=9, adjust=False).mean()
-    return {"close": close, "ema20": ema20, "ema50": ema50, "rsi": rsi, "macd": macd, "signal": macd_signal}
+    campay = CamPayClient(
+        app_username=st.secrets["CAMPAY_USERNAME"],
+        app_password=st.secrets["CAMPAY_PASSWORD"],
+        environment="PROD"
+    )
 
-def calculer_prediscore(ind):
-    # AJOUTE CES 3 LIGNES EN PREMIER
-    if len(ind["close"]) < 50: # Si pas assez de données on renvoie neutre
-        return 50, "ATTENDRE", 0.3, 50.0, 0, 0, 0, 0
-    ema20_v, ema50_v = float(ind["ema20"].iloc[-1]), float(ind["ema50"].iloc[-1])
-    rsi_v, macd_v, signal_v = float(ind["rsi"].iloc[-1]), float(ind["macd"].iloc[-1]), float(ind["macd_signal"].iloc[-1])
-    prediscore = 50
-    ema_gap = ((ema20_v - ema50_v) / ema50_v) * 100; prediscore += max(-20, min(20, ema_gap * 5))
-    macd_gap = macd_v - signal_v; prediscore += max(-20, min(20, macd_gap / 20))
-    if rsi_v < 30: prediscore += 20
-    elif rsi_v < 40: prediscore += 10
-    elif rsi_v > 70: prediscore -= 20
-    elif rsi_v > 60: prediscore -= 10
-    prediscore = max(0, min(100, round(prediscore)))
-    trading_signal = "🟢 ACHAT" if prediscore >= 75 else "🟡 ATTENDRE" if prediscore >= 60 else "🔴 VENTE"
-    confidence = "Très élevée" if prediscore >= 90 else "Élevée" if prediscore >= 75 else "Moyenne" if prediscore >= 60 else "Faible"
-    return prediscore, trading_signal, confidence, rsi_v, ema20_v, ema50_v, macd_v, signal_v
+    CAMPAY_OK = True
 
-def calculer_risque(prix, score):
-    volatilite = abs(score - 50) / 100
-    stop_loss = round(prix * (1 - (0.02 + volatilite * 0.03)), 2)
-    take_profit = round(prix * (1 + (0.04 + volatilite * 0.05)), 2)
-    risk_reward = round((take_profit - prix) / (prix - stop_loss), 2) if prix!= stop_loss else 0
-    return stop_loss, take_profit, risk_reward
+except Exception as e:
+    campay = None
+    CAMPAY_OK = False
+    st.warning(f"⚠️ CamPay indisponible : {e}")
 
-def faire_predictions(prix, score):
-    strength = (score - 50) / 100
-    return round(prix * (1 + strength * 0.01), 2), round(prix * (1 + strength * 0.03), 2), round(prix * (1 + strength * 0.08), 2), round(prix * (1 + strength * 0.15), 2)
+def paiement(numero, montant, operator):
 
-def assistant_gpt4(question, contexte):
-    """Assistant IA avec fallback si quota Gemini atteint"""
-    
-    # Si l'utilisateur n'est pas premium, on bloque direct
-    if not st.session_state.is_premium:
-        return "⚠️ Fonction réservée aux utilisateurs Premium. Passe Premium pour l'IA illimitée."
-    
+    if not CAMPAY_OK:
+        return None
+
+    numero = numero.replace(" ", "")
+
+    if not re.fullmatch(r"2376\d{8}", numero):
+        st.error("❌ Format : 2376XXXXXXXX")
+        return None
+
     try:
-        import google.generativeai as genai
-        api_key = st.secrets["GEMINI_API_KEY"]
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        
-        prompt = f"""
-        Tu es PrediTrade AI, expert en trading et finance. 
-        Réponds en français, 4 phrases max, clair et direct.
-        Question: {question}
-        Contexte marché: {contexte}
-        """
-        response = model.generate_content(prompt)
-        return response.text
-        
+        return campay.collect({
+            "amount": str(montant),
+            "currency": "XAF",
+            "from": numero,
+            "operator": operator
+        })
     except Exception as e:
-        # ========== FALLBACK INTELLIGENT ==========
-        st.warning("⚠️ Quota Gemini atteint. Analyse basique activée.")
-        
-        # On analyse le contexte pour donner une réponse quand même
-        if "Score" in contexte:
-            try:
-                score = int(contexte.split("Score")[1].split(",")[0])
-                rsi = float(contexte.split("RSI")[1].split(")")[0])
-                
-                if score >= 75:
-                    analyse = f"**Analyse Basique:** Tendance HAUSSIÈRE. Score {score}/100 très bon. RSI à {rsi:.1f}. Signal: ACHAT. Le marché montre une forte dynamique positive."
-                elif score >= 60:
-                    analyse = f"**Analyse Basique:** Tendance NEUTRE à HAUSSIÈRE. Score {score}/100 correct. RSI à {rsi:.1f}. Signal: ATTENDRE. Confirme avec un autre indicateur."
-                elif score >= 40:
-                    analyse = f"**Analyse Basique:** Tendance INCERTAINE. Score {score}/100 moyen. RSI à {rsi:.1f}. Signal: ATTENDRE. Évite de trader maintenant."
-                else:
-                    analyse = f"**Analyse Basique:** Tendance BAISSIÈRE. Score {score}/100 faible. RSI à {rsi:.1f}. Signal: VENTE. Risque élevé."
-                
-                return analyse + "\n\n*Note: Passe demain pour l'analyse IA complète de Gemini*"
-                
-            except:
-                pass
-        
-        # Réponse par défaut si on ne peut pas parser
-        return f"""**Analyse Basique activée**
-        Je ne peux pas accéder à Gemini pour le moment à cause du quota.
-        
-        **Conseils généraux:**
-        1. Regarde le PrediScore et le RSI sur le graphique
-        2. Score > 75 = Achat potentiel | Score < 30 = Vente potentiel
-        3. Gère toujours ton risque avec un Stop Loss
-        
-        Reviens demain pour l'analyse IA complète."""
-def paiement_campay(numero, montant):
-    return campay_client.collect({"amount": str(montant), "currency": "XAF", "from": numero, "operator": "MTN" if numero.startswith("6") else "ORANGE"})
+        st.error(f"❌ Erreur CamPay : {e}")
+        return None
 
-# ============== 2. SIDEBAR ==============
-st.sidebar.title("🚀 PrediTrade AI V4.6.3")
+# =========================================================
+# SIDEBAR
+# =========================================================
+
+st.sidebar.title(f"🚀 PrediTrade AI V{APP_VERSION}")
 st.sidebar.write(f"📧 {st.session_state.user_email}")
+
 if st.session_state.is_premium:
     st.sidebar.success("⭐ Premium")
 else:
     st.sidebar.info("🆓 Gratuit")
-st.sidebar.write(f"💰 Cash: ${st.session_state.cash:,.2f}")
-st.sidebar.write(f"📈 Analyses: {len(st.session_state.history)}")
-menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","⏪ Backtesting","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paramètres + Paiement"])
-if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_state.logged_in = False; st.session_state.is_premium = False; st.rerun()
 
-# ============== 3. DASHBOARD ==============
+st.sidebar.write(
+    f"💰 Cash : ${st.session_state.cash:,.2f}"
+)
+
+st.sidebar.write(
+    f"📈 Analyses : {len(st.session_state.history)}"
+)
+
+menu = st.sidebar.radio(
+    "Menu",
+    [
+        "📊 Tableau de bord",
+        "🧠 Analyse IA Pro",
+        "🔍 Scanner",
+        "⚖️ Comparaison",
+        "💼 Portefeuille",
+        "📊 Backtest",
+        "📚 Historique",
+        "🤖 Assistant IA",
+        "📄 Rapports",
+        "⚙️ Paiement"
+    ]
+)
+
+if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.is_premium = False
+    st.rerun()
+
+# =========================================================
+# DASHBOARD
+# =========================================================
+
 if menu == "📊 Tableau de bord":
+
     st.header("📊 Tableau de bord")
-    valeur_actifs = sum([d["quantite"] * get_price([v for k in ASSETS.values() for a,v in k.items() if a == actif][0]) for actif, d in st.session_state.portfolio_multi.items()])
-    valeur_totale = st.session_state.cash + valeur_actifs; pnl = valeur_totale - 100000
-    c1,c2,c3,c4 = st.columns(4)
-    c1.metric("Valeur Totale", f"${valeur_totale:,.2f}", f"${pnl:,.2f}")
-    c2.metric("Cash", f"${st.session_state.cash:,.2f}")
-    c3.metric("Actifs", len(st.session_state.portfolio_multi))
-    c4.metric("IA", "Gemini" if st.session_state.is_premium else "Basique")
-    if st.session_state.history:
-        st.success(f"Signal IA Global: {st.session_state.history[-1]['Signal']} | Dernier Score: {st.session_state.history[-1]['Score']}/100")
 
-# ============== 4. ANALYSE IA PRO + BLOCAGE 5 ANALYSES ==============
+    assets_value = 0
+
+    for asset, data in st.session_state.portfolio.items():
+
+        market = next(
+            k for k, v in ASSETS.items()
+            if asset in v
+        )
+
+        df = charger_donnees(
+            ASSETS[market][asset],
+            market
+        )
+
+        if not df.empty:
+            price = float(df["Close"].iloc[-1])
+            assets_value += data["quantite"] * price
+
+    total = st.session_state.cash + assets_value
+    pnl = total - 100000
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    c1.metric(
+        "Valeur totale",
+        f"${total:,.2f}",
+        f"${pnl:,.2f}"
+    )
+
+    c2.metric(
+        "Cash",
+        f"${st.session_state.cash:,.2f}"
+    )
+
+    c3.metric(
+        "Actifs",
+        len(st.session_state.portfolio)
+    )
+
+    c4.metric(
+        "IA",
+        "Gemini" if st.session_state.is_premium else "Basique"
+    )
+
+# =========================================================
+# ANALYSE
+# =========================================================
+
 elif menu == "🧠 Analyse IA Pro":
+
     st.header("🧠 Analyse IA Pro")
-    marché = st.selectbox("Marché", list(ASSETS.keys()))
-    asset_name = st.selectbox("Actif", list(ASSETS[marché].keys()))
-    ticker = ASSETS[marché][asset_name]
-    if st.button("🚀 Lancer l'analyse"):
+
+    market = st.selectbox(
+        "Marché",
+        list(ASSETS.keys())
+    )
+
+    asset = st.selectbox(
+        "Actif",
+        list(ASSETS[market].keys())
+    )
+
+    if st.button(
+        "🚀 Lancer l'analyse",
+        type="primary"
+    ):
+
         if not st.session_state.is_premium:
-            today = datetime.now().strftime("%Y-%m-%d")
-            if today not in st.session_state.analyses_count: st.session_state.analyses_count[today] = 0
-            if st.session_state.analyses_count[today] >= 5:
-                st.error("⚠️ Limite de 5 analyses gratuites atteinte aujourd'hui. Passe Premium pour illimité.")
+
+            today = datetime.now().date().isoformat()
+
+            count = st.session_state.analyses_count.get(
+                today, 0
+            )
+
+            if count >= 5:
+                st.error(
+                    "⚠️ 5 analyses gratuites déjà utilisées aujourd'hui."
+                )
                 st.stop()
-            st.session_state.analyses_count[today] += 1
-            st.info(f"Analyses restantes aujourd'hui: {5 - st.session_state.analyses_count[today]}")
 
-        with st.spinner("Analyse en cours..."):
-            data = charger_donnees(ticker, "1y", "1d")
-            prix = get_price(ticker)
-            ind = calculer_indicateurs(data)
-            score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
-            sl, tp, rr = calculer_risque(prix, score)
-            p24, p7, p30, p90 = faire_predictions(prix, score)
-            st.session_state.history.append({"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset_name, "Prix": round(prix, 2), "Score": score, "Signal": signal})
-            st.metric("💰 Prix actuel", f"${prix:,.2f}")
-            st.plotly_chart(go.Figure(go.Candlestick(x=data.index, open=data["Open"].squeeze(), high=data["High"].squeeze(), low=data["Low"].squeeze(), close=data["Close"].squeeze())).update_layout(template="plotly_dark", height=400), use_container_width=True)
-            c1,c2,c3 = st.columns(3)
-            c1.metric("PrediScore", f"{score}/100", signal)
-            c2.metric("RSI", f"{rsi:.2f}"); c3.metric("Confiance", confidence)
-            st.warning(f"Stop Loss: ${sl} | Take Profit: ${tp} | R/R: {rr}")
-            st.info(f"Prévisions: 24h: ${p24} | 7j: ${p7} | 30j: ${p30} | 90j: ${p90}")
-            if st.session_state.is_premium: st.subheader("🤖 Explication IA"); st.write(assistant_gpt4("Explique la tendance", f"Score {score}, RSI {rsi:.2f}"))
+            st.session_state.analyses_count[today] = count + 1
 
-# ============== 5. SCANNER ==============
-elif menu == "🔍 Scanner intelligent":
-    st.header("🔍 Scanner intelligent V2")
-    st.write("Scan de 13 actifs avec filtrage des erreurs")
-    
-    if st.button("🚀 Scanner tous les actifs"):
-        with st.spinner("Scan en cours... 10-20 secondes"):
-            results = []
-            progress_bar = st.progress(0)
-            
-            total_assets = sum(len(v) for v in ASSETS.values())
-            count = 0
-            
-            for marché, actifs in ASSETS.items():
-                for name, tick in actifs.items():
-                    try:
-                        df = charger_donnees(tick, "3mo", "1d")
-                        prix = get_price(tick)
-                        
-                        if df.empty or prix == 0:
-                            continue
-                            
-                        ind = calculer_indicateurs(df)
-                        score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
-                        
-                        results.append({
-                            "Marché": marché, 
-                            "Actif": name, 
-                            "Prix": f"${prix:,.2f}", 
-                            "Score": score, 
-                            "RSI": f"{rsi:.1f}",
-                            "Signal": signal
-                        })
-                    except:
-                        pass
-                    time.sleep(12) # IMPORTANT: Alpha limite à 5 requêtes/min
-                    
-                    count += 1
-                    progress_bar.progress(count / total_assets)
-            
-            if results:
-                df_res = pd.DataFrame(results).sort_values(by="Score", ascending=False)
-                
-                # VERSION SANS COULEUR QUI MARCHE 100%
-                st.dataframe(df_res, use_container_width=True)
-                
-                top_achat = df_res[df_res['Signal'].str.contains("ACHAT")]
-                if not top_achat.empty:
-                    st.success(f"🔥 Top Opportunité: {top_achat.iloc[0]['Actif']} avec Score {top_achat.iloc[0]['Score']}")
-                else:
-                    st.info("Aucun signal d'achat fort pour le moment. Marché en consolidation.")
-            else:
-                st.error("Aucune donnée trouvée. Réessaie dans 1 min, Yahoo Finance est peut-être en maintenance")
-# ============== 6. COMPARAISON ==============
+        with st.spinner("Analyse..."):
+
+            df = charger_donnees(
+                ASSETS[market][asset],
+                market
+            )
+
+            if df.empty:
+                st.error("❌ Aucune donnée.")
+                st.stop()
+
+            price = float(df["Close"].iloc[-1])
+            ind = indicateurs(df)
+
+            (
+                score,
+                signal,
+                confidence,
+                rsi,
+                ema20,
+                ema50,
+                macd,
+                macd_signal
+            ) = prediscore(ind)
+
+            sl, tp, rr = risque(price, score)
+            p24, p7, p30, p90 = predictions(price, score)
+
+            st.session_state.history.append({
+                "Date": datetime.now().strftime(
+                    "%d/%m/%Y %H:%M"
+                ),
+                "Actif": asset,
+                "Prix": round(price, 2),
+                "Score": score,
+                "Signal": signal
+            })
+
+            st.metric(
+                "💰 Prix",
+                f"${price:,.2f}"
+            )
+
+            fig = go.Figure(
+                go.Candlestick(
+                    x=df.index,
+                    open=df.Open,
+                    high=df.High,
+                    low=df.Low,
+                    close=df.Close
+                )
+            )
+
+            fig.update_layout(
+                template="plotly_dark",
+                height=400
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "PrediScore",
+                f"{score}/100",
+                signal
+            )
+
+            c2.metric(
+                "RSI",
+                f"{rsi:.2f}"
+            )
+
+            c3.metric(
+                "Confiance",
+                confidence
+            )
+
+            st.warning(
+                f"Stop Loss : ${sl} | "
+                f"Take Profit : ${tp} | "
+                f"R/R : {rr}"
+            )
+
+            st.info(
+                f"Scénarios indicatifs : "
+                f"24h ${p24} | 7j ${p7} | "
+                f"30j ${p30} | 90j ${p90}"
+            )
+
+            st.caption(
+                "⚠️ Ces scénarios sont indicatifs et ne garantissent "
+                "pas le prix futur."
+            )
+
+            if st.session_state.is_premium:
+
+                st.subheader("🤖 Explication IA")
+
+                st.write(
+                    assistant_gemini(
+                        "Explique la tendance actuelle.",
+                        f"Score={score}, RSI={rsi:.2f}"
+                    )
+                )
+
+# =========================================================
+# SCANNER
+# =========================================================
+
+elif menu == "🔍 Scanner":
+
+    st.header("🔍 Scanner intelligent")
+
+    if st.button("🚀 Scanner les actifs"):
+
+        results = []
+
+        assets = [
+            (market, name, ticker)
+            for market, items in ASSETS.items()
+            for name, ticker in items.items()
+        ]
+
+        progress = st.progress(0)
+
+        for i, (market, name, ticker) in enumerate(assets):
+
+            df = charger_donnees(ticker, market)
+
+            if not df.empty:
+
+                ind = indicateurs(df)
+
+                score, signal, confidence, rsi, *_ = prediscore(ind)
+
+                results.append({
+                    "Marché": market,
+                    "Actif": name,
+                    "Prix": round(
+                        float(df["Close"].iloc[-1]), 2
+                    ),
+                    "Score": score,
+                    "RSI": round(rsi, 1),
+                    "Signal": signal
+                })
+
+            progress.progress((i + 1) / len(assets))
+
+        if results:
+
+            result_df = pd.DataFrame(results)
+            result_df = result_df.sort_values(
+                "Score",
+                ascending=False
+            )
+
+            st.dataframe(
+                result_df,
+                use_container_width=True
+            )
+
+        else:
+            st.error("❌ Aucun actif disponible.")
+
+# =========================================================
+# COMPARAISON
+# =========================================================
+
 elif menu == "⚖️ Comparaison":
-    st.header("⚖️ Comparaison multi-actifs")
-    actifs = st.multiselect("Choisir 2 à 4 actifs", [a for categorie in ASSETS.values() for a in categorie.keys()], default=["Bitcoin", "Apple"])
-    if len(actifs) >= 2:
-        df_comp = pd.DataFrame()
-        for categorie in ASSETS.values():
-            for nom, ticker in categorie.items():
-                if nom in actifs: df_comp[nom] = charger_donnees(ticker, "6mo", "1d")["Close"].squeeze()
-        if not df_comp.empty:
-            st.line_chart(df_comp)
-            st.subheader("Matrice de Corrélation")
-            st.dataframe(df_comp.corr().round(2))
 
-# ============== 7. PORTEFEUILLE ==============
+    st.header("⚖️ Comparaison")
+
+    assets_names = [
+        name
+        for items in ASSETS.values()
+        for name in items
+    ]
+
+    selected = st.multiselect(
+        "Choisir 2 à 4 actifs",
+        assets_names,
+        default=["Bitcoin", "Apple"]
+    )
+
+    if len(selected) >= 2:
+
+        comparison = {}
+
+        for asset in selected:
+
+            market = next(
+                k for k, v in ASSETS.items()
+                if asset in v
+            )
+
+            df = charger_donnees(
+                ASSETS[market][asset],
+                market
+            )
+
+            if not df.empty:
+                comparison[asset] = df["Close"]
+
+        if comparison:
+
+            comp = pd.DataFrame(comparison)
+
+            st.line_chart(comp)
+
+            st.subheader("Matrice de corrélation")
+
+            st.dataframe(
+                comp.corr().round(2)
+            )
+
+# =========================================================
+# PORTEFEUILLE
+# =========================================================
+
 elif menu == "💼 Portefeuille":
+
     st.header("💼 Portefeuille")
-    actif = st.selectbox("Choisir l'actif", [a for b in ASSETS.values() for a in b.keys()])
-    ticker = [v for k in ASSETS.values() for a,v in k.items() if a == actif][0]
-    prix_actuel = get_price(ticker)
-    st.info(f"Prix actuel de {actif}: ${prix_actuel:,.2f}")
-    qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
-    col1,col2 = st.columns(2)
-    with col1:
-        if st.button("Acheter"):
-            cout = qty * prix_actuel
-            if cout <= st.session_state.cash:
-                st.session_state.portfolio_multi[actif] = {"quantite": st.session_state.portfolio_multi.get(actif,{"quantite":0})["quantite"] + qty}
-                st.session_state.cash -= cout; st.session_state.operations.append({"Date": datetime.now().strftime("%d/%m/%Y"), "Type": "Achat", "Actif": actif, "Qté": qty, "Prix": prix_actuel}); st.rerun()
-            else: st.error("Pas assez de cash")
-    with col2:
-        if st.button("Vendre"):
-            if actif in st.session_state.portfolio_multi and st.session_state.portfolio_multi[actif]["quantite"] >= qty:
-                st.session_state.portfolio_multi[actif]["quantite"] -= qty; st.session_state.cash += qty * prix_actuel; st.session_state.operations.append({"Date": datetime.now().strftime("%d/%m/%Y"), "Type": "Vente", "Actif": actif, "Qté": qty, "Prix": prix_actuel}); st.rerun()
-            else: st.error("Quantité insuffisante")
-    if st.session_state.portfolio_multi:
-        port_data = [{"Actif": a, "Quantité": d["quantite"], "Prix Actuel": f"${get_price([v for k in ASSETS.values() for x,v in k.items() if x == a][0]):,.2f}"} for a, d in st.session_state.portfolio_multi.items()]
-        st.dataframe(pd.DataFrame(port_data)); st.dataframe(pd.DataFrame(st.session_state.operations))
 
-# ============== 8. BACKTESTING ==============
-elif menu == "⏪ Backtesting":
-    st.header("⏪ Backtesting Stratégie: Achat si RSI<30, Vente si RSI>70")
-    marché = st.selectbox("Actif Backtest", ["Bitcoin", "Apple"])
-    ticker = [v for k in ASSETS.values() for a,v in k.items() if a == marché][0]
-    data = charger_donnees(ticker, "2y", "1d")
-    capital = 10000
-    for i in range(50, len(data)):
-        rsi = calculer_indicateurs(data.iloc[:i])["rsi"].iloc[-1]
-        if rsi < 30: capital *= 1.02
-        elif rsi > 70: capital *= 0.98
-    st.metric("Capital Final Simulé", f"${capital:,.2f}")
-    st.line_chart(pd.DataFrame({"Capital": np.linspace(10000, capital, 100)}))
+    asset = st.selectbox(
+        "Actif",
+        [
+            name
+            for items in ASSETS.values()
+            for name in items
+        ]
+    )
 
-# ============== 9. HISTORIQUE + RAPPORTS ==============
+    market = next(
+        k for k, v in ASSETS.items()
+        if asset in v
+    )
+
+    ticker = ASSETS[market][asset]
+
+    df = charger_donnees(
+        ticker,
+        market
+    )
+
+    if df.empty:
+        st.error("❌ Prix indisponible.")
+        st.stop()
+
+    price = float(df["Close"].iloc[-1])
+
+    st.info(
+        f"Prix actuel : ${price:,.2f}"
+    )
+
+    qty = st.number_input(
+        "Quantité",
+        min_value=0.0,
+        value=0.1,
+        step=0.01
+    )
+
+    buy, sell = st.columns(2)
+
+    with buy:
+
+        if st.button("🟢 Acheter"):
+
+            cost = qty * price
+
+            if cost > st.session_state.cash:
+                st.error("❌ Cash insuffisant.")
+            else:
+
+                old = st.session_state.portfolio.get(
+                    asset,
+                    {
+                        "quantite": 0.0,
+                        "prix_moyen": 0.0,
+                        "cout_total": 0.0
+                    }
+                )
+
+                new_qty = old["quantite"] + qty
+                new_cost = old["cout_total"] + cost
+
+                st.session_state.portfolio[asset] = {
+                    "quantite": new_qty,
+                    "prix_moyen": new_cost / new_qty,
+                    "cout_total": new_cost
+                }
+
+                st.session_state.cash -= cost
+
+                st.session_state.operations.append({
+                    "Date": datetime.now().strftime(
+                        "%d/%m/%Y"
+                    ),
+                    "Type": "Achat",
+                    "Actif": asset,
+                    "Qté": qty,
+                    "Prix": price
+                })
+
+                st.rerun()
+
+    with sell:
+
+        if st.button("🔴 Vendre"):
+
+            if (
+                asset not in st.session_state.portfolio
+                or st.session_state.portfolio[asset]["quantite"] < qty
+            ):
+                st.error("❌ Quantité insuffisante.")
+            else:
+
+                data = st.session_state.portfolio[asset]
+
+                data["quantite"] -= qty
+                data["cout_total"] = (
+                    data["prix_moyen"] *
+                    data["quantite"]
+                )
+
+                st.session_state.cash += qty * price
+
+                st.session_state.operations.append({
+                    "Date": datetime.now().strftime(
+                        "%d/%m/%Y"
+                    ),
+                    "Type": "Vente",
+                    "Actif": asset,
+                    "Qté": qty,
+                    "Prix": price
+                })
+
+                if data["quantite"] <= 0:
+                    del st.session_state.portfolio[asset]
+
+                st.rerun()
+
+    if st.session_state.portfolio:
+
+        rows = []
+
+        for asset, data in st.session_state.portfolio.items():
+
+            market = next(
+                k for k, v in ASSETS.items()
+                if asset in v
+            )
+
+            df = charger_donnees(
+                ASSETS[market][asset],
+                market
+            )
+
+            if df.empty:
+                continue
+
+            current = float(df["Close"].iloc[-1])
+
+            rows.append({
+                "Actif": asset,
+                "Quantité": data["quantite"],
+                "Prix moyen": round(
+                    data["prix_moyen"], 2
+                ),
+                "Prix actuel": round(
+                    current, 2
+                ),
+                "P&L": round(
+                    (current - data["prix_moyen"])
+                    * data["quantite"],
+                    2
+                )
+            })
+
+        st.dataframe(
+            pd.DataFrame(rows),
+            use_container_width=True
+        )
+
+        if st.session_state.operations:
+            st.subheader("Opérations")
+            st.dataframe(
+                pd.DataFrame(
+                    st.session_state.operations
+                ),
+                use_container_width=True
+            )
+
+# =========================================================
+# BACKTEST
+# =========================================================
+
+elif menu == "📊 Backtest":
+
+    st.header(
+        f"📊 Backtest PrediTrade AI V{APP_VERSION}"
+    )
+
+    market = st.selectbox(
+        "Marché",
+        list(ASSETS.keys()),
+        key="backtest_market"
+    )
+
+    asset = st.selectbox(
+        "Actif",
+        list(ASSETS[market].keys()),
+        key="backtest_asset"
+    )
+
+    if st.button("🚀 Lancer le Backtest"):
+
+        df = charger_donnees(
+            ASSETS[market][asset],
+            market
+        ).tail(100)
+
+        if len(df) < 50:
+            st.error("❌ Pas assez de données.")
+            st.stop()
+
+        capital = 1000
+        position = False
+        buy_price = 0
+        trades = []
+        equity = [capital]
+
+        for i in range(50, len(df)):
+
+            slice_df = df.iloc[:i + 1]
+            ind = indicateurs(slice_df)
+
+            score, *_ = prediscore(ind)
+            price = float(slice_df["Close"].iloc[-1])
+
+            if score > 70 and not position:
+
+                position = True
+                buy_price = price
+
+                trades.append({
+                    "Date": slice_df.index[-1].date(),
+                    "Type": "ACHAT",
+                    "Prix": round(price, 5)
+                })
+
+            elif score < 30 and position:
+
+                profit = (
+                    (price - buy_price)
+                    / buy_price
+                )
+
+                capital *= 1 + profit
+                position = False
+
+                trades.append({
+                    "Date": slice_df.index[-1].date(),
+                    "Type": "VENTE",
+                    "Prix": round(price, 5),
+                    "Profit %": round(
+                        profit * 100, 2
+                    )
+                })
+
+            equity.append(capital)
+
+        # Fermeture position finale
+        if position:
+
+            final_price = float(
+                df["Close"].iloc[-1]
+            )
+
+            profit = (
+                (final_price - buy_price)
+                / buy_price
+            )
+
+            capital *= 1 + profit
+
+            trades.append({
+                "Date": df.index[-1].date(),
+                "Type": "VENTE FIN",
+                "Prix": round(final_price, 5),
+                "Profit %": round(
+                    profit * 100, 2
+                )
+            })
+
+        total_profit = (
+            (capital / 1000) - 1
+        ) * 100
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric(
+            "Capital final",
+            f"${capital:,.2f}"
+        )
+
+        c2.metric(
+            "Profit total",
+            f"{total_profit:.2f}%"
+        )
+
+        c3.metric(
+            "Trades",
+            len(trades) // 2
+        )
+
+        st.line_chart(
+            pd.DataFrame(
+                equity,
+                columns=["Capital"]
+            )
+        )
+
+        if trades:
+            st.dataframe(
+                pd.DataFrame(trades),
+                use_container_width=True
+            )
+
+# =========================================================
+# HISTORIQUE
+# =========================================================
+
 elif menu == "📚 Historique":
-    st.header("📚 Historique des analyses")
-    if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history)); st.download_button("📥 Télécharger CSV", pd.DataFrame(st.session_state.history).to_csv(index=False), "historique.csv")
-    else: st.info("Aucune analyse")
+
+    st.header("📚 Historique")
+
+    if st.session_state.history:
+
+        df = pd.DataFrame(
+            st.session_state.history
+        )
+
+        st.dataframe(
+            df,
+            use_container_width=True
+        )
+
+        st.download_button(
+            "📥 Télécharger CSV",
+            df.to_csv(index=False),
+            "historique.csv"
+        )
+
+    else:
+        st.info("Aucune analyse.")
+
+# =========================================================
+# ASSISTANT IA
+# =========================================================
 
 elif menu == "🤖 Assistant IA":
+
     st.header("🤖 Assistant IA Gemini")
-    question = st.text_area("Pose ta question sur les marchés")
-    if st.button("Envoyer à l'IA"):
-        st.write(assistant_gpt4(question, f"Historique: {st.session_state.history[-3:]}"))
+
+    if not st.session_state.is_premium:
+        st.warning(
+            "⭐ L'Assistant IA est réservé aux Premium."
+        )
+    else:
+
+        question = st.text_area(
+            "Pose ta question sur les marchés"
+        )
+
+        if st.button("📤 Envoyer"):
+
+            st.write(
+                assistant_gemini(
+                    question,
+                    str(st.session_state.history[-3:])
+                )
+            )
+
+# =========================================================
+# RAPPORT
+# =========================================================
 
 elif menu == "📄 Rapports":
-    st.header("📄 Rapports IA Pro")
-    rapport = f"PREDITRADE AI PRO V4.6.3\nDate: {datetime.now()}\nUser: {st.session_state.user_email}\nCapital: ${st.session_state.cash}\nAnalyses: {len(st.session_state.history)}"
-    st.download_button("📄 Télécharger Rapport TXT", rapport, "rapport.txt")
 
-# ============== 10. PAIEMENT ==============
-elif menu == "⚙️ Paramètres + Paiement":
-    st.header("⚙️ Passer Premium 19990 XAF/mois")
-    if not st.session_state.is_premium:
-        numero = st.text_input("Numéro MTN ou Orange", placeholder="2376XXXXXXXX")
-        if st.button("💳 Payer", type="primary"):
-            res = paiement_campay(numero, 19990)
-            if res["status"] == "SUCCESS":
-                with st.spinner("Attente paiement..."):
-                    time.sleep(3)
-                    if campay_client.get_transaction(res["reference"])["status"] == "SUCCESSFUL":
-                        activate_premium_user(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium Activé!"); st.rerun()
+    st.header("📄 Rapport PrediTrade AI")
+
+    report = f"""
+PREDITRADE AI PRO V{APP_VERSION}
+
+Date : {datetime.now()}
+Utilisateur : {st.session_state.user_email}
+Capital : ${st.session_state.cash:,.2f}
+Analyses : {len(st.session_state.history)}
+"""
+
+    st.download_button(
+        "📥 Télécharger le rapport",
+        report,
+        "rapport.txt"
+    )
+
+# =========================================================
+# PAIEMENT
+# =========================================================
+
+elif menu == "⚙️ Paiement":
+
+    st.header("⭐ PrediTrade AI Premium")
+    st.subheader("19 990 XAF / mois")
+
+    if st.session_state.is_premium:
+
+        st.success(
+            "⭐ Ton compte est déjà Premium."
+        )
+
     else:
-        st.success("Vous êtes déjà Premium ⭐")
 
-# ============== MODULE 5: BACKTEST V5.0 ==============
-elif menu == "📊 Backtest":
-    st.header("📊 Backtest Automatique V5.0")
-    st.write("Teste la stratégie 'Score > 70 ACHAT / Score < 30 VENTE' sur 30 jours")
-    ticker_sym_bt = st.selectbox("Choisis la paire pour le Backtest", ["EURUSD=X", "GBPUSD=X", "BTC-USD", "ETH-USD"])
-    if st.button("🚀 Lancer le Backtest"):
-        with st.spinner("Simulation en cours sur 30 jours..."):
-            ticker_bt = yf.Ticker(ticker_sym_bt)
-            hist = ticker_bt.history(period="30d", interval="1d")
-            capital = 1000
-            position = 0
-            trades = []
-            equity_curve = [1000]
-            for i in range(14, len(hist)):
-                data_slice = hist.iloc[:i+1]
-                ind = calculer_indicateurs(data_slice)
-                score, signal, confidence, rsi, ema20, ema50, macd, macd_sig = calculer_prediscore(ind)
-                last_price = float(data_slice["Close"].iloc[-1])
-                if score > 70 and position == 0:
-                    position = 1
-                    buy_price = last_price
-                    trades.append({"Date": data_slice.index[-1].date(), "Type": "ACHAT", "Prix": round(buy_price, 5)})
-                elif score < 30 and position == 1:
-                    position = 0
-                    sell_price = last_price
-                    profit = (sell_price - buy_price) / buy_price * 100
-                    trades.append({"Date": data_slice.index[-1].date(), "Type": "VENTE", "Prix": round(sell_price, 5), "Profit%": round(profit, 2)})
-                    capital = capital * (1 + profit/100)
-                equity_curve.append(capital)
-            st.success(f"Backtest terminé sur {ticker_sym_bt}")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Capital Final", f"${round(capital, 2)}")
-            col2.metric("Profit Total", f"{round((capital-1000)/10, 2)}%")
-            col3.metric("Nombre de Trades", f"{len(trades)//2}")
-            st.line_chart(pd.DataFrame(equity_curve, columns=["Capital"]))
-            if trades:
-                st.dataframe(pd.DataFrame(trades))
+        numero = st.text_input(
+            "Numéro MTN / Orange",
+            placeholder="2376XXXXXXXX"
+        )
 
-st.sidebar.caption("© 2026 Fredo Blong")
+        operator = st.selectbox(
+            "Opérateur",
+            ["MTN", "ORANGE"]
+        )
+
+        if st.button(
+            "💳 Payer 19 990 XAF",
+            type="primary"
+        ):
+
+            result = paiement(
+                numero,
+                19990,
+                operator
+            )
+
+            if result and result.get("status") == "SUCCESS":
+
+                with st.spinner(
+                    "Vérification du paiement..."
+                ):
+
+                    time.sleep(3)
+
+                    try:
+
+                        verification = (
+                            campay.get_transaction(
+                                result["reference"]
+                            )
+                        )
+
+                        if verification.get("status") == "SUCCESSFUL":
+
+                            activate_premium(
+                                st.session_state.user_email
+                            )
+
+                            st.session_state.is_premium = True
+
+                            st.success(
+                                "✅ Premium activé !"
+                            )
+
+                            st.rerun()
+
+                        else:
+                            st.warning(
+                                "⚠️ Paiement en attente de confirmation."
+                            )
+
+                    except Exception as e:
+                        st.error(
+                            f"❌ Vérification impossible : {e}"
+                        )
+
+st.sidebar.caption(
+    f"© 2026 Fredo Blong — PrediTrade AI V{APP_VERSION}"
+    )
