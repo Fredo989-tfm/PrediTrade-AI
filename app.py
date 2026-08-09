@@ -116,9 +116,27 @@ try:
 except: campay_client = FakeCamPayClient()
 
 # ============== 1. DONNÉES + FONCTIONS ==============
-ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-USD","BNB": "BNB-USD"},
-"Actions": {"Apple": "AAPL","Microsoft": "MSFT","Nvidia": "NVDA","Amazon": "AMZN","Tesla": "TSLA"},
-"Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
+ASSETS = {
+    "Crypto": {
+        "Bitcoin": "BTC", 
+        "Ethereum": "ETH",
+        "Solana": "SOL",
+        "BNB": "BNB"
+    },
+    "Actions": {
+        "Apple": "AAPL", 
+        "Microsoft": "MSFT",
+        "Tesla": "TSLA"
+    },
+    "Forex": {
+        "EUR/USD": "EUR/USD", 
+        "GBP/USD": "GBP/USD"
+    },
+    "Matières Premières": {
+        "Or": "XAU/USD",
+        "Pétrole": "WTI"
+    }
+} 
 @st.cache_data(ttl=300) # Cache 5 min
 def charger_donnees(symbol, period="1y", interval="1d"):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=full"
