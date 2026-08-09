@@ -119,22 +119,25 @@ except: campay_client = FakeCamPayClient()
 ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-USD","BNB": "BNB-USD"},
 "Actions": {"Apple": "AAPL","Microsoft": "MSFT","Nvidia": "NVDA","Amazon": "AMZN","Tesla": "TSLA"},
 "Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
-
 @st.cache_data(ttl=300) # Cache 5 min
 def charger_donnees(symbol, period="1y", interval="1d"):
-    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=compact'
+    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=full"
     r = requests.get(url, timeout=10)
+    time.sleep(12) # TRÈS IMPORTANT: Alpha limite à 5 appels/min. Sinon erreur.
     data = r.json()
     
     if "Time Series (Daily)" not in data:
+        st.warning(f"Alpha n'a pas renvoyé de données pour {symbol}")
         return pd.DataFrame()
         
     df = pd.DataFrame(data["Time Series (Daily)"]).T
-    df = df.rename(columns={"4. close": "Close"})
-    df["Close"] = df["Close"].astype(float)
+    df = df.rename(columns={
+        "1. open": "Open", "2. high": "High", 
+        "3. low": "Low", "4. close": "Close", "5. volume": "Volume"
+    })
+    df = df.astype(float)
     df.index = pd.to_datetime(df.index)
-    return df.sort_index()
-
+    return df.sort_index() 
 @st.cache_data(ttl=60) # Cache 1 min
 def get_price(symbol):
     url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}'
