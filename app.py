@@ -210,145 +210,90 @@ def assistant_gemini(question, context):
 # =========================================================
 CAMPAY_OK = False
 try:
-    from campay.api import Client as CamPayClient # FIX: uniquement api
-    campay = CamPayClient(app_username=st.secrets["CAMPAY_USERNAME"], app_password=st.secrets["CAMPAY_PASSWORD"], environment="PROD")
+    from campay.sdk import Client as CamPayClient # FIX: .sdk au lieu de .api
+    campay = CamPayClient(
+        app_username=st.secrets["CAMPAY_USERNAME"], 
+        app_password=st.secrets["CAMPAY_PASSWORD"], 
+        environment="PROD"
+    )
     CAMPAY_OK = True
 except Exception as e:
-    campay = None; st.warning(f"⚠️ CamPay indisponible : {e}")
+    campay = None 
+    st.warning(f"⚠️ CamPay indisponible : {e}")
 
 def paiement(numero, montant, operator):
-    if not CAMPAY_OK: return None
+    if not CAMPAY_OK: 
+        st.error("❌ Paiement désactivé. Vérifie CAMPAY_USERNAME dans Secrets")
+        return None
     numero = numero.replace(" ", "")
-    if not re.fullmatch(r"2376\d{8}", numero): st.error("❌ Format : 2376XXXXXXXX"); return None
-    try: return campay.collect({"amount": str(montant), "currency": "XAF", "from": numero, "operator": operator})
-    except Exception as e: st.error(f"❌ Erreur CamPay : {e}"); return None
-
+    if not re.fullmatch(r"2376\d{8}", numero): 
+        st.error("❌ Format : 2376XXXXXXXX") 
+        return None
+    try: 
+        return campay.collect({
+            "amount": str(montant), 
+            "currency": "XAF", 
+            "from": numero, 
+            "operator": operator
+        })
+    except Exception as e: 
+        st.error(f"❌ Erreur CamPay : {e}") 
+        return None
 # =========================================================
-# SIDEBAR + PAGES
-# =========================================================
-st.sidebar.title(f"🚀 PrediTrade AI V{APP_VERSION}")
-st.sidebar.write(f"📧 {st.session_state.user_email}")
-st.sidebar.success("⭐ Premium") if st.session_state.is_premium else st.sidebar.info("🆓 Gratuit")
-st.sidebar.write(f"💰 Cash : ${st.session_state.cash:,.2f}"); st.sidebar.write(f"📈 Analyses : {len(st.session_state.history)}")
-menu = st.sidebar.radio("Menu", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner","⚖️ Comparaison","💼 Portefeuille","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paiement"])
-if st.sidebar.button("🚪 Déconnexion", use_container_width=True): st.session_state.logged_in = False; st.session_state.is_premium = False; st.rerun()
+# SIDEBAR
+# ========================================================
+with st.sidebar:
+    st.title(f"🚀 PrediTrade AI V{APP_VERSION}")
+    st.caption(f"Connecté: {st.session_state.user_email}")
+    st.divider()
 
-if menu == "📊 Tableau de bord":
-    st.header("📊 Tableau de bord"); assets_value = 0
-    for asset, data in st.session_state.portfolio_multi.items(): # FIX: portfolio_multi
-        market = next(k for k, v in ASSETS.items() if asset in v); df = charger_donnees(ASSETS[market][asset], market)
-        if not df.empty: price = float(df["Close"].iloc[-1]); assets_value += data["quantite"] * price
-    total = st.session_state.cash + assets_value; pnl = total - 100000
-    c1, c2, c3, c4 = st.columns(4); c1.metric("Valeur totale", f"${total:,.2f}", f"${pnl:,.2f}"); c2.metric("Cash", f"${st.session_state.cash:,.2f}"); c3.metric("Actifs", len(st.session_state.portfolio_multi)); c4.metric("IA", "Gemini" if st.session_state.is_premium else "Basique")
-
-elif menu == "🧠 Analyse IA Pro":
-    st.header("🧠 Analyse IA Pro"); market = st.selectbox("Marché", list(ASSETS.keys())); asset = st.selectbox("Actif", list(ASSETS[market].keys()))
-    if st.button("🚀 Lancer l'analyse", type="primary"):
-        if not st.session_state.is_premium:
-            today = datetime.now().date().isoformat(); count = st.session_state.analyses_count.get(today, 0)
-            if count >= 5: st.error("⚠️ 5 analyses gratuites déjà utilisées aujourd'hui."); st.stop()
-            st.session_state.analyses_count[today] = count + 1
-        with st.spinner("Analyse..."):
-            df = charger_donnees(ASSETS[market][asset], market)
-            if df.empty: st.error("❌ Aucune donnée."); st.stop()
-            price = float(df["Close"].iloc[-1]); ind = indicateurs(df); score, signal, confidence, rsi, ema20, ema50, macd, macd_signal = prediscore(ind)
-            sl, tp, rr = risque(price, score); p24, p7, p30, p90 = predictions(price, score)
-            st.session_state.history.append({"Date": datetime.now().strftime("%d/%m/%Y %H:%M"), "Actif": asset, "Prix": round(price, 2), "Score": score, "Signal": signal})
-            st.metric("💰 Prix", f"${price:,.2f}"); st.plotly_chart(go.Figure(go.Candlestick(x=df.index, open=df.Open, high=df.High, low=df.Low, close=df.Close)).update_layout(template="plotly_dark", height=400), use_container_width=True)
-            c1, c2, c3 = st.columns(3); c1.metric("PrediScore", f"{score}/100", signal); c2.metric("RSI", f"{rsi:.2f}"); c3.metric("Confiance", confidence)
-            st.warning(f"Stop Loss : ${sl} | Take Profit : ${tp} | R/R : {rr}"); st.info(f"Scénarios indicatifs : 24h ${p24} | 7j ${p7} | 30j ${p30} | 90j ${p90}"); st.caption("⚠️ Ces scénarios sont indicatifs et ne garantissent pas le prix futur.")
-            if st.session_state.is_premium: st.subheader("🤖 Explication IA"); st.write(assistant_gemini("Explique la tendance actuelle.", f"Score={score}, RSI={rsi:.2f}"))
-
-elif menu == "🔍 Scanner":
-    st.header("🔍 Scanner intelligent")
-    if st.button("🚀 Scanner les actifs"):
-        results = []; assets = [(market, name, ticker) for market, items in ASSETS.items() for name, ticker in items.items()]
-        st.info("Scan en cours... environ 5 minutes avec la limite API actuelle.") # FIX: message réaliste
-        progress = st.progress(0)
-        for i, (market, name, ticker) in enumerate(assets):
-            df = charger_donnees(ticker, market)
-            if not df.empty:
-                ind = indicateurs(df); score, signal, confidence, rsi, *_ = prediscore(ind)
-                results.append({"Marché": market, "Actif": name, "Prix": round(float(df["Close"].iloc[-1]), 2), "Score": score, "RSI": round(rsi, 1), "Signal": signal})
-            progress.progress((i + 1) / len(assets))
-        if results: st.dataframe(pd.DataFrame(results).sort_values("Score", ascending=False), use_container_width=True)
-        else: st.error("❌ Aucun actif disponible.")
-
-elif menu == "⚖️ Comparaison":
-    st.header("⚖️ Comparaison"); assets_names = [name for items in ASSETS.values() for name in items]; selected = st.multiselect("Choisir 2 à 4 actifs", assets_names, default=["Bitcoin", "Apple"])
-    if len(selected) >= 2:
-        comparison = {}
-        for asset in selected: market = next(k for k, v in ASSETS.items() if asset in v); df = charger_donnees(ASSETS[market][asset], market);
-        if not df.empty: comparison[asset] = df["Close"]
-        if comparison: comp = pd.DataFrame(comparison); st.line_chart(comp); st.subheader("Matrice de corrélation"); st.dataframe(comp.corr().round(2))
-
-elif menu == "💼 Portefeuille":
-    st.header("💼 Portefeuille"); asset = st.selectbox("Actif", [name for items in ASSETS.values() for name in items]); market = next(k for k, v in ASSETS.items() if asset in v); df = charger_donnees(ASSETS[market][asset], market)
-    if df.empty: st.error("❌ Prix indisponible."); st.stop()
-    price = float(df["Close"].iloc[-1]); st.info(f"Prix actuel : ${price:,.2f}"); qty = st.number_input("Quantité", min_value=0.0, value=0.1, step=0.01)
-    buy, sell = st.columns(2)
-    with buy:
-        if st.button("🟢 Acheter"):
-            cost = qty * price
-            if cost > st.session_state.cash: st.error("❌ Cash insuffisant.")
-            else:
-                old = st.session_state.portfolio_multi.get(asset, {"quantite": 0.0, "prix_moyen": 0.0, "cout_total": 0.0}); new_qty = old["quantite"] + qty; new_cost = old["cout_total"] + cost
-                st.session_state.portfolio_multi[asset] = {"quantite": new_qty, "prix_moyen": new_cost / new_qty, "cout_total": new_cost}; st.session_state.cash -= cost; st.session_state.operations.append({"Date": datetime.now().strftime("%d/%m/%Y"), "Type": "Achat", "Actif": asset, "Qté": qty, "Prix": price}); st.rerun()
-    with sell:
-        if st.button("🔴 Vendre"):
-            if asset not in st.session_state.portfolio_multi or st.session_state.portfolio_multi[asset]["quantite"] < qty: st.error("❌ Quantité insuffisante.")
-            else:
-                data = st.session_state.portfolio_multi[asset]; data["quantite"] -= qty; data["cout_total"] = data["prix_moyen"] * data["quantite"]; st.session_state.cash += qty * price; st.session_state.operations.append({"Date": datetime.now().strftime("%d/%m/%Y"), "Type": "Vente", "Actif": asset, "Qté": qty, "Prix": price})
-                if data["quantite"] <= 0: del st.session_state.portfolio_multi[asset]; st.rerun()
-    if st.session_state.portfolio_multi:
-        rows = []
-        for asset, data in st.session_state.portfolio_multi.items(): market = next(k for k, v in ASSETS.items() if asset in v); df = charger_donnees(ASSETS[market][asset], market);
-        if not df.empty: current = float(df["Close"].iloc[-1]); rows.append({"Actif": asset, "Quantité": data["quantite"], "Prix moyen": round(data["prix_moyen"], 2), "Prix actuel": round(current, 2), "P&L": round((current - data["prix_moyen"]) * data["quantite"], 2)})
-        st.dataframe(pd.DataFrame(rows), use_container_width=True);
-        if st.session_state.operations: st.subheader("Opérations"); st.dataframe(pd.DataFrame(st.session_state.operations), use_container_width=True)
-
-elif menu == "📊 Backtest":
-    st.header(f"📊 Backtest PrediTrade AI V{APP_VERSION}"); market = st.selectbox("Marché", list(ASSETS.keys()), key="backtest_market"); asset = st.selectbox("Actif", list(ASSETS[market].keys()), key="backtest_asset")
-    if st.button("🚀 Lancer le Backtest"):
-        df = charger_donnees(ASSETS[market][asset], market).tail(100) # FIX: tail(100)
-        if len(df) < 50: st.error("❌ Pas assez de données."); st.stop()
-        capital = 1000; position = False; buy_price = 0; trades = []; equity = [capital]
-        for i in range(50, len(df)): slice_df = df.iloc[:i + 1]; ind = indicateurs(slice_df); score, *_ = prediscore(ind); price = float(slice_df["Close"].iloc[-1])
-        if score > 70 and not position: position = True; buy_price = price; trades.append({"Date": slice_df.index[-1].date(), "Type": "ACHAT", "Prix": round(price, 5)})
-        elif score < 30 and position: profit = (price - buy_price) / buy_price; capital *= 1 + profit; position = False; trades.append({"Date": slice_df.index[-1].date(), "Type": "VENTE", "Prix": round(price, 5), "Profit %": round(profit * 100, 2)})
-        equity.append(capital)
-        if position: final_price = float(df["Close"].iloc[-1]); profit = (final_price - buy_price) / buy_price; capital *= 1 + profit; trades.append({"Date": df.index[-1].date(), "Type": "VENTE FIN", "Prix": round(final_price, 5), "Profit %": round(profit * 100, 2)}) # FIX: cloture
-        total_profit = ((capital / 1000) - 1) * 100 # FIX: /1000
-        c1, c2, c3 = st.columns(3); c1.metric("Capital final", f"${capital:,.2f}"); c2.metric("Profit total", f"{total_profit:.2f}%"); c3.metric("Trades", len(trades) // 2); st.line_chart(pd.DataFrame(equity, columns=["Capital"]));
-        if trades: st.dataframe(pd.DataFrame(trades), use_container_width=True)
-
-elif menu == "📚 Historique":
-    st.header("📚 Historique")
-    if st.session_state.history: df = pd.DataFrame(st.session_state.history); st.dataframe(df, use_container_width=True); st.download_button("📥 Télécharger CSV", df.to_csv(index=False), "historique.csv")
-    else: st.info("Aucune analyse.")
-
-elif menu == "🤖 Assistant IA":
-    st.header("🤖 Assistant IA Gemini")
-    if not st.session_state.is_premium: st.warning("⭐ L'Assistant IA est réservé aux Premium.")
-    else: question = st.text_area("Pose ta question sur les marchés");
-    if st.button("📤 Envoyer"): st.write(assistant_gemini(question, str(st.session_state.history[-3:])))
-
-elif menu == "📄 Rapports":
-    st.header("📄 Rapport PrediTrade AI"); report = f"PREDITRADE AI PRO V{APP_VERSION}\nDate : {datetime.now()}\nUtilisateur : {st.session_state.user_email}\nCapital : ${st.session_state.cash:,.2f}\nAnalyses : {len(st.session_state.history)}"; st.download_button("📥 Télécharger le rapport", report, "rapport.txt")
-
-elif menu == "⚙️ Paiement":
-    st.header("⭐ PrediTrade AI Premium"); st.subheader("19 990 XAF / mois")
-    if st.session_state.is_premium: st.success("⭐ Ton compte est déjà Premium.")
+    # Statut Premium
+    if st.session_state.is_premium:
+        st.success("⭐ Compte Premium Actif")
+        st.caption("IA Gemini + Analyses illimitées")
+    elif trial_active():
+        st.info("🚀 Essai Premium: 3 Jours")
+        jours_restants = (st.session_state.trial_until - datetime.now()).days + 1
+        st.caption(f"Il reste {jours_restants} jours")
     else:
-        numero = st.text_input("Numéro MTN / Orange", placeholder="2376XXXXXXXX"); operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
-        if st.button("💳 Payer 19 990 XAF", type="primary"):
-            result = paiement(numero, 19990, operator)
-            if result and result.get("status") == "SUCCESS":
-                with st.spinner("Vérification du paiement..."): time.sleep(3)
-                try:
-                    verification = campay.get_transaction(result["reference"])
-                    if verification.get("status") == "SUCCESSFUL": activate_premium(st.session_state.user_email); st.session_state.is_premium = True; st.success("✅ Premium activé!"); st.rerun()
-                    else: st.warning("⚠️ Paiement en attente de confirmation.")
-                except Exception as e: st.error(f"❌ Vérification impossible : {e}")
+        st.warning("🆓 Compte Gratuit")
+        today = datetime.now().date().isoformat()
+        count = st.session_state.analyses_count.get(today, 0)
+        st.caption(f"Analyses aujourd'hui: {count}/5")
 
-st.sidebar.caption(f"© 2026 Fredo Blong — PrediTrade AI V{APP_VERSION}")
+    st.divider()
+
+    # Metrics
+    st.metric("💰 Cash Disponible", f"${st.session_state.cash:,.2f}")
+    st.metric("📈 Analyses Totales", len(st.session_state.history))
+    st.metric("💼 Actifs en portefeuille", len(st.session_state.portfolio_multi))
+
+    st.divider()
+
+    # Menu Navigation
+    menu = st.radio(
+        "Navigation",
+        [
+            "📊 Tableau de bord",
+            "🧠 Analyse IA Pro",
+            "🔍 Scanner",
+            "⚖️ Comparaison",
+            "💼 Portefeuille",
+            "📊 Backtest",
+            "📚 Historique",
+            "🤖 Assistant IA",
+            "📄 Rapports",
+            "⚙️ Paiement"
+        ],
+        key="main_menu"
+    )
+
+    st.divider()
+
+    # Bouton Déconnexion
+    if st.button("🚪 Déconnexion", use_container_width=True, type="secondary"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+    st.caption(f"© 2026 Fredo Blong — PrediTrade AI V{APP_VERSION}")
