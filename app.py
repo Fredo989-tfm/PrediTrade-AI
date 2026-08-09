@@ -203,17 +203,16 @@ def assistant_gemini(question, context):
         prompt = f"Tu es PrediTrade AI. Réponds en français en maximum 4 phrases.\nQuestion : {question}\nContexte : {context}"
         response = client.models.generate_content(model="gemini-3.5-flash", contents=prompt) # FIX: 2.0 -> 3.5
         return response.text
-    except Exception as e: return f"⚠️ Erreur Gemini : {e}"
-
-# =========================================================
+    except Exception as e: return f"⚠️ Erreur Gemini : {e}
+    # =========================================================
 # CAMPAY
 # =========================================================
 CAMPAY_OK = False
 try:
     from campay.sdk import Client as CamPayClient
     campay = CamPayClient(
-        application_username=st.secrets["CAMPAY_USERNAME"], # FIX: application_
-        application_password=st.secrets["CAMPAY_PASSWORD"], # FIX: application_
+        username=st.secrets["CAMPAY_USERNAME"], # FIX: juste username
+        password=st.secrets["CAMPAY_PASSWORD"], # FIX: juste password
         environment="PROD"
     )
     CAMPAY_OK = True
@@ -223,7 +222,7 @@ except Exception as e:
 
 def paiement(numero, montant, operator):
     if not CAMPAY_OK: 
-        st.error("❌ Paiement désactivé. Vérifie CAMPAY_USERNAME dans Secrets")
+        st.error("❌ Paiement désactivé.")
         return None
     numero = numero.replace(" ", "")
     if not re.fullmatch(r"2376\d{8}", numero): 
@@ -234,12 +233,13 @@ def paiement(numero, montant, operator):
             "amount": str(montant), 
             "currency": "XAF", 
             "from": numero, 
-            "description": "Abonnement PrediTrade AI Premium" # Ajout description obligatoire
+            "operator": operator, # IMPORTANT: MTN ou ORANGE
+            "description": "Abonnement PrediTrade AI Premium"
         })
         return res
     except Exception as e: 
         st.error(f"❌ Erreur CamPay : {e}") 
-        return None
+        return None 
 # =========================================================
 # SIDEBAR
 # ========================================================
