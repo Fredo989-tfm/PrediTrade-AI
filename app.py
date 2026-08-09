@@ -118,13 +118,30 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Actions": {"Apple": "AAPL","Microsoft": "MSFT","Nvidia": "NVDA","Amazon": "AMZN","Tesla": "TSLA"},
 "Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
 
-@st.cache_data(ttl=60) # Cache 1 min
-def get_price(symbol):
+@st.cache_data(ttl=60)
+def obtenir_prix(symbole):
     try:
-        ticker = yf.Ticker(symbol)
-        price = ticker.info.get('regularMarketPrice', 0)
-        return price if price else 0
-    except:
+        ticker = yf.Ticker(symbole)
+
+        # Méthode rapide
+        try:
+            prix = ticker.fast_info.get("last_price")
+            if prix and float(prix) > 0:
+                return float(prix)
+        except Exception:
+            pass
+
+        # Méthode de secours
+        df = ticker.history(period="1d", interval="1m")
+
+        if df is not None and not df.empty:
+            prix = df["Close"].dropna()
+            if not prix.empty:
+                return float(prix.iloc[-1])
+
+        return 0
+
+    except Exception:
         return 0
 
 @st.cache_data(ttl=300) # Cache 5 min pour éviter d'être bloqué
