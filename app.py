@@ -210,10 +210,10 @@ def assistant_gemini(question, context):
 # =========================================================
 CAMPAY_OK = False
 try:
-    from campay.sdk import Client as CamPayClient # FIX: .sdk au lieu de .api
+    from campay.sdk import Client as CamPayClient
     campay = CamPayClient(
-        app_username=st.secrets["CAMPAY_USERNAME"], 
-        app_password=st.secrets["CAMPAY_PASSWORD"], 
+        application_username=st.secrets["CAMPAY_USERNAME"], # FIX: application_
+        application_password=st.secrets["CAMPAY_PASSWORD"], # FIX: application_
         environment="PROD"
     )
     CAMPAY_OK = True
@@ -230,12 +230,13 @@ def paiement(numero, montant, operator):
         st.error("❌ Format : 2376XXXXXXXX") 
         return None
     try: 
-        return campay.collect({
+        res = campay.collect({
             "amount": str(montant), 
             "currency": "XAF", 
             "from": numero, 
-            "operator": operator
+            "description": "Abonnement PrediTrade AI Premium" # Ajout description obligatoire
         })
+        return res
     except Exception as e: 
         st.error(f"❌ Erreur CamPay : {e}") 
         return None
