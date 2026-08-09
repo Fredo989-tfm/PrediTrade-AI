@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import requests
+import time
 import plotly.graph_objects as go
 from datetime import datetime
 import hashlib
 import json
 import os
-import time
 import random
 import requests
 from streamlit_oauth import OAuth2Component
+ALPHA_KEY = st.secrets["ALPHA_VANTAGE_KEY"]
 
 # ============== 0. CONFIG + SECRETS ==============
 st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
@@ -118,44 +119,27 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Actions": {"Apple": "AAPL","Microsoft": "MSFT","Nvidia": "NVDA","Amazon": "AMZN","Tesla": "TSLA"},
 "Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
 
-@st.cache_data(ttl=60)
-def obtenir_prix(symbole):
-    try:
-        ticker = yf.Ticker(symbole)
-
-        # Méthode rapide
-        try:
-            prix = ticker.fast_info.get("last_price")
-            if prix and float(prix) > 0:
-                return float(prix)
-        except Exception:
-            pass
-
-        # Méthode de secours
-        df = ticker.history(period="1d", interval="1m")
-
-        if df is not None and not df.empty:
-            prix = df["Close"].dropna()
-            if not prix.empty:
-                return float(prix.iloc[-1])
-
-        return 0
-
-    except Exception:
-        return 0
-
-@st.cache_data(ttl=300) # Cache 5 min pour éviter d'être bloqué
+@st.cache_data(ttl=300) # Cache 5 min
 def charger_donnees(symbol, period="1y", interval="1d"):
-    try:
-        # Ajout timeout pour éviter le blocage
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period, interval=interval, timeout=10)
-        if df.empty:
-            st.warning(f"⚠️ Pas de données pour {symbol}")
-        return df
-    except:
+    url = f'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=compact'
+    r = requests.get(url, timeout=10)
+    data = r.json()
+    
+    if "Time Series (Daily)" not in data:
         return pd.DataFrame()
+        
+    df = pd.DataFrame(data["Time Series (Daily)"]).T
+    df = df.rename(columns={"4. close": "Close"})
+    df["Close"] = df["Close"].astype(float)
+    df.index = pd.to_datetime(df.index)
+    return df.sort_index()
 
+@st.cache_data(ttl=60) # Cache 1 min
+def get_price(symbol):
+    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey={ALPHA_KEY}'
+    r = requests.get(url, timeout=10)
+    data = r.json()
+    return float(data.get("Global Quote", {}).get("05. price", 0))
 def calculer_indicateurs(df):
     close = df["Close"].squeeze()
     ema20 = close.ewm(span=20, adjust=False).mean(); ema50 = close.ewm(span=50, adjust=False).mean()
@@ -347,6 +331,7 @@ elif menu == "🔍 Scanner intelligent":
                         })
                     except:
                         pass
+                    time.sleep(12) # IMPORTANT: Alpha limite à 5 requêtes/min
                     
                     count += 1
                     progress_bar.progress(count / total_assets)
