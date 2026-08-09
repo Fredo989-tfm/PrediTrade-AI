@@ -12,6 +12,7 @@ import random
 import requests
 from streamlit_oauth import OAuth2Component
 ALPHA_KEY = st.secrets["ALPHA_VANTAGE_KEY"]
+st.success(f"Clé chargée: {ALPHA_KEY[:4]}...")
 
 # ============== 0. CONFIG + SECRETS ==============
 st.set_page_config(page_title="PrediTrade AI Pro V4.6", page_icon="🚀", layout="wide")
