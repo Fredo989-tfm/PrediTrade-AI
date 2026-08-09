@@ -1,11 +1,11 @@
 import streamlit as st
-from campay.sdk import Client as CamPayClient
 st.set_page_config(page_title="PrediTrade AI Pro V5.0", page_icon="🚀", layout="wide")
 
 import pandas as pd
 import numpy as np
 import requests, time, hashlib, json, os, re
 from datetime import datetime, timedelta
+from campay.sdk import Client as CamPayClient
 import plotly.graph_objects as go
 
 APP_VERSION = "5.0.0"
