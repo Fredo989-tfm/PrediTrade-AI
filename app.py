@@ -207,17 +207,20 @@ def assistant_gemini(question, context):
     # =========================================================
 # CAMPAY
 # =========================================================
-CAMPAY_OK = False
 try:
     from campay.sdk import Client as CamPayClient
-    campay = CamPayClient(
-        username=st.secrets["CAMPAY_USERNAME"], # FIX: juste username
-        password=st.secrets["CAMPAY_PASSWORD"], # FIX: juste password
-        environment="PROD"
-    )
+
+    campay = CamPayClient({
+        "app_username": st.secrets["CAMPAY_USERNAME"],
+        "app_password": st.secrets["CAMPAY_PASSWORD"],
+        "environment": "PROD"
+    })
+
     CAMPAY_OK = True
+
 except Exception as e:
-    campay = None 
+    campay = None
+    CAMPAY_OK = False
     st.warning(f"⚠️ CamPay indisponible : {e}")
 
 def paiement(numero, montant, operator):
