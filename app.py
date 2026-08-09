@@ -118,13 +118,26 @@ ASSETS = {"Crypto": {"Bitcoin": "BTC-USD","Ethereum": "ETH-USD","Solana": "SOL-U
 "Actions": {"Apple": "AAPL","Microsoft": "MSFT","Nvidia": "NVDA","Amazon": "AMZN","Tesla": "TSLA"},
 "Forex": {"EUR/USD": "EURUSD=X"}, "Matières premières": {"Gold": "GC=F"}, "Indices": {"SP500": "^GSPC","NASDAQ": "^IXIC"}}
 
-@st.cache_data(ttl=120)
-def get_price(ticker):
-    data = yf.download(ticker, period="1d", interval="1m", progress=False)
-    return float(data["Close"].squeeze().iloc[-1]) if not data.empty else 0
+@st.cache_data(ttl=60) # Cache 1 min
+def get_price(symbol):
+    try:
+        ticker = yf.Ticker(symbol)
+        price = ticker.info.get('regularMarketPrice', 0)
+        return price if price else 0
+    except:
+        return 0
 
-@st.cache_data(ttl=3600)
-def charger_donnees(_ticker, _period, _interval): return yf.download(_ticker, period=_period, interval=_interval, auto_adjust=True, progress=False)
+@st.cache_data(ttl=300) # Cache 5 min pour éviter d'être bloqué
+def charger_donnees(symbol, period="1y", interval="1d"):
+    try:
+        # Ajout timeout pour éviter le blocage
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, interval=interval, timeout=10)
+        if df.empty:
+            st.warning(f"⚠️ Pas de données pour {symbol}")
+        return df
+    except:
+        return pd.DataFrame()
 
 def calculer_indicateurs(df):
     close = df["Close"].squeeze()
@@ -137,8 +150,11 @@ def calculer_indicateurs(df):
     return {"close": close, "ema20": ema20, "ema50": ema50, "rsi": rsi, "macd": macd, "signal": macd_signal}
 
 def calculer_prediscore(ind):
+    # AJOUTE CES 3 LIGNES EN PREMIER
+    if len(ind["close"]) < 50: # Si pas assez de données on renvoie neutre
+        return 50, "ATTENDRE", 0.3, 50.0, 0, 0, 0, 0
     ema20_v, ema50_v = float(ind["ema20"].iloc[-1]), float(ind["ema50"].iloc[-1])
-    rsi_v, macd_v, signal_v = float(ind["rsi"].iloc[-1]), float(ind["macd"].iloc[-1]), float(ind["signal"].iloc[-1])
+    rsi_v, macd_v, signal_v = float(ind["rsi"].iloc[-1]), float(ind["macd"].iloc[-1]), float(ind["macd_signal"].iloc[-1])
     prediscore = 50
     ema_gap = ((ema20_v - ema50_v) / ema50_v) * 100; prediscore += max(-20, min(20, ema_gap * 5))
     macd_gap = macd_v - signal_v; prediscore += max(-20, min(20, macd_gap / 20))
