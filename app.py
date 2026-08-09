@@ -275,20 +275,18 @@ with st.sidebar:
     st.divider()
 
     # Menu Navigation
-    menu = st.radio(
-        "Navigation",
-        [
-            "📊 Tableau de bord",
-            "🧠 Analyse IA Pro",
-            "🔍 Scanner",
-            "⚖️ Comparaison",
-            "💼 Portefeuille",
-            "📊 Backtest",
-            "📚 Historique",
-            "🤖 Assistant IA",
-            "📄 Rapports",
-            "⚙️ Paiement"
-        ],
+    menu = st.sidebar.radio("Navigation", [
+    "📊 Tableau de bord",
+    "🧠 Analyse IA Pro",
+    "🔍 Scanner intelligent",
+    "⚖️ Comparaison",
+    "💼 Portefeuille",
+    "📊 Backtest",
+    "📚 Historique",
+    "🤖 Assistant IA",
+    "📄 Rapports",
+    "⚙️ Paramètres + Paiement"
+], 
         key="main_menu"
     )
 
