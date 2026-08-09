@@ -316,7 +316,7 @@ elif menu == "📊 Backtest":
         for i in range(50, len(df)): slice_df = df.iloc[:i + 1]; ind = indicateurs(slice_df); score, *_ = prediscore(ind); price = float(slice_df["Close"].iloc[-1])
         if score > 70 and not position: position = True; buy_price = price; trades.append({"Date": slice_df.index[-1].date(), "Type": "ACHAT", "Prix": round(price, 5)})
         elif score < 30 and position: profit = (price - buy_price) / buy_price; capital *= 1 + profit; position = False; trades.append({"Date": slice_df.index[-1].date(), "Type": "VENTE", "Prix": round(price, 5), "Profit %": round(profit * 100, 2)})
-            equity.append(capital)
+        equity.append(capital)
         if position: final_price = float(df["Close"].iloc[-1]); profit = (final_price - buy_price) / buy_price; capital *= 1 + profit; trades.append({"Date": df.index[-1].date(), "Type": "VENTE FIN", "Prix": round(final_price, 5), "Profit %": round(profit * 100, 2)}) # FIX: cloture
         total_profit = ((capital / 1000) - 1) * 100 # FIX: /1000
         c1, c2, c3 = st.columns(3); c1.metric("Capital final", f"${capital:,.2f}"); c2.metric("Profit total", f"{total_profit:.2f}%"); c3.metric("Trades", len(trades) // 2); st.line_chart(pd.DataFrame(equity, columns=["Capital"]));
