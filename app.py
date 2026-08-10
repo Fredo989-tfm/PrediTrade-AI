@@ -134,7 +134,7 @@ with st.sidebar:
 # PAGES
 if menu == "📊 Tableau de bord":
     st.title("📊 Tableau de bord")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=100)
+    st.image("IMG-20260810-WA1501.jpg", width=100)
     st.markdown("### Bienvenue sur votre cockpit de trading IA")
     c1,c2,c3 = st.columns(3)
     c1.metric("Actifs suivis", sum(len(v) for v in ASSETS.values()))
@@ -143,7 +143,7 @@ if menu == "📊 Tableau de bord":
 
 elif menu == "🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS[asset_cat].keys()))
     if st.button("Lancer l'analyse", type="primary"):
@@ -163,7 +163,7 @@ elif menu == "🧠 Analyse IA Pro":
 
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     if not st.session_state.is_premium: st.warning("Passe Premium pour débloquer")
     else:
         if st.button("Scanner tous les actifs", type="primary"):
@@ -178,7 +178,7 @@ elif menu == "🔍 Scanner intelligent":
 
 elif menu == "⚖️ Comparaison":
     st.title("⚖️ Comparaison")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     col1, col2 = st.columns(2)
     with col1: a1_cat = st.selectbox("Catégorie 1", list(ASSETS.keys())); a1 = st.selectbox("Actif 1", list(ASSETS[a1_cat].keys()))
     with col2: a2_cat = st.selectbox("Catégorie 2", list(ASSETS.keys())); a2 = st.selectbox("Actif 2", list(ASSETS[a2_cat].keys()))
@@ -190,13 +190,12 @@ elif menu == "⚖️ Comparaison":
 
 elif menu == "💼 Portefeuille":
     st.title("💼 Portefeuille")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+   st.image("IMG-20260810-WA1501.jpg", width=80) 
     st.write(f"**Cash:** ${st.session_state.cash:,.2f}")
     st.dataframe(pd.DataFrame(st.session_state.operations) if st.session_state.operations else pd.DataFrame(columns=["Date","Actif","Type","Prix"]))
-
 elif menu == "📊 Backtest":
     st.title("📊 Backtest EMA Crossover")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     st.info("Simule une stratégie EMA20/EMA50 sur 100 jours")
     asset_cat = st.selectbox("Catégorie BT", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif BT", list(ASSETS[asset_cat].keys()))
@@ -208,25 +207,24 @@ elif menu == "📊 Backtest":
 
 elif menu == "📚 Historique":
     st.title("📚 Historique")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
     st.dataframe(pd.DataFrame(st.session_state.history) if st.session_state.history else pd.DataFrame(columns=["date","actif","score"]))
 
 elif menu == "🤖 Assistant IA":
     st.title("🤖 Assistant IA Gemini")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     q = st.text_input("Pose ta question sur le marché")
     if st.button("Envoyer", type="primary") and q: st.write(assistant_gemini(q, str(st.session_state.history[-3:])))
 
 elif menu == "📄 Rapports":
     st.title("📄 Rapports")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     df_hist = pd.DataFrame(st.session_state.history)
     if not df_hist.empty: st.download_button("📥 Télécharger CSV", df_hist.to_csv(index=False), "rapport.csv")
     else: st.info("Pas encore d'historique")
 
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium 5000 XAF")
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=80)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     numero = st.text_input("Numéro: 2376XXXXXXXX")
     operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
     if st.button("Payer 5000 XAF", type="primary") and CAMPAY_OK:
