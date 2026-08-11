@@ -20,7 +20,7 @@ oauth = OAuth2Component(CLIENT_ID, CLIENT_SECRET, "https://accounts.google.com/o
 REDIRECT_URI = "https://preditradeai.streamlit.app/component/streamlit_oauth.authorize_button"
 
 def login_page():
-    st.image("IMG-20260810-WA1501.jpg", width=120)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     st.markdown(f"""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B)"><h1 style="color:#00E5FF">🚀 Connexion à PrediTrade AI</h1></div>""", unsafe_allow_html=True)
     result = oauth.authorize_button(name="🔒 Se connecter avec Google", redirect_uri=REDIRECT_URI, scope="openid email profile", key="google_login_v51", use_container_width=True, pkce="S256")
     if result and "token" in result:
