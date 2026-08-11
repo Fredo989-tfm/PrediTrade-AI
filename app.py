@@ -2,6 +2,7 @@ import streamlit as st
 import base64
 import pandas as pd
 import numpy as np
+APP_VERSION = "5.0.0"
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "is_premium" not in st.session_state:
