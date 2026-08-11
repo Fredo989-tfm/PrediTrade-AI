@@ -646,12 +646,12 @@ elif menu == "📄 Rapports":
     else: st.info("Pas encore d'historique")
 
 elif menu == "⚙️ Paiement":
-    st.title("⚙️ Paiement Premium 5000 XAF")
+    st.title("⚙️ Paiement Premium 19999 XAF")
     st.image("IMG-20260810-WA1501.jpg", width=80)
     numero = st.text_input("Numéro: 2376XXXXXXXX")
     operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
-    if st.button("Payer 5000 XAF", type="primary") and CAMPAY_OK:
-        res = campay.collect({"amount": "5000", "currency": "XAF", "from": numero, "operator": operator, "description": "Abonnement PrediTrade AI Premium"})
-        st.json(res)
+    if st.button("Payer 19999 XAF", type="primary"):
+        res = campay.collect({"amount": "19999",
+           st.json(res)
     elif not CAMPAY_OK: st.error("CamPay non configuré")
     
