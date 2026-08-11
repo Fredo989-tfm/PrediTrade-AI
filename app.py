@@ -11,6 +11,8 @@ if "user_email" not in st.session_state:
     st.session_state.user_email = ""
 if "cash" not in st.session_state:
         st.session_state.cash = 10000.0
+if "history" not in st.session_state:
+    st.session_state.history = []
 
 if "show_landing" not in st.session_state:
     st.session_state["show_landing"] = True
