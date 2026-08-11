@@ -2,6 +2,8 @@ import streamlit as st
 import base64
 import pandas as pd
 import numpy as np
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
