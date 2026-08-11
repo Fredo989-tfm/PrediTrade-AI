@@ -651,7 +651,7 @@ elif menu == "⚙️ Paiement":
     numero = st.text_input("Numéro: 2376XXXXXXXX")
     operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
     if st.button("Payer 19999 XAF", type="primary"):
-        res = campay.collect({"amount": "19999",
+        res = campay.collect({"amount": "19999"})
            st.json(res)
     elif not CAMPAY_OK: st.error("CamPay non configuré")
     
