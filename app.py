@@ -6,6 +6,7 @@ import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 st.session_state.show_login = True
+col1, col2 = st.columns(2)
 with col2:
     if st.button("🔐 J'ai déjà un compte", use_container_width=True):
             st.session_state.show_landing = False
