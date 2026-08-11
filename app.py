@@ -26,6 +26,17 @@ if "show_landing" not in st.session_state:
 import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+if "is_premium" not in st.session_state:
+    st.session_state.is_premium = False
+
+def trial_active():
+    trial_until = st.session_state.get("trial_until")
+    if not trial_until:
+        return False
+    return datetime.now() < trial_until
+
+if not st.session_state.is_premium and trial_active():
+    st.session_state.is_premium = True
 col1, col2 = st.columns(2)
 with col2:
     if st.button("🔐 J'ai déjà un compte", use_container_width=True):
@@ -75,14 +86,6 @@ def login_page():
     else:
         login_page()
     st.stop()
- def trial_active():
-    trial_until = st.session_state.get("trial_until")
-    if not trial_until:
-        return False
-    return datetime.now() < trial_until
-
-if not st.session_state.get("is_premium", False) and trial_active():
-    st.session_state.is_premium = True
 
 @st.cache_data(ttl=300)
 def charger_donnees(symboI, asset_type):
