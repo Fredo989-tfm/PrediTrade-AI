@@ -131,7 +131,9 @@ with st.sidebar:
     st.title(f"PrediTrade AI")
     st.caption(f"V{APP_VERSION}")
     col1, col2 = st.columns([3,1])
-    with col1: st.caption(f"👋 {st.session_state.user_email.split('@')[0]}")
+    with col1:
+    if st.session_state.get("user_email"):
+        st.caption(f"👋 {st.session_state.user_email.split('@')[0]}") 
     with col2:
         if st.session_state.is_premium: st.markdown('<span class="badge-premium">PREMIUM</span>', unsafe_allow_html=True)
     st.divider()
