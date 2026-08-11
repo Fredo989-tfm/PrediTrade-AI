@@ -13,6 +13,8 @@ if "cash" not in st.session_state:
         st.session_state.cash = 10000.0
 if "history" not in st.session_state:
     st.session_state.history = []
+    if "operations" not in st.session_state:
+    st.session_state.operations = []
 ASSETS = {
     "Crypto": {
         "Bitcoin (BTC)": "BTC",
