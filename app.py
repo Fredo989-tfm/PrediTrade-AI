@@ -134,7 +134,7 @@ with st.sidebar:
     with col1:
         if st.session_state.get("user_email"):
             st.caption(f"👋 {st.session_state.user_email.split('@')[0]}") 
-     with col2:
+    with col2:
         if st.session_state.is_premium: st.markdown('<span class="badge-premium">PREMIUM</span>', unsafe_allow_html=True)
     st.divider()
     if st.session_state.is_premium: st.success("⭐ Premium Actif")
