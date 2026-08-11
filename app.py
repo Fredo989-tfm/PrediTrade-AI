@@ -89,7 +89,6 @@ def login_page():
 
 @st.cache_data(ttl=300)
 def charger_donnees(symboI, asset_type):
-def charger_donnees(symbol, asset_type):
     time.sleep(12)
     try:
         if asset_type == "Crypto": url = f"https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol={symbol}&market=USD&apikey={ALPHA_KEY}"; key = "Time Series (Digital Currency Daily)"
