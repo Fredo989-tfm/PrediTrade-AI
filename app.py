@@ -124,7 +124,7 @@ except: campay = None; CAMPAY_OK = False
 
 # SIDEBAR
 with st.sidebar:
-    st.image(f"data:image/png;base64,{LOGO_B64}", width=120)
+    st.image("IMG-20260810-WA1501.jpg", width=80)
     st.title(f"PrediTrade AI")
     st.caption(f"V{APP_VERSION}")
     col1, col2 = st.columns([3,1])
