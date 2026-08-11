@@ -75,8 +75,9 @@ def login_page():
     else:
         login_page()
     st.stop() 
-if not st.session_state.is_premium and trial_active(): st.session_state.is_premium = True
-@st.cache_data(ttl=300)
+def trial_active():
+    if not st.session_state.is_premium and trial_active(): st.session_state.is_premium = True
+    @st.cache_data(ttl=300) 
 def charger_donnees(symbol, asset_type):
     time.sleep(12)
     try:
