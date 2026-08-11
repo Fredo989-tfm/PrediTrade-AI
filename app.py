@@ -190,7 +190,7 @@ elif menu == "⚖️ Comparaison":
 
 elif menu == "💼 Portefeuille":
     st.title("💼 Portefeuille")
-   st.image("IMG-20260810-WA1501.jpg", width=80) 
+    st.image("IMG-20260810-WA1501.jpg", width=80) 
     st.write(f"**Cash:** ${st.session_state.cash:,.2f}")
     st.dataframe(pd.DataFrame(st.session_state.operations) if st.session_state.operations else pd.DataFrame(columns=["Date","Actif","Type","Prix"]))
 elif menu == "📊 Backtest":
