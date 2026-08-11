@@ -9,6 +9,8 @@ if "is_premium" not in st.session_state:
     st.session_state["is_premium"] = False
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
+if "cash" not in st.session_state:
+        st.session_state.cash = 10000.0
 
 if "show_landing" not in st.session_state:
     st.session_state["show_landing"] = True
