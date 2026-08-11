@@ -492,18 +492,142 @@ elif menu == "💼 Portefeuille":
     st.image("IMG-20260810-WA1501.jpg", width=80) 
     st.write(f"**Cash:** ${st.session_state.cash:,.2f}")
     st.dataframe(pd.DataFrame(st.session_state.operations) if st.session_state.operations else pd.DataFrame(columns=["Date","Actif","Type","Prix"]))
+
 elif menu == "📊 Backtest":
     st.title("📊 Backtest EMA Crossover")
-    st.image("IMG-20260810-WA1501.jpg", width=80)
-    st.info("Simule une stratégie EMA20/EMA50 sur 100 jours")
-    asset_cat = st.selectbox("Catégorie BT", list(ASSETS.keys()))
-    asset_name = st.selectbox("Actif BT", list(ASSETS[asset_cat].keys()))
-    if st.button("Lancer Backtest", type="primary"):
-        df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
-        ind = indicateurs(df); buy = (ind['ema20'] > ind['ema50']) & (ind['ema20'].shift(1) <= ind['ema50'].shift(1))
-        returns = (df['Close'].pct_change()[buy].fillna(0)+1).cumprod()
-        st.line_chart(returns)
+    st.image("IMG-20260810-WA1501.jpg", width=180)
 
+    st.info("Simule une stratégie EMA20/EMA50 sur les 100 derniers jours.")
+
+    asset_cat = st.selectbox(
+        "Catégorie BT",
+        list(ASSETS.keys())
+    )
+
+    asset_name = st.selectbox(
+        "Actif BT",
+        list(ASSETS[asset_cat].keys())
+    )
+
+    if st.button("Lancer Backtest", type="primary"):
+
+        with st.spinner("⏳ Calcul du backtest..."):
+
+            symbol = ASSETS[asset_cat][asset_name]
+            df = charger_donnees(symbol, asset_cat)
+
+            if df is None or df.empty:
+                st.error("❌ Impossible de récupérer les données pour cet actif.")
+            elif "Close" not in df.columns:
+                st.error("❌ Données de clôture introuvables.")
+            else:
+
+                # Garder uniquement les 100 dernières observations
+                df = df.copy().tail(100)
+
+                # Moyennes mobiles exponentielles
+                df["EMA20"] = df["Close"].ewm(
+                    span=20,
+                    adjust=False
+                ).mean()
+
+                df["EMA50"] = df["Close"].ewm(
+                    span=50,
+                    adjust=False
+                ).mean()
+
+                # Rendement du marché
+                df["Market_Return"] = df["Close"].pct_change().fillna(0)
+
+                # Signal :
+                # 1 = position acheteuse
+                # 0 = aucune position
+                df["Position"] = (
+                    df["EMA20"] > df["EMA50"]
+                ).astype(int)
+
+                # Rendement de la stratégie
+                df["Strategy_Return"] = (
+                    df["Market_Return"] *
+                    df["Position"].shift(1).fillna(0)
+                )
+
+                # Performance cumulée
+                df["Performance"] = (
+                    1 + df["Strategy_Return"]
+                ).cumprod()
+
+                df["Buy_Hold"] = (
+                    1 + df["Market_Return"]
+                ).cumprod()
+
+                # Calcul des statistiques
+                rendement = (
+                    df["Performance"].iloc[-1] - 1
+                ) * 100
+
+                rendement_bh = (
+                    df["Buy_Hold"].iloc[-1] - 1
+                ) * 100
+
+                nombre_trades = int(
+                    df["Position"].diff().abs().sum()
+                )
+
+                # Résultats
+                st.subheader("📊 Résultats du Backtest")
+
+                c1, c2, c3 = st.columns(3)
+
+                c1.metric(
+                    "Rendement stratégie",
+                    f"{rendement:.2f}%"
+                )
+
+                c2.metric(
+                    "Buy & Hold",
+                    f"{rendement_bh:.2f}%"
+                )
+
+                c3.metric(
+                    "Changements de position",
+                    nombre_trades
+                )
+
+                # Graphique de performance
+                st.subheader("📈 Performance cumulée")
+
+                chart_data = df[
+                    ["Performance", "Buy_Hold"]
+                ].copy()
+
+                chart_data.columns = [
+                    "Stratégie EMA20/EMA50",
+                    "Buy & Hold"
+                ]
+
+                st.line_chart(chart_data)
+
+                # Graphique des EMA
+                st.subheader("📉 EMA20 / EMA50")
+
+                ema_chart = df[
+                    ["Close", "EMA20", "EMA50"]
+                ].copy()
+
+                st.line_chart(ema_chart)
+
+                # Signal actuel
+                if df["Position"].iloc[-1] == 1:
+                    st.success(
+                        "🟢 EMA20 est au-dessus de EMA50 : "
+                        "position acheteuse selon la stratégie."
+                    )
+                else:
+                    st.warning(
+                        "🔴 EMA20 est sous EMA50 : "
+                        "aucune position acheteuse selon la stratégie."
+                ) 
 elif menu == "📚 Historique":
     st.title("📚 Historique")
     st.dataframe(pd.DataFrame(st.session_state.history) if st.session_state.history else pd.DataFrame(columns=["date","actif","score"]))
