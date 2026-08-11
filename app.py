@@ -134,25 +134,243 @@ def login_page():
     st.stop()
 
 @st.cache_data(ttl=300)
-def charger_donnees(symboI, asset_type):
-    time.sleep(12)
+def charger_donnees(symbol, asset_type):
     try:
-        if asset_type == "Crypto": url = f"https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol={symbol}&market=USD&apikey={ALPHA_KEY}"; key = "Time Series (Digital Currency Daily)"
-        elif asset_type == "Forex": from_curr, to_curr = symbol.split("/"); url = f"https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={from_curr}&to_symbol={to_curr}&apikey={ALPHA_KEY}"; key = "Time Series FX (Daily)"
+        # Récupération de la clé Alpha Vantage
+        API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
+
+        if not API_KEY:
+            st.error("❌ Clé Alpha Vantage manquante dans les Secrets.")
+            return pd.DataFrame()
+
+        # Construction de l'URL
+        if asset_type == "Crypto":
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=DIGITAL_CURRENCY_DAILY"
+                f"&symbol={symbol}"
+                f"&market=USD"
+                f"&apikey={API_KEY}"
+            )
+
+        elif asset_type == "Forex":
+            from_symbol = symbol[:3]
+            to_symbol = symbol[3:]
+
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=FX_DAILY"
+                f"&from_symbol={from_symbol}"
+                f"&to_symbol={to_symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
         elif asset_type == "Matières Premières":
-            if symbol == "XAU": url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_HISTORY&symbol=XAU&interval=daily&apikey={ALPHA_KEY}"
-            elif symbol == "WTI": url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={ALPHA_KEY}"
-            key = "data"
-        else: url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&apikey={ALPHA_KEY}&outputsize=compact"; key = "Time Series (Daily)"
-        r = requests.get(url, timeout=20).json()
-        if key not in r: return pd.DataFrame()
-        df = pd.DataFrame(r[key]).T
-        if asset_type == "Crypto": df = df.rename(columns={"1b. open (USD)": "Open","2b. high (USD)": "High","3b. low (USD)": "Low","4b. close (USD)": "Close","6. volume": "Volume"})
-        elif asset_type == "Forex": df = df.rename(columns={"1. open": "Open","2. high": "High","3. low": "Low","4. close": "Close"})
-        elif asset_type == "Matières Premières": df = df.rename(columns={"value": "Close"}); df[["Open","High","Low","Volume"]] = [df["Close"]]*3 + [0]
-        else: df = df.rename(columns={"1. open": "Open","2. high": "High","3. low": "Low","4. close": "Close","5. volume": "Volume"})
-        df = df.astype(float); df.index = pd.to_datetime(df.index); return df.sort_index().tail(100)
-    except: return pd.DataFrame()
+            if symbol == "XAU":
+                url = (
+                    "https://www.alphavantage.co/query"
+                    f"?function=GOLD_SILVER_SPOT"
+                    f"&symbol=GOLD"
+                    f"&apikey={API_KEY}"
+                )
+            elif symbol == "WTI":
+                url = (
+                    "https://www.alphavantage.co/query"
+                    f"?function=WTI"
+                    f"&interval=daily"
+                    f"&apikey={API_KEY}"
+                )
+            else:
+                url = (
+                    "https://www.alphavantage.co/query"
+                    f"?function=TIME_SERIES_DAILY"
+                    f"&symbol={symbol}"
+                    f"&outputsize=compact"
+                    f"&apikey={API_KEY}"
+                )
+
+        else:
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=TIME_SERIES_DAILY"
+                f"&symbol={symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
+        # Appel API
+        r = requests.get(url, timeout=30)
+
+        if not r.ok:
+            st.error(f"❌ Erreur API : HTTP {r.status_code}")
+            return pd.DataFrame()
+
+        data = r.json()
+
+        # Détection d'une éventuelle erreur Alpha Vantage
+        if "Error Message" in data:
+            st.error(f"❌ Alpha Vantage : {data['Error Message']}")
+            return pd.DataFrame()
+
+        if "Note" in data:
+            st.warning("⚠️ Limite de requêtes Alpha Vantage atteinte. Réessaie dans quelques instants.")
+            return pd.DataFrame()
+
+        if "Information" in data:
+            st.warning(f"⚠️ Alpha Vantage : {data['Information']}")
+            return pd.DataFrame()
+
+        # Recherche automatique de la série temporelle
+        series = None
+
+        for key, value in data.items():
+            if isinstance(value, dict):
+                # Une série temporelle contient généralement des dates
+                if any(
+                    isinstance(k, str)
+                    and (
+                        "-" in k
+                        or "/" in k
+                    )
+                    for k in value.keys()
+                ):
+                    series = value
+                    break
+
+        # Cas particulier : réponse sous forme de liste
+        if series is None and isinstance(data.get("data"), list):
+            rows = data["data"]
+
+            if rows:
+                df = pd.DataFrame(rows)
+
+                # Recherche de la colonne date
+                date_col = None
+                for col in df.columns:
+                    if str(col).lower() in ["date", "timestamp"]:
+                        date_col = col
+                        break
+
+                # Recherche de la colonne valeur
+                value_col = None
+                for col in df.columns:
+                    if str(col).lower() in ["value", "close", "price"]:
+                        value_col = col
+                        break
+
+                if date_col is not None and value_col is not None:
+                    df["Date"] = pd.to_datetime(
+                        df[date_col],
+                        errors="coerce"
+                    )
+                    df["Close"] = pd.to_numeric(
+                        df[value_col],
+                        errors="coerce"
+                    )
+
+                    df["Open"] = df["Close"]
+                    df["High"] = df["Close"]
+                    df["Low"] = df["Close"]
+
+                    df = df.dropna(subset=["Date", "Close"])
+                    df = df.set_index("Date")
+                    df = df.sort_index()
+
+                    return df[["Open", "High", "Low", "Close"]]
+
+        if series is None:
+            st.error("❌ Aucune donnée exploitable reçue depuis Alpha Vantage.")
+            return pd.DataFrame()
+
+        # Conversion de la série en DataFrame
+        df = pd.DataFrame.from_dict(series, orient="index")
+
+        # Conversion de l'index en dates
+        df.index = pd.to_datetime(
+            df.index,
+            errors="coerce"
+        )
+
+        df = df[~df.index.isna()]
+        df = df.sort_index()
+
+        # Recherche automatique des colonnes OHLC
+        def trouver_colonne(mot):
+            for col in df.columns:
+                if mot in str(col).lower():
+                    return col
+            return None
+
+        open_col = trouver_colonne("open")
+        high_col = trouver_colonne("high")
+        low_col = trouver_colonne("low")
+        close_col = trouver_colonne("close")
+
+        # Pour les cryptos Alpha Vantage peut utiliser
+        # des noms comme "4a. close (USD)"
+        if close_col is None:
+            for col in df.columns:
+                if "close" in str(col).lower():
+                    close_col = col
+                    break
+
+        if close_col is None:
+            st.error("❌ La réponse API ne contient pas de prix de clôture.")
+            return pd.DataFrame()
+
+        # Conversion numérique
+        df["Close"] = pd.to_numeric(
+            df[close_col],
+            errors="coerce"
+        )
+
+        if open_col:
+            df["Open"] = pd.to_numeric(
+                df[open_col],
+                errors="coerce"
+            )
+        else:
+            df["Open"] = df["Close"]
+
+        if high_col:
+            df["High"] = pd.to_numeric(
+                df[high_col],
+                errors="coerce"
+            )
+        else:
+            df["High"] = df["Close"]
+
+        if low_col:
+            df["Low"] = pd.to_numeric(
+                df[low_col],
+                errors="coerce"
+            )
+        else:
+            df["Low"] = df["Close"]
+
+        df = df[["Open", "High", "Low", "Close"]]
+
+        # Suppression des lignes invalides
+        df = df.dropna()
+
+        if df.empty:
+            st.error("❌ Les données reçues sont vides ou invalides.")
+            return pd.DataFrame()
+
+        return df
+
+    except requests.exceptions.Timeout:
+        st.error("⏱️ Le serveur de données a mis trop de temps à répondre.")
+        return pd.DataFrame()
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"🌐 Erreur réseau : {e}")
+        return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"❌ Erreur pendant le chargement des données : {e}")
+        return pd.DataFrame()
 
 def indicateurs(df):
     close = df["Close"]; ema20 = close.ewm(span=20).mean(); ema50 = close.ewm(span=50).mean()
