@@ -63,7 +63,11 @@ def login_page():
     else:
         login_page()
     st.stop()
-
+    def trial_active():
+        trial_until = st.session_state.get("trial_until")
+        if not trial_until:
+            return False 
+            return datetime.now() < trial_until 
 if not st.session_state.is_premium and trial_active(): st.session_state.is_premium = True
 @st.cache_data(ttl=300)
 def charger_donnees(symbol, asset_type):
