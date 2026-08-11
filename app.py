@@ -51,9 +51,11 @@ def login_page():
             else: users[email] = {"password": hash_password(password), "premium": False}; save_users(users); st.success("✅ Compte créé.")
     if st.button("🚀 Essai gratuit 3 jours Premium", use_container_width=True):
         st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.session_state.trial_until = datetime.now() + timedelta(days=3); st.session_state.show_login = False; st.rerun()
-    if not st.session_state["logged_in"]: 
-    if st.session_state.get("show_landing", True): landing_page()
-    else: login_page()
+    if not st.session_state["logged_in"]:
+    if st.session_state.get("show_landing", True):
+        landing_page()
+    else:
+        login_page()
     st.stop()
 
 if not st.session_state.is_premium and trial_active(): st.session_state.is_premium = True
