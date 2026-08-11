@@ -178,7 +178,7 @@ elif menu == "🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
-    asset_name = st.selectbox("Actif", list(ASSETS[asset_cat].keys()))
+    asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
     if st.button("Lancer l'analyse", type="primary"):
         with st.spinner("🤖 L'IA analyse le marché..."):
             df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
