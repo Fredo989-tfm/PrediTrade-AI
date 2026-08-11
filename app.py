@@ -4,6 +4,11 @@ import pandas as pd
 import numpy as np
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "is_premium" not in st.session_state:
+    st.session_state["is_premium"] = False
+
+if "show_landing" not in st.session_state:
+    st.session_state["show_landing"] = True
 import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
