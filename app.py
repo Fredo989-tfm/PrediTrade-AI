@@ -13,6 +13,8 @@ if "cash" not in st.session_state:
         st.session_state.cash = 10000.0
 if "history" not in st.session_state:
     st.session_state.history = []
+if "ASSETS" not in globals():
+    ASSETS = {}
 
 if "show_landing" not in st.session_state:
     st.session_state["show_landing"] = True
