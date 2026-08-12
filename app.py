@@ -422,8 +422,9 @@ try:
         campay = None
         CAMPAY_OK = False 
     st.error(f"Erreur CamPay : {e}")
-st.write("CAMPAY USERNAME chargé :", bool(st.secrets.get("CAMPAY_USERNAME")))
-st.write("CAMPAY PASSWORD chargé :", bool(st.secrets.get("CAMPAY_PASSWORD")))
+    st.write("CAMPAY USERNAME chargé :", bool(st.secrets.get("CAMPAY_USERNAME")))
+    st.write("CAMPAY PASSWORD chargé :", bool(st.secrets.get("CAMPAY_PASSWORD")))
+ 
 
 # SIDEBAR
 with st.sidebar:
