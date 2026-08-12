@@ -427,12 +427,12 @@ try:
  
 
 # SIDEBAR
-with st.sidebar:
-    st.image("IMG-20260810-WA1501.jpg", width=80)
-    st.title(f"PrediTrade AI")
-    st.caption(f"V{APP_VERSION}")
-    col1, col2 = st.columns([3,1])
-    with col1:
+    with st.sidebar:
+        st.image("IMG-20260810-WA1501.jpg", width=80)
+        st.title(f"PrediTrade AI")
+        st.caption(f"V{APP_VERSION}")
+        col1, col2 = st.columns([3,1])
+    with col1: 
         if st.session_state.get("user_email"):
             st.caption(f"👋 {st.session_state.user_email.split('@')[0]}") 
     with col2:
