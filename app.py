@@ -411,6 +411,12 @@ try:
     })
 
     CAMPAY_OK = True
+    try:
+    test_balance = campay.get_balance()
+    st.success("✅ Authentification CamPay réussie")
+    st.json(test_balance)
+except Exception as e:
+    st.error(f"❌ Test authentification CamPay : {e}")
 
 except Exception as e:
     campay = None
