@@ -412,15 +412,15 @@ try:
 
     CAMPAY_OK = True
     try:
-    test_balance = campay.get_balance()
-    st.success("✅ Authentification CamPay réussie")
-    st.json(test_balance)
-except Exception as e:
-    st.error(f"❌ Test authentification CamPay : {e}")
+        test_balance = campay.get_balance()
+        st.success("✅ Authentification CamPay réussie")
+        st.json(test_balance)
+    except Exception as e:
+        st.error(f"❌ Test authentification CamPay : {e}")
 
-except Exception as e:
-    campay = None
-    CAMPAY_OK = False
+    except Exception as e:
+        campay = None
+        CAMPAY_OK = False 
     st.error(f"Erreur CamPay : {e}")
 st.write("CAMPAY USERNAME chargé :", bool(st.secrets.get("CAMPAY_USERNAME")))
 st.write("CAMPAY PASSWORD chargé :", bool(st.secrets.get("CAMPAY_PASSWORD")))
