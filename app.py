@@ -449,15 +449,15 @@ try:
         st.rerun()
 
 # PAGES
-if menu == "📊 Tableau de bord":
-    st.title("📊 Tableau de bord")
-    st.image("IMG-20260810-WA1501.jpg", width=100)
-    st.markdown("### Bienvenue sur votre cockpit de trading IA")
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Actifs suivis", sum(len(v) for v in ASSETS.values()))
-    c2.metric("Version", APP_VERSION)
-    c3.metric("Statut", "Premium" if st.session_state.is_premium else "Gratuit")
-
+    if menu == "📊 Tableau de bord":
+        st.title("📊 Tableau de bord")
+        st.image("IMG-20260810-WA1501.jpg", width=100)
+        st.markdown("### Bienvenue sur votre cockpit de trading IA")
+        c1,c2,c3 = st.columns(3)
+        c1.metric("Actifs suivis", sum(len(v) for v in ASSETS.values()))
+        c2.metric("Version", APP_VERSION)
+        c3.metric("Statut", "Premium" if st.session_state.is_premium else "Gratuit")
+ 
 elif menu == "🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     st.image("IMG-20260810-WA1501.jpg", width=80)
