@@ -662,7 +662,7 @@ elif menu == "⚙️ Paiement":
     numero = st.text_input("Numéro: 2376XXXXXXXX")
     operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
     if st.button("Payer 19999 XAF", type="primary"):
-        numero_camPay = numero.strip()
+    numero_camPay = numero.strip()
 
     if not numero_camPay.startswith("237"):
         numero_camPay = "237" + numero_camPay.lstrip("0")
