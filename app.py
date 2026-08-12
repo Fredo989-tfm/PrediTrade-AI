@@ -401,12 +401,21 @@ def assistant_gemini(question, context):
     if client is None: return "⚠️ Gemini n'est pas configuré."
     response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Tu es PrediTrade AI. Réponds en français en 4 phrases max.\nQuestion : {question}\nContexte : {context}")
     return response.text
-
 try:
     from campay.sdk import Client as CamPayClient
-    campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"], "app_password": st.secrets["CAMPAY_PASSWORD"], "environment": "DEV"})
+
+    campay = CamPayClient({
+        "app_username": st.secrets["CAMPAY_USERNAME"],
+        "app_password": st.secrets["CAMPAY_PASSWORD"],
+        "environment": "DEV"
+    })
+
     CAMPAY_OK = True
-except: campay = None; CAMPAY_OK = False
+
+except Exception as e:
+    campay = None
+    CAMPAY_OK = False
+    st.error(f"Erreur CamPay : {e}")
 
 # SIDEBAR
 with st.sidebar:
