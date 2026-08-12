@@ -404,7 +404,7 @@ def assistant_gemini(question, context):
 
 try:
     from campay.sdk import Client as CamPayClient
-    campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"], "app_password": st.secrets["CAMPAY_PASSWORD"], "environment": "PROD"})
+    campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"], "app_password": st.secrets["CAMPAY_PASSWORD"], "environment": "DEV"})
     CAMPAY_OK = True
 except: campay = None; CAMPAY_OK = False
 
