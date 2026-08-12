@@ -662,7 +662,16 @@ elif menu == "⚙️ Paiement":
     numero = st.text_input("Numéro: 2376XXXXXXXX")
     operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
     if st.button("Payer 19999 XAF", type="primary"):
-        res = campay.collect({"amount": "19999"})
-        st.json(res)
-    elif not CAMPAY_OK: st.error("CamPay non configuré")
-    
+    numero_camPay = numero.strip()
+
+    if not numero_camPay.startswith("237"):
+        numero_camPay = "237" + numero_camPay.lstrip("0")
+
+    res = campay.collect({
+        "amount": "19999",
+        "currency": "XAF",
+        "from": numero_camPay,
+        "description": "Abonnement PrediTrade AI Premium"
+    })
+
+    st.json(res)
