@@ -656,22 +656,32 @@ elif menu == "📄 Rapports":
     if not df_hist.empty: st.download_button("📥 Télécharger CSV", df_hist.to_csv(index=False), "rapport.csv")
     else: st.info("Pas encore d'historique")
 
-elif menu == "⚙️ Paiement":
+if menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium 19999 XAF")
     st.image("IMG-20260810-WA1501.jpg", width=80)
+
     numero = st.text_input("Numéro: 2376XXXXXXXX")
-    operator = st.selectbox("Opérateur", ["MTN", "ORANGE"])
+    operateur = st.selectbox("Opérateur", ["MTN", "ORANGE"])
+
+    if not CAMPAY_OK:
+        st.error("CamPay non configuré.")
+
     if st.button("Payer 19999 XAF", type="primary"):
+
         numero_camPay = numero.strip()
 
-    if not numero_camPay.startswith("237"):
-        numero_camPay = "237" + numero_camPay.lstrip("0")
+        if not numero_camPay:
+            st.warning("Veuillez entrer votre numéro.")
+        else:
 
-    res = campay.collect({
-        "amount": "19999",
-        "currency": "XAF",
-        "from": numero_camPay,
-        "description": "Abonnement PrediTrade AI Premium"
-    })
+            if not numero_camPay.startswith("237"):
+                numero_camPay = "237" + numero_camPay.lstrip("0")
 
-    st.json(res)
+            res = campay.collect({
+                "amount": "19999",
+                "currency": "XAF",
+                "from": numero_camPay,
+                "description": "Abonnement PrediTrade AI Premium"
+            })
+
+            st.json(res)
