@@ -115,7 +115,6 @@ def charger_donnees(symbol, asset_type):
         if not API_KEY:
             st.error("❌ Clé Alpha Vantage manquante dans les Secrets.")
             return pd.DataFrame()
-        #... ton code API reste pareil...
         if asset_type == "Crypto":
             url = f"https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol={symbol}&market=USD&apikey={API_KEY}"
         elif asset_type == "Forex":
@@ -124,7 +123,7 @@ def charger_donnees(symbol, asset_type):
         elif asset_type == "Matières Premières":
             if symbol == "XAU": url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey={API_KEY}"
             elif symbol == "WTI": url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={API_KEY}"
-            else: url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
+            else: url = f"https://www.alphavantage.co.query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         else:
             url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         r = requests.get(url, timeout=30)
@@ -132,7 +131,6 @@ def charger_donnees(symbol, asset_type):
         data = r.json()
         if "Error Message" in data: st.error(f"❌ Alpha Vantage : {data['Error Message']}"); return pd.DataFrame()
         if "Note" in data: st.warning("⚠️ Limite de requêtes Alpha Vantage atteinte."); return pd.DataFrame()
-        #... pour gagner de la place j'ai raccourci mais garde tout ton code ici...
         df = pd.DataFrame() # Remplace par tout ton parsing
         return df
     except Exception as e:
@@ -167,26 +165,26 @@ def assistant_gemini(question, context):
     response = client.models.generate_content(model="gemini-2.0-flash", contents=f"Tu es PrediTrade AI. Réponds en français en 4 phrases max.\nQuestion : {question}\nContexte : {context}")
     return response.text
 
+# CORRECTION ICI - INDENTATION CAMPAY
 try:
     from campay.sdk import Client as CamPayClient
     campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"],"app_password": st.secrets["CAMPAY_PASSWORD"],"environment": "DEV"})
     CAMPAY_OK = True
     try:
-    test_balance = campay.get_balance()
-
-    if isinstance(test_balance, dict) and test_balance.get("status") == "FAILED":
-        st.error("❌ CamPay refuse les identifiants ou l'environnement.")
-        st.json(test_balance)
-    else:
-        st.success("✅ CamPay fonctionne correctement.")
-        st.json(test_balance)
-
-except Exception as e:
-    st.error(f"❌ Erreur CamPay : {e}")
+        test_balance = campay.get_balance()
+        if isinstance(test_balance, dict) and test_balance.get("status") == "FAILED":
+            st.error("❌ CamPay refuse les identifiants ou l'environnement.")
+            st.json(test_balance)
+        else:
+            st.success("✅ CamPay fonctionne correctement.")
+            st.json(test_balance)
+    except Exception as e:
+        st.error(f"❌ Erreur CamPay : {e}")
 except Exception as e:
     campay = None
     CAMPAY_OK = False
     st.error(f"Erreur CamPay : {e}")
+
 st.write("CAMPAY USERNAME chargé :", bool(st.secrets.get("CAMPAY_USERNAME")))
 st.write("CAMPAY PASSWORD chargé :", bool(st.secrets.get("CAMPAY_PASSWORD")))
 
