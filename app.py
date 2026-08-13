@@ -172,11 +172,17 @@ try:
     campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"],"app_password": st.secrets["CAMPAY_PASSWORD"],"environment": "DEV"})
     CAMPAY_OK = True
     try:
-        test_balance = campay.get_balance()
-        st.success("✅ Authentification CamPay réussie")
+    test_balance = campay.get_balance()
+
+    if isinstance(test_balance, dict) and test_balance.get("status") == "FAILED":
+        st.error("❌ CamPay refuse les identifiants ou l'environnement.")
         st.json(test_balance)
-    except Exception as e:
-        st.error(f"❌ Test authentification CamPay : {e}")
+    else:
+        st.success("✅ CamPay fonctionne correctement.")
+        st.json(test_balance)
+
+except Exception as e:
+    st.error(f"❌ Erreur CamPay : {e}")
 except Exception as e:
     campay = None
     CAMPAY_OK = False
