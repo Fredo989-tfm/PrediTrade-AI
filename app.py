@@ -254,5 +254,10 @@ elif menu == "⚙️ Paiement":
         else:
             if not numero_camPay.startswith("237"):
                 numero_camPay = "237" + numero_camPay.lstrip("0")
-            res = campay.collect({"amount": "19999","currency": "XAF","from": numero_camPay,"description": "Abonnement PrediTrade AI Premium"})
-            st.json(res)
+            res = campay.collect({
+    "amount": "19999",
+    "currency": "XAF",
+    "from": numero_camPay,
+    "description": "Abonnement PrediTrade AI Premium",
+    "external_reference": "PREDITRADE-PREMIUM"
+})
