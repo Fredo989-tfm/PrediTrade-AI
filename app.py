@@ -247,36 +247,30 @@ elif menu == "⚙️ Paiement":
     operateur = st.selectbox("Opérateur", ["MTN", "ORANGE"])
     if not CAMPAY_OK:
         st.error("CamPay non configuré.")
+
+    # CORRECTION ICI : tout ce bloc doit être indenté sous le if button
     if st.button("Payer 19999 XAF", type="primary"):
-
-    if not numero_camPay:
-        st.error("❌ Veuillez entrer votre numéro MTN ou Orange.")
-    elif not numero_camPay.startswith("237"):
-        st.error("❌ Le numéro doit commencer par 237.")
-    elif not CAMPAY_OK:
-        st.error("❌ CamPay n'est pas correctement configuré.")
-    else:
-        try:
-            import uuid
-
-            external_reference = "PREDITRADE-" + str(uuid.uuid4())[:8]
-
-            res = campay.initCollect({
-                "amount": "19999",
-                "currency": "XAF",
-                "from": numero_camPay,
-                "description": "Abonnement PrediTrade AI Premium",
-                "external_reference": external_reference
-            })
-
-            st.success("📲 Demande de paiement envoyée !")
-            st.json(res)
-
-            if isinstance(res, dict) and res.get("reference"):
-                st.info(
-                    "👉 Validez maintenant le paiement sur votre téléphone. "
-                    "La transaction est en attente de confirmation."
-                )
-
-        except Exception as e:
-            st.error(f"❌ Erreur CamPay : {e}")
+        numero_camPay = numero.strip()
+        if not numero_camPay:
+            st.error("❌ Veuillez entrer votre numéro MTN ou Orange.")
+        elif not numero_camPay.startswith("237"):
+            st.error("❌ Le numéro doit commencer par 237.")
+        elif not CAMPAY_OK:
+            st.error("❌ CamPay n'est pas correctement configuré.")
+        else:
+            try:
+                import uuid
+                external_reference = "PREDITRADE-" + str(uuid.uuid4())[:8]
+                res = campay.initCollect({
+                    "amount": "19999",
+                    "currency": "XAF",
+                    "from": numero_camPay,
+                    "description": "Abonnement PrediTrade AI Premium",
+                    "external_reference": external_reference
+                })
+                st.success("📲 Demande de paiement envoyée!")
+                st.json(res)
+                if isinstance(res, dict) and res.get("reference"):
+                    st.info("👉 Validez maintenant le paiement sur votre téléphone. La transaction est en attente de confirmation.")
+            except Exception as e:
+                st.error(f"❌ Erreur CamPay : {e}")
