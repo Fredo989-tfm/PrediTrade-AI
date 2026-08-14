@@ -290,6 +290,12 @@ elif menu == "⚙️ Paiement":
                 # Affichage de la réponse CamPay
                 st.write("### Réponse CamPay")
                 st.json(res)
+                if isinstance(res, dict) and res.get("reference"):
+                    st.session_state["campay_reference"] = res["reference"]
+                    st.session_state["campay_external_reference"] = external_reference
+                    st.info("⏳ Paiement en attente de confirmation.")
+                    st.warning("📱 Validez la demande CamPay sur votre téléphone.")
+ 
 
                 # Récupération du statut
                 status = ""
