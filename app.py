@@ -297,10 +297,27 @@ elif menu == "⚙️ Paiement":
                     st.warning("📱 Validez la demande CamPay sur votre téléphone.")
  
 
-                # Récupération du statut
-                status = ""
-                if isinstance(res, dict):
-                    status = str(res.get("status", "")).upper()
+               # Vérification réelle du statut de la transaction
+statut = "PENDING"
+
+if isinstance(res, dict) and res.get("reference"):
+    try:
+        reference = res["reference"]
+
+        statut_res = campay.get_transaction_status({
+            "reference": reference
+        })
+
+        st.write("### 🔎 Statut de la transaction")
+        st.json(statut_res)
+
+        if isinstance(statut_res, dict):
+            statut = str(
+                statut_res.get("status", "PENDING")
+            ).upper()
+
+    except Exception as e:
+        st.warning(f"⚠️ Impossible de vérifier le statut : {e}") 
 
                 # ==========================
                 # PAIEMENT RÉUSSI
