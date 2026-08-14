@@ -239,10 +239,7 @@ elif menu == "🧠 Analyse IA Pro":
             fig.update_layout(template="plotly_dark")
             st.plotly_chart(fig, use_container_width=True)
             st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score})
-
-elif menu == "⚙️ Paiement":
-    st.title("⚙️ Paiement Premium 19999 XAF")
- elif menu == "⚙️ Paiement":
+            elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
     st.image("IMG-20260810-WA1501.jpg", width=80)
 
@@ -256,53 +253,32 @@ elif menu == "⚙️ Paiement":
     else:
         montant = "19999"
 
-    numero = st.text_input(
-        "Numéro CamPay",
-        placeholder="2376XXXXXXXX"
-    )
-
-    operateur = st.selectbox(
-        "Opérateur",
-        ["MTN", "ORANGE"]
-    )
+    numero = st.text_input("Numéro CamPay", placeholder="2376XXXXXXXX")
+    operateur = st.selectbox("Opérateur", ["MTN", "ORANGE"])
 
     if not CAMPAY_OK:
         st.error("❌ CamPay n'est pas correctement configuré.")
 
-    if st.button(
-        f"Payer {montant} XAF",
-        type="primary",
-        use_container_width=True
-    ):
+    if st.button(f"Payer {montant} XAF", type="primary", use_container_width=True):
 
         numero_camPay = numero.strip().replace(" ", "")
 
         # Vérification du numéro
         if not numero_camPay:
             st.error("❌ Veuillez entrer votre numéro.")
-
         elif not numero_camPay.startswith("237"):
             st.error("❌ Le numéro doit commencer par 237.")
-
-        elif len(numero_camPay) != 12:
+        elif len(numero_camPay)!= 12:
             st.error("❌ Le numéro doit contenir 12 chiffres avec 237.")
-
         elif not CAMPAY_OK:
             st.error("❌ CamPay n'est pas correctement configuré.")
-
         else:
-
             try:
                 import uuid
-
                 # Référence unique pour chaque paiement
-                external_reference = (
-                    "PREDITRADE-" +
-                    str(uuid.uuid4())[:8].upper()
-                )
+                external_reference = "PREDITRADE-" + str(uuid.uuid4())[:8].upper()
 
                 with st.spinner("📲 Envoi de la demande à CamPay..."):
-
                     res = campay.initCollect({
                         "amount": montant,
                         "currency": "XAF",
@@ -317,100 +293,51 @@ elif menu == "⚙️ Paiement":
 
                 # Récupération du statut
                 status = ""
-
                 if isinstance(res, dict):
-                    status = str(
-                        res.get("status", "")
-                    ).upper()
+                    status = str(res.get("status", "")).upper()
 
                 # ==========================
                 # PAIEMENT RÉUSSI
                 # ==========================
-
                 if status in ["SUCCESS", "SUCCESSFUL", "COMPLETED"]:
-
-                    st.success(
-                        "✅ Paiement confirmé ! "
-                        "Votre Premium est maintenant activé."
-                    )
-
+                    st.success("✅ Paiement confirmé! Votre Premium est maintenant activé.")
                     st.session_state.is_premium = True
-
                     # Enregistrer Premium pour le compte connecté
                     email = st.session_state.get("user_email")
-
                     if email:
                         users = load_users()
-
                         if email in users:
                             users[email]["premium"] = True
                             save_users(users)
-
                     st.balloons()
 
                 # ==========================
                 # PAIEMENT EN ATTENTE
                 # ==========================
-
                 elif status in ["PENDING", "INITIATED", "PROCESSING"]:
-
-                    st.warning(
-                        "⏳ Paiement en attente de confirmation."
-                    )
-
-                    st.info(
-                        "📱 Vérifiez votre téléphone et "
-                        "validez la demande CamPay."
-                    )
-
-                    st.caption(
-                        f"Référence : {external_reference}"
-                    )
-
-                    st.session_state["last_payment_reference"] = (
-                        external_reference
-                    )
+                    st.warning("⏳ Paiement en attente de confirmation.")
+                    st.info("📱 Vérifiez votre téléphone et validez la demande CamPay.")
+                    st.caption(f"Référence : {external_reference}")
+                    st.session_state["last_payment_reference"] = external_reference
 
                 # ==========================
                 # PAIEMENT ÉCHOUÉ
                 # ==========================
-
                 elif status in ["FAILED", "CANCELLED", "CANCELED"]:
-
                     message = "Paiement refusé par CamPay."
-
                     if isinstance(res, dict):
-                        message = res.get(
-                            "message",
-                            message
-                        )
-
-                    st.error(
-                        f"❌ Paiement non effectué : {message}"
-                    )
+                        message = res.get("message", message)
+                    st.error(f"❌ Paiement non effectué : {message}")
 
                 # ==========================
                 # AUTRE RÉPONSE
                 # ==========================
-
                 else:
-
-                    st.warning(
-                        "⚠️ CamPay a répondu, mais le statut "
-                        "du paiement n'est pas encore confirmé."
-                    )
-
-                    st.info(
-                        "Ne fermez pas l'application. "
-                        "Conservez la référence de transaction."
-                    )
-
-                    st.caption(
-                        f"Référence : {external_reference}"
-                    )
+                    st.warning("⚠️ CamPay a répondu, mais le statut du paiement n'est pas encore confirmé.")
+                    st.info("Ne fermez pas l'application. Conservez la référence de transaction.")
+                    st.caption(f"Référence : {external_reference}")
 
             except Exception as e:
+                st.error(f"❌ Erreur pendant le paiement CamPay : {e}")
 
-                st.error(
-                    f"❌ Erreur pendant le paiement CamPay : {e}"
-)
+
