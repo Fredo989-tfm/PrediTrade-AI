@@ -244,7 +244,6 @@ elif menu == "⚙️ Paiement":
     st.image("IMG-20260810-WA1501.jpg", width=80)
 
     # En DEMO CamPay, le montant maximum est 25 XAF.
-    # Nous remettrons 19999 XAF lorsque CamPay sera en LIVE.
     CAMPAY_DEMO = True
 
     if CAMPAY_DEMO:
@@ -290,39 +289,33 @@ elif menu == "⚙️ Paiement":
                 # Affichage de la réponse CamPay
                 st.write("### Réponse CamPay")
                 st.json(res)
+
+                statut = "PENDING" # Variable par défaut
+
                 if isinstance(res, dict) and res.get("reference"):
                     st.session_state["campay_reference"] = res["reference"]
                     st.session_state["campay_external_reference"] = external_reference
                     st.info("⏳ Paiement en attente de confirmation.")
                     st.warning("📱 Validez la demande CamPay sur votre téléphone.")
- 
 
-               # Vérification réelle du statut de la transaction
-statut = "PENDING"
+                    # Vérification réelle du statut de la transaction
+                    try:
+                        reference = res["reference"]
+                        statut_res = campay.get_transaction_status({"reference": reference})
+                        st.write("### 🔎 Statut de la transaction")
+                        st.json(statut_res)
 
-if isinstance(res, dict) and res.get("reference"):
-    try:
-        reference = res["reference"]
-
-        statut_res = campay.get_transaction_status({
-            "reference": reference
-        })
-
-        st.write("### 🔎 Statut de la transaction")
-        st.json(statut_res)
-
-        if isinstance(statut_res, dict):
-            statut = str(
-                statut_res.get("status", "PENDING")
-            ).upper()
-
-    except Exception as e:
-        st.warning(f"⚠️ Impossible de vérifier le statut : {e}") 
+                        if isinstance(statut_res, dict):
+                            statut = str(statut_res.get("status", "PENDING")).upper()
+                    except Exception as e:
+                        st.warning(f"⚠️ Impossible de vérifier le statut : {e}")
+                else:
+                    statut = str(res.get("status", "PENDING")).upper() if isinstance(res, dict) else "PENDING"
 
                 # ==========================
                 # PAIEMENT RÉUSSI
                 # ==========================
-                if status in ["SUCCESS", "SUCCESSFUL", "COMPLETED"]:
+                if statut in ["SUCCESS", "SUCCESSFUL", "COMPLETED"]:
                     st.success("✅ Paiement confirmé! Votre Premium est maintenant activé.")
                     st.session_state.is_premium = True
                     # Enregistrer Premium pour le compte connecté
@@ -337,7 +330,7 @@ if isinstance(res, dict) and res.get("reference"):
                 # ==========================
                 # PAIEMENT EN ATTENTE
                 # ==========================
-                elif status in ["PENDING", "INITIATED", "PROCESSING"]:
+                elif statut in ["PENDING", "INITIATED", "PROCESSING"]:
                     st.warning("⏳ Paiement en attente de confirmation.")
                     st.info("📱 Vérifiez votre téléphone et validez la demande CamPay.")
                     st.caption(f"Référence : {external_reference}")
@@ -346,7 +339,7 @@ if isinstance(res, dict) and res.get("reference"):
                 # ==========================
                 # PAIEMENT ÉCHOUÉ
                 # ==========================
-                elif status in ["FAILED", "CANCELLED", "CANCELED"]:
+                elif statut in ["FAILED", "CANCELLED", "CANCELED"]:
                     message = "Paiement refusé par CamPay."
                     if isinstance(res, dict):
                         message = res.get("message", message)
