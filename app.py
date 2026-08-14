@@ -239,7 +239,7 @@ elif menu == "🧠 Analyse IA Pro":
             fig.update_layout(template="plotly_dark")
             st.plotly_chart(fig, use_container_width=True)
             st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score})
-            elif menu == "⚙️ Paiement":
+elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
     st.image("IMG-20260810-WA1501.jpg", width=80)
 
@@ -339,5 +339,6 @@ elif menu == "🧠 Analyse IA Pro":
 
             except Exception as e:
                 st.error(f"❌ Erreur pendant le paiement CamPay : {e}")
+
 
 
