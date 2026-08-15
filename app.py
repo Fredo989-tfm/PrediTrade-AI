@@ -327,27 +327,59 @@ elif menu == "💼 Portefeuille": # NOUVEAU
     st.subheader("Historique des opérations")
     if st.session_state.operations: st.dataframe(pd.DataFrame(st.session_state.operations), use_container_width=True)
 
-elif menu == "📊 Backtest": # NOUVEAU
+elif menu == "📊 Backtest":
     st.title("📊 Backtest Stratégie PrediScore")
+    st.markdown("Teste la stratégie sur les 100 derniers jours. Règle: ACHAT si Score > 75, VENTE si Score < 40")
+    
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
-    if st.button("Lancer Backtest 1 an"):
+    
+    if st.button("Lancer Backtest 100 jours", type="primary"):
         df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
-        if not df.empty and len(df) > 100:
-            df = df.tail(100)
+        if not df.empty and len(df) > 60:
+            df = df.tail(100) # On prend 100 derniers jours
             ind = indicateurs(df)
-            signals = []
-            cash = 10000
+            
+            cash = 10000.0
+            position = 0.0 # en BTC, ETH, etc
+            equity = []
+            trades = 0
+            
             for i in range(50, len(df)):
-                score, signal, _ = prediscore({k: v.iloc[:i] for k,v in ind.items()})
-                if signal == "🟢 ACHAT" and cash > df["Close"].iloc[i]:
-                    cash -= df["Close"].iloc[i]; signals.append("Achat")
-                elif signal == "🔴 VENTE" and cash < 10000:
-                    cash += df["Close"].iloc[i]; signals.append("Vente")
-                else: signals.append("Hold")
-            pnl = cash - 10000
-            st.metric("P&L Backtest", f"${pnl:,.2f}")
-            st.line_chart(df["Close"])
+                # On prend les données jusqu'à i pour simuler "temps réel"
+                ind_slice = {k: v.iloc[:i] for k,v in ind.items()}
+                score, signal, _ = prediscore(ind_slice)
+                prix = df["Close"].iloc[i]
+                
+                # LOGIQUE TRADING
+                if signal == "🟢 ACHAT" and cash > prix and position == 0:
+                    position = cash / prix # On investit tout
+                    cash = 0
+                    trades += 1
+                elif signal == "🔴 VENTE" and position > 0:
+                    cash = position * prix # On vend tout
+                    position = 0
+                    trades += 1
+                
+                # Valeur du portefeuille à chaque jour
+                equity.append(cash + position * prix)
+            
+            # Résultats
+            pnl = equity[-1] - 10000
+            pnl_pct = (pnl / 10000) * 100
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("P&L Backtest", f"${pnl:,.2f}", f"{pnl_pct:.2f}%")
+            c2.metric("Valeur Finale", f"${equity[-1]:,.2f}")
+            c3.metric("Nb de Trades", trades)
+            
+            st.subheader(f"Evolution {asset_name}")
+            st.line_chart(pd.Series(equity, index=df.index[50:]))
+            
+            if pnl > 0: st.success(f"✅ Stratégie rentable sur cette période")
+            else: st.error(f"❌ Stratégie perdante sur cette période")
+        else: 
+            st.error("Pas assez de données pour le backtest. Essaye Actions ou Crypto majeures.")
 
 elif menu == "📚 Historique": # NOUVEAU
     st.title("📚 Historique des analyses")
