@@ -134,10 +134,53 @@ def charger_donnees(symbol, asset_type):
             url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         r = requests.get(url, timeout=30)
         if not r.ok: st.error(f"❌ Erreur API : HTTP {r.status_code}"); return pd.DataFrame()
-        data = r.json()
-        if "Error Message" in data: st.error(f"❌ Alpha Vantage : {data['Error Message']}"); return pd.DataFrame()
-        if "Note" in data: st.warning("⚠️ Limite de requêtes Alpha Vantage atteinte."); return pd.DataFrame()
-        df = pd.DataFrame() # Remplace par tout ton parsing
+                data = r.json()
+
+        if "Error Message" in data:
+            st.error(f"❌ Alpha Vantage : {data['Error Message']}")
+            return pd.DataFrame()
+
+        if "Note" in data:
+            st.warning(f"⚠️ Alpha Vantage : {data['Note']}")
+            return pd.DataFrame()
+
+        # Recherche automatique de la série temporelle
+        series = None
+
+        for key, value in data.items():
+            if isinstance(value, dict):
+                if any(isinstance(v, dict) for v in value.values()):
+                    series = value
+                    break
+
+        if not series:
+            st.error("❌ Aucune donnée de marché reçue par Alpha Vantage.")
+            return pd.DataFrame()
+
+        # Conversion en DataFrame
+        df = pd.DataFrame.from_dict(series, orient="index")
+
+        # Conversion des dates
+        df.index = pd.to_datetime(df.index)
+
+        # Recherche de la colonne Close
+        close_col = None
+
+        for col in df.columns:
+            if str(col).lower() in ["4. close", "5. adjusted close", "close"]:
+                close_col = col
+                break
+
+        if close_col is None:
+            st.error("❌ Impossible de trouver le prix de clôture.")
+            return pd.DataFrame()
+
+        # Normalisation
+        df["Close"] = pd.to_numeric(df[close_col], errors="coerce")
+
+        df = df.dropna(subset=["Close"])
+        df = df.sort_index()
+
         return df
     except Exception as e:
         st.error(f"❌ Erreur pendant le chargement des données : {e}")
