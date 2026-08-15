@@ -46,7 +46,7 @@ if "history" not in st.session_state:
 if "operations" not in st.session_state:
     st.session_state.operations = []
 if "show_landing" not in st.session_state:
-    st.session_state["show_landing"] = True
+    st.session_state["show_landing"] = False
 if "show_login" not in st.session_state:
     st.session_state["show_login"] = False
 if "trial_until" not in st.session_state:
