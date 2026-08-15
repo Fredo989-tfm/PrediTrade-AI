@@ -97,6 +97,12 @@ def login_page():
             users = load_users()
             if email in users: st.error("❌ Cet email existe déjà.")
             else: users[email] = {"password": hash_password(password), "premium": False}; save_users(users); st.success("✅ Compte créé.")
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            st.session_state.is_premium = False
+            st.session_state.show_landing = False
+            st.session_state.show_login = False
+            st.rerun() 
     if st.button("🚀 Essai gratuit 3 jours Premium", use_container_width=True):
         st.session_state.logged_in = True; st.session_state.is_premium = True; st.session_state.user_email = "essai@preditrade.ai"; st.session_state.trial_until = datetime.now() + timedelta(days=3); st.session_state.show_login = False; st.rerun()
 
