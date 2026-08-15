@@ -1,4 +1,4 @@
-import streamlit as st
+, import streamlit as st
 import base64
 import pandas as pd
 import numpy as np
@@ -134,7 +134,7 @@ def charger_donnees(symbol, asset_type):
             url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         r = requests.get(url, timeout=30)
         if not r.ok: st.error(f"❌ Erreur API : HTTP {r.status_code}"); return pd.DataFrame()
-                data = r.json()
+        data = r.json() 
 
         if "Error Message" in data:
             st.error(f"❌ Alpha Vantage : {data['Error Message']}")
