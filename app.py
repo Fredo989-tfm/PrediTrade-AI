@@ -163,22 +163,43 @@ def charger_donnees(symbol, asset_type):
         # Conversion des dates
         df.index = pd.to_datetime(df.index)
 
-        # Recherche de la colonne Close
-        close_col = None
+                # Normalisation des colonnes OHLC
+        column_map = {}
 
         for col in df.columns:
-            if str(col).lower() in ["4. close", "5. adjusted close", "close"]:
-                close_col = col
-                break
+            col_str = str(col).lower()
 
-        if close_col is None:
-            st.error("❌ Impossible de trouver le prix de clôture.")
+            if "open" in col_str:
+                column_map[col] = "Open"
+            elif "high" in col_str:
+                column_map[col] = "High"
+            elif "low" in col_str:
+                column_map[col] = "Low"
+            elif "close" in col_str and "adjusted" not in col_str:
+                column_map[col] = "Close"
+
+        df = df.rename(columns=column_map)
+
+        # Vérification des données nécessaires
+        required_columns = ["Open", "High", "Low", "Close"]
+
+        missing = [col for col in required_columns if col not in df.columns]
+
+        if missing:
+            st.error(
+                f"❌ Données de marché incomplètes. "
+                f"Colonnes manquantes : {', '.join(missing)}"
+            )
             return pd.DataFrame()
 
-        # Normalisation
-        df["Close"] = pd.to_numeric(df[close_col], errors="coerce")
+        # Conversion numérique
+        for col in required_columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        df = df.dropna(subset=["Close"])
+        # Suppression des lignes invalides
+        df = df.dropna(subset=required_columns)
+
+        # Tri chronologique
         df = df.sort_index()
 
         return df
