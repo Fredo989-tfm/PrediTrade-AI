@@ -458,3 +458,60 @@ elif menu == "⚙️ Paiement": # TOUCHÉ À RIEN
                 elif statut in ["PENDING", "INITIATED", "PROCESSING"]: st.warning("⏳ Paiement en attente de confirmation.")
                 elif statut in ["FAILED", "CANCELLED", "CANCELED"]: st.error("❌ Paiement non effectué")
             except Exception as e: st.error(f"❌ Erreur pendant le paiement CamPay : {e}")
+                elif menu == "🔔 Alertes":
+    import time
+    
+    st.title("🔔 Scanner Gratuit")
+    st.info("⚠️ Laisse cet onglet ouvert. Scan toutes les 10s.")
+    
+    placeholder = st.empty()
+    
+    while True:
+        actifs = ["BTC", "ETH", "NVDA", "AAPL", "TSLA"]
+        alertes = []
+        for actif in actifs:
+            score = generer_prediscore(actif)
+            if score > 75:
+                alertes.append(f"🔥 {actif} : Score {score}/100 - ACHAT FORT")
+        
+        if alertes:
+            placeholder.error("\n".join(alertes))
+        else:
+            placeholder.success("Aucune opportunité > 75")
+        
+        time.sleep(10)
+        elif menu == "🔔 Alertes Pro":
+    import firebase_admin
+    from firebase_admin import credentials, db
+    
+    st.title("🔔 Alertes Pro Premium 24/24")
+    
+    # CONNEXION FIREBASE - 1 SEULE FOIS
+    if not firebase_admin._apps:
+        try:
+            cred = credentials.Certificate("preditrade-key.json")
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://preditrade-ai-default-rtdb.firebaseio.com/'
+            })
+        except:
+            st.error("Fichier preditrade-key.json manquant")
+            st.stop()
+
+    # CHECK PREMIUM
+    if st.session_state.get("is_premium", False) == False:
+        st.error("🔒 Réservé aux membres Premium $9.99/mois")
+        st.button("Passer Premium")
+    else:
+        st.success("✅ Compte Premium Actif")
+        
+        # ENREGISTRER LE TELEPHONE
+        token_fcm = st.text_input("1. Colle ton Token FCM ici", key="token")
+        actifs_choisis = st.multiselect("2. Choisis tes actifs", ["BTC", "ETH", "NVDA", "AAPL", "TSLA"], default=["BTC", "ETH"])
+        
+        if st.button("3. Activer les Push 24/24"):
+            db.reference('users_premium').push({
+                'token': token_fcm,
+                'actifs': actifs_choisis
+            })
+            st.success(f"✅ C'est bon ! Le cloud scanne {actifs_choisis} pour toi H24")
+            st.info("Tu vas recevoir la notif même si l'app est fermée")
