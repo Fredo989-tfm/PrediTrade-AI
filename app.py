@@ -1,4 +1,6 @@
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, db
 import base64
 import pandas as pd
 import numpy as np
@@ -6,6 +8,11 @@ import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
+if not firebase_admin._apps:
+    cred = credentials.Certificate(st.secrets["gcp_service_account"])
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://preditrade-ai-default-rtdb.firebaseio.com/'
+    })
 
 APP_VERSION = "5.0.0"
 
