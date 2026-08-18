@@ -26,9 +26,7 @@ if not firebase_admin._apps:
         firebase_config["private_key"]
         .replace("\\n", "\n")
         .strip()
-    )
-
-   try:
+try:
     cred = credentials.Certificate(firebase_config)
     st.success("✅ Certificat Firebase accepté.")
 except Exception as e:
