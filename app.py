@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
 if not firebase_admin._apps:
-if not firebase_admin._apps:
-    firebase_config = dict(st.secrets["FIREBASE"])
+    if not firebase_admin._apps:
+        firebase_config = dict(st.secrets["FIREBASE"])
 
     st.write("Firebase type :", repr(firebase_config.get("type")))
     st.write("Firebase project_id présent :", bool(firebase_config.get("project_id")))
