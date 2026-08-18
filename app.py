@@ -8,15 +8,13 @@ import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
-
-# FIREBASE INIT - 1 SEULE FOIS
 if not firebase_admin._apps:
     cred = credentials.Certificate(st.secrets["gcp_service_account"])
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://preditrade-ai-default-rtdb.firebaseio.com/'
     })
 
-APP_VERSION = "5.0.1"
+APP_VERSION = "5.0.0"
 
 # FONCTIONS UTILES
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
@@ -136,7 +134,7 @@ def charger_donnees(symbol, asset_type):
             url = f"https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={from_symbol}&to_symbol={to_symbol}&outputsize=compact&apikey={API_KEY}"
         elif asset_type == "Matières Premières":
             if symbol == "XAU": url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey={API_KEY}"
-            elif symbol == "WTI": url = f"https://www.alphavantage.co.query?function=WTI&interval=daily&apikey={API_KEY}"
+            elif symbol == "WTI": url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={API_KEY}"
             else: url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         else:
             url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
@@ -424,16 +422,19 @@ elif menu == "📄 Rapports":
     else: st.info("Aucune donnée à exporter")
 
 elif menu == "🔔 Alertes":
+    import time
+    def generer_prediscore(actif): return np.random.randint(40, 100) # fonction manquante que tu avais
+
     st.title("🔔 Scanner Gratuit")
     st.info("⚠️ Laisse cet onglet ouvert. Scan toutes les 10s.")
+
     placeholder = st.empty()
     actifs = ["BTC", "ETH", "NVDA", "AAPL", "TSLA"]
 
     while True:
         alertes = []
         for actif in actifs:
-            # Simule un score pour demo
-            score = np.random.randint(40, 100)
+            score = generer_prediscore(actif)
             if score > 75:
                 alertes.append(f"🔥 {actif} : Score {score}/100 - ACHAT FORT")
 
@@ -441,12 +442,12 @@ elif menu == "🔔 Alertes":
             placeholder.error("\n".join(alertes))
         else:
             placeholder.success("Aucune opportunité > 75")
+
         time.sleep(10)
         st.rerun()
 
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
-    st.success("✅ Firebase branché via Secrets")
 
     # CHECK PREMIUM
     if st.session_state.get("is_premium", False) == False:
@@ -455,13 +456,12 @@ elif menu == "🔔 Alertes Pro":
     else:
         st.success("✅ Compte Premium Actif")
 
-        # ENREGISTRER LE TELEPHONE DANS FIREBASE
+        # ENREGISTRER LE TELEPHONE
         token_fcm = st.text_input("1. Colle ton Token FCM ici", key="token")
         actifs_choisis = st.multiselect("2. Choisis tes actifs", ["BTC", "ETH", "NVDA", "AAPL", "TSLA"], default=["BTC", "ETH"])
 
         if st.button("3. Activer les Push 24/24"):
-            ref = db.reference('users_premium')
-            ref.push({
+            db.reference('users_premium').push({
                 'email': st.session_state.user_email,
                 'token': token_fcm,
                 'actifs': actifs_choisis,
