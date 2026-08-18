@@ -9,10 +9,24 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
 if not firebase_admin._apps:
+if not firebase_admin._apps:
     firebase_config = dict(st.secrets["FIREBASE"])
 
+    st.write("Firebase type :", repr(firebase_config.get("type")))
+    st.write("Firebase project_id présent :", bool(firebase_config.get("project_id")))
+    st.write("Firebase client_email présent :", bool(firebase_config.get("client_email")))
+    st.write("Firebase private_key présente :", bool(firebase_config.get("private_key")))
+    st.write(
+        "Firebase private_key commence correctement :",
+        firebase_config.get("private_key", "").startswith("-----BEGIN PRIVATE KEY-----")
+    )
+
     firebase_config["type"] = "service_account"
-    firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n").strip()
+    firebase_config["private_key"] = (
+        firebase_config["private_key"]
+        .replace("\\n", "\n")
+        .strip()
+    )
 
     cred = credentials.Certificate(firebase_config)
     firebase_admin.initialize_app(cred)
