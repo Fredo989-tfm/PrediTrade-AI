@@ -9,15 +9,14 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
 if not firebase_admin._apps:
+if not firebase_admin._apps:
     firebase_config = dict(st.secrets["FIREBASE"])
+
+    firebase_config["type"] = "service_account"
+
     cred = credentials.Certificate(firebase_config)
 
-    firebase_admin.initialize_app(
-        cred,
-        {
-            "databaseURL": "https://preditradeai-....firebaseio.com"
-        }
-    )
+    firebase_admin.initialize_app(cred)
 APP_VERSION = "5.0.0"
 
 # FONCTIONS UTILES
