@@ -9,32 +9,21 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
 if not firebase_admin._apps:
-    if not firebase_admin._apps:
-        firebase_config = dict(st.secrets["FIREBASE"])
-
-    st.write("Firebase type :", repr(firebase_config.get("type")))
-    st.write("Firebase project_id présent :", bool(firebase_config.get("project_id")))
-    st.write("Firebase client_email présent :", bool(firebase_config.get("client_email")))
-    st.write("Firebase private_key présente :", bool(firebase_config.get("private_key")))
-    st.write(
-        "Firebase private_key commence correctement :",
-        firebase_config.get("private_key", "").startswith("-----BEGIN PRIVATE KEY-----")
-    )
+    firebase_config = dict(st.secrets["FIREBASE"])
 
     firebase_config["type"] = "service_account"
-    firebase_config["private_key"] = (
-        firebase_config["private_key"]
-        .replace("\\n", "\n")
-        .strip()
-try:
-    cred = credentials.Certificate(firebase_config)
-    st.success("✅ Certificat Firebase accepté.")
-except Exception as e:
-    st.error("❌ Firebase refuse le certificat.")
-    st.write("Type :", type(e).__name__)
-    st.write("Erreur :", str(e))
-    st.stop()
-    firebase_admin.initialize_app(cred)
+
+    firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n").strip()
+
+    try:
+        cred = credentials.Certificate(firebase_config)
+        firebase_admin.initialize_app(cred)
+        st.success("✅ Firebase connecté correctement.")
+    except Exception as e:
+        st.error("❌ Firebase refuse le certificat.")
+        st.write("Type :", type(e).__name__)
+        st.write("Erreur :", str(e))
+        st.stop()
 APP_VERSION = "5.0.0"
 
 # FONCTIONS UTILES
