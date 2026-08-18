@@ -28,7 +28,14 @@ if not firebase_admin._apps:
         .strip()
     )
 
+   try:
     cred = credentials.Certificate(firebase_config)
+    st.success("✅ Certificat Firebase accepté.")
+except Exception as e:
+    st.error("❌ Firebase refuse le certificat.")
+    st.write("Type :", type(e).__name__)
+    st.write("Erreur :", str(e))
+    st.stop()
     firebase_admin.initialize_app(cred)
 APP_VERSION = "5.0.0"
 
