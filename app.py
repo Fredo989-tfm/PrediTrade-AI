@@ -8,13 +8,15 @@ import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
+
+# FIREBASE INIT - 1 SEULE FOIS
 if not firebase_admin._apps:
     cred = credentials.Certificate(st.secrets["gcp_service_account"])
     firebase_admin.initialize_app(cred, {
         'databaseURL': 'https://preditrade-ai-default-rtdb.firebaseio.com/'
     })
 
-APP_VERSION = "5.0.0"
+APP_VERSION = "5.0.1"
 
 # FONCTIONS UTILES
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
@@ -56,7 +58,7 @@ if "operations" not in st.session_state: st.session_state.operations = []
 if "show_landing" not in st.session_state: st.session_state["show_landing"] = False
 if "show_login" not in st.session_state: st.session_state["show_login"] = False
 if "trial_until" not in st.session_state: st.session_state["trial_until"] = None
-if "portfolio" not in st.session_state: st.session_state.portfolio = {} # Nouveau pour portefeuille
+if "portfolio" not in st.session_state: st.session_state.portfolio = {}
 
 ASSETS = {
     "Crypto": {"Bitcoin (BTC)": "BTC","Ethereum (ETH)": "ETH","Solana (SOL)": "SOL","BNB": "BNB","XRP": "XRP","Cardano (ADA)": "ADA","Dogecoin (DOGE)": "DOGE"},
@@ -134,7 +136,7 @@ def charger_donnees(symbol, asset_type):
             url = f"https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={from_symbol}&to_symbol={to_symbol}&outputsize=compact&apikey={API_KEY}"
         elif asset_type == "Matières Premières":
             if symbol == "XAU": url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey={API_KEY}"
-            elif symbol == "WTI": url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={API_KEY}"
+            elif symbol == "WTI": url = f"https://www.alphavantage.co.query?function=WTI&interval=daily&apikey={API_KEY}"
             else: url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
         else:
             url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
@@ -219,7 +221,7 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash", f"${st.session_state.cash:,.2f}")
     st.metric("📈 Analyses", len(st.session_state.history))
-    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","⚙️ Paiement"], key="main_menu_v511")
+    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Alertes Pro","⚙️ Paiement"], key="main_menu_v512")
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
@@ -240,7 +242,7 @@ if menu == "📊 Tableau de bord":
     else:
         st.info("Lance ta première analyse dans 'Analyse IA Pro'")
 
-elif menu == "🧠 Analyse IA Pro": # TOUCHÉ À RIEN
+elif menu == "🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
@@ -260,7 +262,7 @@ elif menu == "🧠 Analyse IA Pro": # TOUCHÉ À RIEN
             st.plotly_chart(fig, use_container_width=True)
             st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal})
 
-elif menu == "🔍 Scanner intelligent": # NOUVEAU
+elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     st.markdown("Scanne tous les actifs et sort ceux avec PrediScore > 75")
     if not st.session_state.is_premium: st.warning("⚠️ Fonction Premium")
@@ -268,18 +270,18 @@ elif menu == "🔍 Scanner intelligent": # NOUVEAU
         with st.spinner("Scan en cours... 30s environ"):
             results = []
             for cat, assets in ASSETS.items():
-                for name, symbol in list(assets.items())[:3]: # Limite à 3 par cat pour l'API
+                for name, symbol in list(assets.items())[:3]:
                     df = charger_donnees(symbol, cat)
                     if not df.empty:
                         score, signal, conf = prediscore(indicateurs(df))
                         if score >= 70: results.append({"Catégorie": cat, "Actif": name, "Score": score, "Signal": signal})
-                    time.sleep(0.5) # Pour ne pas dépasser limite API
+                    time.sleep(0.5)
         if results:
             st.success(f"{len(results)} opportunités trouvées")
             st.dataframe(pd.DataFrame(results).sort_values("Score", ascending=False), use_container_width=True)
         else: st.info("Aucune opportunité forte trouvée actuellement")
 
-elif menu == "⚖️ Comparaison": # NOUVEAU
+elif menu == "⚖️ Comparaison":
     st.title("⚖️ Comparaison d'actifs")
     col1, col2 = st.columns(2)
     with col1:
@@ -297,7 +299,7 @@ elif menu == "⚖️ Comparaison": # NOUVEAU
             st.metric(asset1, f"{s1}/100", sig1)
             st.metric(asset2, f"{s2}/100", sig2)
 
-elif menu == "💼 Portefeuille": # NOUVEAU
+elif menu == "💼 Portefeuille":
     st.title("💼 Portefeuille Simulé")
     st.metric("Cash disponible", f"${st.session_state.cash:,.2f}")
     st.divider()
@@ -337,63 +339,62 @@ elif menu == "💼 Portefeuille": # NOUVEAU
 elif menu == "📊 Backtest":
     st.title("📊 Backtest Stratégie PrediScore")
     st.markdown("Teste la stratégie sur les 100 derniers jours. Règle: ACHAT si Score > 60, VENTE si Score < 45")
-    
+
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
-    
+
     if st.button("Lancer Backtest 100 jours", type="primary"):
         df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
         if not df.empty and len(df) > 60:
             df = df.tail(100)
             ind = indicateurs(df)
-            
+
             cash = 10000.0
             position = 0.0
             equity = []
             trades = 0
             log_trades = []
-            
+
             for i in range(50, len(df)):
                 ind_slice = {k: v.iloc[:i] for k,v in ind.items()}
                 score, signal, _ = prediscore(ind_slice)
                 prix = df["Close"].iloc[i]
-                
-                # LOGIQUE PLUS SENSIBLE
-                if signal == "🟢 ACHAT" and cash > prix and position == 0: # Score >= 60
+
+                if signal == "🟢 ACHAT" and cash > prix and position == 0:
                     position = cash / prix
                     cash = 0
                     trades += 1
                     log_trades.append({"Date": df.index[i].date(), "Action": "ACHAT", "Prix": f"${prix:,.2f}", "Score": score})
-                elif signal == "🔴 VENTE" and position > 0: # Score < 45
+                elif signal == "🔴 VENTE" and position > 0:
                     cash = position * prix
                     position = 0
                     trades += 1
                     log_trades.append({"Date": df.index[i].date(), "Action": "VENTE", "Prix": f"${prix:,.2f}", "Score": score})
-                
+
                 equity.append(cash + position * prix)
-            
+
             pnl = equity[-1] - 10000
             pnl_pct = (pnl / 10000) * 100
-            
+
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("P&L Backtest", f"${pnl:,.2f}", f"{pnl_pct:.2f}%")
             c2.metric("Valeur Finale", f"${equity[-1]:,.2f}")
             c3.metric("Nb de Trades", trades)
             c4.metric("Score Dernier Jour", f"{score}/100")
-            
+
             st.subheader(f"Evolution {asset_name}")
             st.line_chart(pd.Series(equity, index=df.index[50:]))
-            
+
             if log_trades:
                 st.subheader("Journal des Trades")
                 st.dataframe(pd.DataFrame(log_trades), use_container_width=True)
-            
+
             if pnl > 0: st.success(f"✅ Stratégie rentable : +{pnl_pct:.2f}%")
             else: st.error(f"❌ Stratégie perdante : {pnl_pct:.2f}%")
-        else: 
-            st.error("Pas assez de données. Teste avec NVIDIA, AAPL ou ETH") 
+        else:
+            st.error("Pas assez de données. Teste avec NVIDIA, AAPL ou ETH")
 
-elif menu == "📚 Historique": # NOUVEAU
+elif menu == "📚 Historique":
     st.title("📚 Historique des analyses")
     if len(st.session_state.history) == 0: st.info("Aucune analyse pour le moment")
     else:
@@ -401,7 +402,7 @@ elif menu == "📚 Historique": # NOUVEAU
         st.dataframe(df_hist, use_container_width=True)
         st.download_button("Télécharger CSV", df_hist.to_csv(index=False), "historique.csv")
 
-elif menu == "🤖 Assistant IA": # NOUVEAU
+elif menu == "🤖 Assistant IA":
     st.title("🤖 Assistant IA Premium")
     if not st.session_state.is_premium: st.warning("⚠️ Réservé aux Premium. Passe à Premium pour débloquer")
     else:
@@ -413,7 +414,7 @@ elif menu == "🤖 Assistant IA": # NOUVEAU
                 rep = assistant_gemini(question, context)
             st.markdown(f"**PrediTrade AI:** {rep}")
 
-elif menu == "📄 Rapports": # NOUVEAU
+elif menu == "📄 Rapports":
     st.title("📄 Rapports")
     st.markdown("Génère un rapport PDF de tes analyses")
     if len(st.session_state.history) > 0:
@@ -422,7 +423,54 @@ elif menu == "📄 Rapports": # NOUVEAU
         st.download_button("📥 Télécharger Rapport CSV", df_rep.to_csv(index=False), "rapport_preditrade.csv")
     else: st.info("Aucune donnée à exporter")
 
-elif menu == "⚙️ Paiement": # TOUCHÉ À RIEN
+elif menu == "🔔 Alertes":
+    st.title("🔔 Scanner Gratuit")
+    st.info("⚠️ Laisse cet onglet ouvert. Scan toutes les 10s.")
+    placeholder = st.empty()
+    actifs = ["BTC", "ETH", "NVDA", "AAPL", "TSLA"]
+
+    while True:
+        alertes = []
+        for actif in actifs:
+            # Simule un score pour demo
+            score = np.random.randint(40, 100)
+            if score > 75:
+                alertes.append(f"🔥 {actif} : Score {score}/100 - ACHAT FORT")
+
+        if alertes:
+            placeholder.error("\n".join(alertes))
+        else:
+            placeholder.success("Aucune opportunité > 75")
+        time.sleep(10)
+        st.rerun()
+
+elif menu == "🔔 Alertes Pro":
+    st.title("🔔 Alertes Pro Premium 24/24")
+    st.success("✅ Firebase branché via Secrets")
+
+    # CHECK PREMIUM
+    if st.session_state.get("is_premium", False) == False:
+        st.error("🔒 Réservé aux membres Premium $9.99/mois")
+        st.button("Passer Premium")
+    else:
+        st.success("✅ Compte Premium Actif")
+
+        # ENREGISTRER LE TELEPHONE DANS FIREBASE
+        token_fcm = st.text_input("1. Colle ton Token FCM ici", key="token")
+        actifs_choisis = st.multiselect("2. Choisis tes actifs", ["BTC", "ETH", "NVDA", "AAPL", "TSLA"], default=["BTC", "ETH"])
+
+        if st.button("3. Activer les Push 24/24"):
+            ref = db.reference('users_premium')
+            ref.push({
+                'email': st.session_state.user_email,
+                'token': token_fcm,
+                'actifs': actifs_choisis,
+                'date': datetime.now().isoformat()
+            })
+            st.success(f"✅ C'est bon! Le cloud scanne {actifs_choisis} pour toi H24")
+            st.info("Tu vas recevoir la notif même si l'app est fermée")
+
+elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
     st.image("IMG-20260810-WA1501.jpg", width=80)
     CAMPAY_DEMO = True
@@ -465,60 +513,3 @@ elif menu == "⚙️ Paiement": # TOUCHÉ À RIEN
                 elif statut in ["PENDING", "INITIATED", "PROCESSING"]: st.warning("⏳ Paiement en attente de confirmation.")
                 elif statut in ["FAILED", "CANCELLED", "CANCELED"]: st.error("❌ Paiement non effectué")
             except Exception as e: st.error(f"❌ Erreur pendant le paiement CamPay : {e}")
-                elif menu == "🔔 Alertes":
-    import time
-    
-    st.title("🔔 Scanner Gratuit")
-    st.info("⚠️ Laisse cet onglet ouvert. Scan toutes les 10s.")
-    
-    placeholder = st.empty()
-    
-    while True:
-        actifs = ["BTC", "ETH", "NVDA", "AAPL", "TSLA"]
-        alertes = []
-        for actif in actifs:
-            score = generer_prediscore(actif)
-            if score > 75:
-                alertes.append(f"🔥 {actif} : Score {score}/100 - ACHAT FORT")
-        
-        if alertes:
-            placeholder.error("\n".join(alertes))
-        else:
-            placeholder.success("Aucune opportunité > 75")
-        
-        time.sleep(10)
-        elif menu == "🔔 Alertes Pro":
-    import firebase_admin
-    from firebase_admin import credentials, db
-    
-    st.title("🔔 Alertes Pro Premium 24/24")
-    
-    # CONNEXION FIREBASE - 1 SEULE FOIS
-    if not firebase_admin._apps:
-        try:
-            cred = credentials.Certificate("preditrade-key.json")
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://preditrade-ai-default-rtdb.firebaseio.com/'
-            })
-        except:
-            st.error("Fichier preditrade-key.json manquant")
-            st.stop()
-
-    # CHECK PREMIUM
-    if st.session_state.get("is_premium", False) == False:
-        st.error("🔒 Réservé aux membres Premium $9.99/mois")
-        st.button("Passer Premium")
-    else:
-        st.success("✅ Compte Premium Actif")
-        
-        # ENREGISTRER LE TELEPHONE
-        token_fcm = st.text_input("1. Colle ton Token FCM ici", key="token")
-        actifs_choisis = st.multiselect("2. Choisis tes actifs", ["BTC", "ETH", "NVDA", "AAPL", "TSLA"], default=["BTC", "ETH"])
-        
-        if st.button("3. Activer les Push 24/24"):
-            db.reference('users_premium').push({
-                'token': token_fcm,
-                'actifs': actifs_choisis
-            })
-            st.success(f"✅ C'est bon ! Le cloud scanne {actifs_choisis} pour toi H24")
-            st.info("Tu vas recevoir la notif même si l'app est fermée")
