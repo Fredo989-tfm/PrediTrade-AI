@@ -198,7 +198,6 @@ def charger_donnees(symbol, asset_type):
         if "Error Message" in data or "Note" in data:
             return pd.DataFrame()
 
-        # Recherche automatique de la série temporelle
         series = None
 
         for key, value in data.items():
@@ -218,7 +217,6 @@ def charger_donnees(symbol, asset_type):
         df.index = pd.to_datetime(df.index, errors="coerce")
         df = df[~df.index.isna()]
 
-        # Normalisation des noms de colonnes
         df.columns = [str(c).strip().lower() for c in df.columns]
 
         def trouver_colonne(possibles):
@@ -253,13 +251,11 @@ def charger_donnees(symbol, asset_type):
         if close_col is None:
             return pd.DataFrame()
 
-        # Prix de clôture obligatoire
         df["Close"] = pd.to_numeric(
             df[close_col],
             errors="coerce"
         )
 
-        # OHLC sécurisés
         df["Open"] = pd.to_numeric(
             df[open_col] if open_col else df["Close"],
             errors="coerce"
@@ -275,7 +271,6 @@ def charger_donnees(symbol, asset_type):
             errors="coerce"
         )
 
-        # Nettoyage
         df = df[
             ["Open", "High", "Low", "Close"]
         ].copy()
@@ -288,7 +283,6 @@ def charger_donnees(symbol, asset_type):
 
         df = df.sort_index()
 
-        # Vérification minimale
         if len(df) < 20:
             return pd.DataFrame()
 
@@ -371,25 +365,21 @@ def prediscore(ind):
 
     score = 50
 
-    # TENDANCE COURT TERME
     if ema20 > ema50:
         score += 10
     else:
         score -= 10
 
-    # TENDANCE LONG TERME
     if ema50 > ema200:
         score += 10
     else:
         score -= 10
 
-    # MACD
     if macd > macd_signal:
         score += 10
     else:
         score -= 10
 
-    # RSI
     if 50 <= rsi <= 65:
         score += 8
     elif 35 <= rsi < 50:
@@ -399,13 +389,11 @@ def prediscore(ind):
     elif rsi < 30:
         score += 8
 
-    # MOMENTUM
     if momentum > 2:
         score += 8
     elif momentum < -2:
         score -= 8
 
-    # VOLATILITÉ
     if volatility > 5:
         score -= 5
 
@@ -418,7 +406,6 @@ def prediscore(ind):
     else:
         signal = "🔴 VENTE"
 
-    # Cohérence des indicateurs
     confirmations = 0
 
     confirmations += int(ema20 > ema50)
@@ -508,71 +495,74 @@ elif menu == "🧠 Analyse IA Pro":
             c1.metric("PrediScore", f"{score}/100")
             c2.metric("Signal", signal)
             c3.metric("Confiance", conf)
-# Graphique sécurisé
-chart_df = df.tail(150).copy()
 
-fig = go.Figure()
+            # Graphique sécurisé - INDENTATION CORRIGÉE ICI
+            chart_df = df.tail(150).copy()
 
-fig.add_trace(
-    go.Candlestick(
-        x=chart_df.index,
-        open=chart_df["Open"],
-        high=chart_df["High"],
-        low=chart_df["Low"],
-        close=chart_df["Close"],
-        name="Prix"
-    )
-)
+            fig = go.Figure()
 
-fig.add_trace(
-    go.Scatter(
-        x=chart_df.index,
-        y=ind["ema20"].tail(150),
-        name="EMA20",
-        mode="lines"
-    )
-)
+            fig.add_trace(
+                go.Candlestick(
+                    x=chart_df.index,
+                    open=chart_df["Open"],
+                    high=chart_df["High"],
+                    low=chart_df["Low"],
+                    close=chart_df["Close"],
+                    name="Prix"
+                )
+            )
 
-fig.add_trace(
-    go.Scatter(
-        x=chart_df.index,
-        y=ind["ema50"].tail(150),
-        name="EMA50",
-        mode="lines"
-    )
-)
+            fig.add_trace(
+                go.Scatter(
+                    x=chart_df.index,
+                    y=ind["ema20"].tail(150),
+                    name="EMA20",
+                    mode="lines"
+                )
+            )
 
-fig.add_trace(
-    go.Scatter(
-        x=chart_df.index,
-        y=ind["ema200"].tail(150),
-        name="EMA200",
-        mode="lines"
-    )
-)
+            fig.add_trace(
+                go.Scatter(
+                    x=chart_df.index,
+                    y=ind["ema50"].tail(150),
+                    name="EMA50",
+                    mode="lines"
+                )
+            )
 
-fig.update_layout(
-    height=550,
-    template="plotly_dark",
-    xaxis_rangeslider_visible=False,
-    margin=dict(l=10, r=10, t=40, b=10),
-    legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.02,
-        xanchor="left",
-        x=0
-    )
-)
+            fig.add_trace(
+                go.Scatter(
+                    x=chart_df.index,
+                    y=ind["ema200"].tail(150),
+                    name="EMA200",
+                    mode="lines"
+                )
+            )
 
-st.plotly_chart(
-    fig,
-    use_container_width=True,
-    config={
-        "displaylogo": False,
-        "responsive": True
-    }
-)
+            fig.update_layout(
+                height=550,
+                template="plotly_dark",
+                xaxis_rangeslider_visible=False,
+                margin=dict(l=10, r=10, t=40, b=10),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="left",
+                    x=0
+                )
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                config={
+                    "displaylogo": False,
+                    "responsive": True
+                }
+            )
+            st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal})
+
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     st.markdown("Scanne tous les actifs et sort ceux avec PrediScore > 75")
@@ -809,14 +799,12 @@ elif menu == "🔔 Alertes":
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
 
-    # CHECK PREMIUM
     if st.session_state.get("is_premium", False) == False:
         st.error("🔒 Réservé aux membres Premium $9.99/mois")
         st.button("Passer Premium")
     else:
         st.success("✅ Compte Premium Actif")
 
-        # ENREGISTRER LE TELEPHONE
         token_fcm = st.text_input("1. Colle ton Token FCM ici", key="token")
         actifs_choisis = st.multiselect("2. Choisis tes actifs", ["BTC", "ETH", "NVDA", "AAPL", "TSLA"], default=["BTC", "ETH"])
 
@@ -858,7 +846,7 @@ elif menu == "⚙️ Paiement":
                 st.json(res)
                 statut = "PENDING"
                 if isinstance(res, dict) and res.get("reference"):
-                    st.session_state["campay_reference"] = res["reference"]
+                    st.session_state["campay_reference"] = res["reference"] 
                     try:
                         statut_res = campay.get_transaction_status({"reference": res["reference"]})
                         if isinstance(statut_res, dict): statut = str(statut_res.get("status", "PENDING")).upper()
