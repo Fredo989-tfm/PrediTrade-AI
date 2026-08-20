@@ -594,7 +594,7 @@ if st.session_state.get("analysis_requested", False):
         ):
             st.session_state["analysis_requested"] = True 
             with st.spinner("🤖 L'IA analyse le marché..."):
-            df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
+                df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
         if not df.empty:
             ind = indicateurs(df); score, signal, conf = prediscore(ind)
             c1,c2,c3 = st.columns(3)
