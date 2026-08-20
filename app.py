@@ -486,7 +486,7 @@ elif menu == "🧠 Analyse IA Pro":
     st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
-    if st.session_state.get("analysis_requested", False):
+if st.session_state.get("analysis_requested", False):
 
     with st.spinner("🤖 Analyse du marché en cours..."):
 
