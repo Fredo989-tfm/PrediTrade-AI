@@ -586,14 +586,14 @@ if st.session_state.get("analysis_requested", False):
         })
 
         st.session_state["analysis_requested"] = False
-    if st.button(
-    "🚀 Lancer l'analyse",
-    type="primary",
-    use_container_width=True,
-    key="launch_analysis"
-):
-    st.session_state["analysis_requested"] = True
-        with st.spinner("🤖 L'IA analyse le marché..."):
+        if st.button(
+            "🚀 Lancer l'analyse",
+            type="primary",
+            use_container_width=True,
+            key="launch_analysis"
+        ):
+            st.session_state["analysis_requested"] = True 
+            with st.spinner("🤖 L'IA analyse le marché..."):
             df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
         if not df.empty:
             ind = indicateurs(df); score, signal, conf = prediscore(ind)
