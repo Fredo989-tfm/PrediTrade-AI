@@ -486,7 +486,113 @@ elif menu == "🧠 Analyse IA Pro":
     st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
-    if st.button("Lancer l'analyse", type="primary"):
+    if st.session_state.get("analysis_requested", False):
+
+    with st.spinner("🤖 Analyse du marché en cours..."):
+
+        symbol = ASSETS[asset_cat][asset_name]
+
+        df = charger_donnees(symbol, asset_cat)
+
+    if df.empty:
+        st.error(
+            f"❌ Impossible de récupérer les données pour {asset_name}."
+        )
+        st.info(
+            "Vérifie ta clé Alpha Vantage dans Secrets et réessaie."
+        )
+
+    else:
+        ind = indicateurs(df)
+        score, signal, conf = prediscore(ind)
+
+        c1, c2, c3 = st.columns(3)
+
+        c1.metric(
+            "PrediScore",
+            f"{score}/100"
+        )
+
+        c2.metric(
+            "Signal",
+            signal
+        )
+
+        c3.metric(
+            "Confiance",
+            conf
+        )
+
+        chart_df = df.tail(150)
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Candlestick(
+                x=chart_df.index,
+                open=chart_df["Open"],
+                high=chart_df["High"],
+                low=chart_df["Low"],
+                close=chart_df["Close"],
+                name="Prix"
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_df.index,
+                y=ind["ema20"].tail(150),
+                name="EMA20"
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_df.index,
+                y=ind["ema50"].tail(150),
+                name="EMA50"
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_df.index,
+                y=ind["ema200"].tail(150),
+                name="EMA200"
+            )
+        )
+
+        fig.update_layout(
+            height=550,
+            template="plotly_dark",
+            xaxis_rangeslider_visible=False
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displaylogo": False,
+                "responsive": True
+            }
+        )
+
+        st.session_state.history.append({
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "actif": asset_name,
+            "score": score,
+            "signal": signal,
+            "confiance": conf
+        })
+
+        st.session_state["analysis_requested"] = False
+    if st.button(
+    "🚀 Lancer l'analyse",
+    type="primary",
+    use_container_width=True,
+    key="launch_analysis"
+):
+    st.session_state["analysis_requested"] = True
         with st.spinner("🤖 L'IA analyse le marché..."):
             df = charger_donnees(ASSETS[asset_cat][asset_name], asset_cat)
         if not df.empty:
@@ -591,7 +697,56 @@ elif menu == "⚖️ Comparaison":
     with col2:
         cat2 = st.selectbox("Catégorie 2", list(ASSETS.keys()), key="c2")
         asset2 = st.selectbox("Actif 2", list(ASSETS.get(cat2, {}).keys()), key="a2")
-    if st.button("Comparer", type="primary"):
+    if st.button(
+    "⚖️ Comparer",
+    type="primary",
+    use_container_width=True,
+    key="compare_assets"
+):
+    with st.spinner("🔎 Comparaison en cours..."):
+
+        df1 = charger_donnees(
+            ASSETS[cat1][asset1],
+            cat1
+        )
+
+        df2 = charger_donnees(
+            ASSETS[cat2][asset2],
+            cat2
+        )
+
+    if df1.empty or df2.empty:
+        st.error(
+            "❌ Impossible de récupérer les données "
+            "d'un ou des deux actifs."
+        )
+
+    else:
+        s1, sig1, conf1 = prediscore(
+            indicateurs(df1)
+        )
+
+        s2, sig2, conf2 = prediscore(
+            indicateurs(df2)
+        )
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            st.metric(
+                asset1,
+                f"{s1}/100",
+                sig1
+            )
+            st.caption(f"Confiance : {conf1}")
+
+        with c2:
+            st.metric(
+                asset2,
+                f"{s2}/100",
+                sig2
+            )
+            st.caption(f"Confiance : {conf2}")
         df1 = charger_donnees(ASSETS[cat1][asset1], cat1)
         df2 = charger_donnees(ASSETS[cat2][asset2], cat2)
         if not df1.empty and not df2.empty:
