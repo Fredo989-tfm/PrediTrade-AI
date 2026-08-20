@@ -740,21 +740,107 @@ elif menu == "⚖️ Comparaison":
             )
             st.caption(f"Confiance : {conf1}")
 
-        with c2:
-            st.metric(
-                asset2,
-                f"{s2}/100",
-                sig2
-            )
-            st.caption(f"Confiance : {conf2}")
-        df1 = charger_donnees(ASSETS[cat1][asset1], cat1)
-        df2 = charger_donnees(ASSETS[cat2][asset2], cat2)
-        if not df1.empty and not df2.empty:
-            s1, sig1, c1 = prediscore(indicateurs(df1))
-            s2, sig2, c2 = prediscore(indicateurs(df2))
-            st.metric(asset1, f"{s1}/100", sig1)
-            st.metric(asset2, f"{s2}/100", sig2)
+elif menu == "⚖️ Comparaison":
+    st.title("⚖️ Comparaison d'actifs")
 
+    col1, col2 = st.columns(2)
+
+    with col1:
+        cat1 = st.selectbox(
+            "Catégorie 1",
+            list(ASSETS.keys()),
+            key="compare_cat1"
+        )
+
+        asset1 = st.selectbox(
+            "Actif 1",
+            list(ASSETS[cat1].keys()),
+            key="compare_asset1"
+        )
+
+    with col2:
+        cat2 = st.selectbox(
+            "Catégorie 2",
+            list(ASSETS.keys()),
+            key="compare_cat2"
+        )
+
+        asset2 = st.selectbox(
+            "Actif 2",
+            list(ASSETS[cat2].keys()),
+            key="compare_asset2"
+        )
+
+    if st.button(
+        "⚖️ Comparer",
+        type="primary",
+        use_container_width=True,
+        key="compare_assets"
+    ):
+        with st.spinner("🔎 Comparaison en cours..."):
+
+            df1 = charger_donnees(
+                ASSETS[cat1][asset1],
+                cat1
+            )
+
+            df2 = charger_donnees(
+                ASSETS[cat2][asset2],
+                cat2
+            )
+
+        if df1.empty or df2.empty:
+            st.error(
+                "❌ Impossible de récupérer les données "
+                "d'un ou des deux actifs."
+            )
+
+        else:
+            s1, sig1, conf1 = prediscore(
+                indicateurs(df1)
+            )
+
+            s2, sig2, conf2 = prediscore(
+                indicateurs(df2)
+            )
+
+            st.subheader("📊 Résultat de la comparaison")
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                st.metric(
+                    asset1,
+                    f"{s1}/100",
+                    sig1
+                )
+                st.caption(f"Confiance : {conf1}")
+
+            with c2:
+                st.metric(
+                    asset2,
+                    f"{s2}/100",
+                    sig2
+                )
+                st.caption(f"Confiance : {conf2}")
+
+            if s1 > s2:
+                st.success(
+                    f"🏆 {asset1} présente actuellement "
+                    f"le meilleur PrediScore : {s1}/100."
+                )
+
+            elif s2 > s1:
+                st.success(
+                    f"🏆 {asset2} présente actuellement "
+                    f"le meilleur PrediScore : {s2}/100."
+                )
+
+            else:
+                st.info(
+                    "⚖️ Les deux actifs ont actuellement "
+                    "le même PrediScore."
+                )
 elif menu == "💼 Portefeuille":
     st.title("💼 Portefeuille Simulé")
     st.metric("Cash disponible", f"${st.session_state.cash:,.2f}")
