@@ -130,67 +130,311 @@ if not st.session_state.get("logged_in", False):
         login_page()
     st.stop()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
     try:
         API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
+
         if not API_KEY:
-            st.error("❌ Clé Alpha Vantage manquante dans les Secrets.")
             return pd.DataFrame()
+
         if asset_type == "Crypto":
-            url = f"https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol={symbol}&market=USD&apikey={API_KEY}"
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=DIGITAL_CURRENCY_DAILY"
+                f"&symbol={symbol}&market=USD&apikey={API_KEY}"
+            )
+
         elif asset_type == "Forex":
-            from_symbol = symbol[:3]; to_symbol = symbol[3:]
-            url = f"https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={from_symbol}&to_symbol={to_symbol}&outputsize=compact&apikey={API_KEY}"
+            from_symbol = symbol[:3]
+            to_symbol = symbol[3:]
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=FX_DAILY"
+                f"&from_symbol={from_symbol}"
+                f"&to_symbol={to_symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
         elif asset_type == "Matières Premières":
-            if symbol == "XAU": url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey={API_KEY}"
-            elif symbol == "WTI": url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={API_KEY}"
-            else: url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
+
+            if symbol == "XAU":
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=GOLD_SILVER_SPOT"
+                    f"&symbol=GOLD&apikey={API_KEY}"
+                )
+
+            elif symbol == "WTI":
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=WTI&interval=daily&apikey={API_KEY}"
+                )
+
+            else:
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=TIME_SERIES_DAILY"
+                    f"&symbol={symbol}&outputsize=compact"
+                    f"&apikey={API_KEY}"
+                )
+
         else:
-            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
-        r = requests.get(url, timeout=30)
-        if not r.ok: st.error(f"❌ Erreur API : HTTP {r.status_code}"); return pd.DataFrame()
-        data = r.json()
-        if "Error Message" in data: st.error(f"❌ Alpha Vantage : {data['Error Message']}"); return pd.DataFrame()
-        if "Note" in data: st.warning(f"⚠️ Alpha Vantage : {data['Note']}"); return pd.DataFrame()
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=TIME_SERIES_DAILY"
+                f"&symbol={symbol}&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
+        response = requests.get(url, timeout=20)
+
+        if not response.ok:
+            return pd.DataFrame()
+
+        data = response.json()
+
+        if "Error Message" in data or "Note" in data:
+            return pd.DataFrame()
+
+        # Recherche automatique de la série temporelle
         series = None
+
         for key, value in data.items():
-            if isinstance(value, dict):
+            if isinstance(value, dict) and value:
                 if any(isinstance(v, dict) for v in value.values()):
-                    series = value; break
-        if not series: st.error("❌ Aucune donnée de marché reçue."); return pd.DataFrame()
+                    series = value
+                    break
+
+        if not series:
+            return pd.DataFrame()
+
         df = pd.DataFrame.from_dict(series, orient="index")
-        df.index = pd.to_datetime(df.index)
-        close_col = None
-        for col in df.columns:
-            if str(col).lower() in ["4. close", "5. adjusted close", "close"]: close_col = col; break
-        if close_col is None: st.error("❌ Impossible de trouver le prix de clôture."); return pd.DataFrame()
-        df["Close"] = pd.to_numeric(df[close_col], errors="coerce")
-        df["Open"] = pd.to_numeric(df.get("1. open", df[close_col]), errors="coerce")
-        df["High"] = pd.to_numeric(df.get("2. high", df[close_col]), errors="coerce")
-        df["Low"] = pd.to_numeric(df.get("3. low", df[close_col]), errors="coerce")
-        df = df.dropna(subset=["Close"]).sort_index()
+
+        if df.empty:
+            return pd.DataFrame()
+
+        df.index = pd.to_datetime(df.index, errors="coerce")
+        df = df[~df.index.isna()]
+
+        # Normalisation des noms de colonnes
+        df.columns = [str(c).strip().lower() for c in df.columns]
+
+        def trouver_colonne(possibles):
+            for colonne in possibles:
+                if colonne in df.columns:
+                    return colonne
+            return None
+
+        close_col = trouver_colonne([
+            "4. close",
+            "5. adjusted close",
+            "close",
+            "4. price",
+            "price"
+        ])
+
+        open_col = trouver_colonne([
+            "1. open",
+            "open"
+        ])
+
+        high_col = trouver_colonne([
+            "2. high",
+            "high"
+        ])
+
+        low_col = trouver_colonne([
+            "3. low",
+            "low"
+        ])
+
+        if close_col is None:
+            return pd.DataFrame()
+
+        # Prix de clôture obligatoire
+        df["Close"] = pd.to_numeric(
+            df[close_col],
+            errors="coerce"
+        )
+
+        # OHLC sécurisés
+        df["Open"] = pd.to_numeric(
+            df[open_col] if open_col else df["Close"],
+            errors="coerce"
+        )
+
+        df["High"] = pd.to_numeric(
+            df[high_col] if high_col else df["Close"],
+            errors="coerce"
+        )
+
+        df["Low"] = pd.to_numeric(
+            df[low_col] if low_col else df["Close"],
+            errors="coerce"
+        )
+
+        # Nettoyage
+        df = df[
+            ["Open", "High", "Low", "Close"]
+        ].copy()
+
+        df = df.replace([np.inf, -np.inf], np.nan)
+
+        df = df.dropna(
+            subset=["Open", "High", "Low", "Close"]
+        )
+
+        df = df.sort_index()
+
+        # Vérification minimale
+        if len(df) < 20:
+            return pd.DataFrame()
+
         return df
-    except Exception as e:
-        st.error(f"❌ Erreur pendant le chargement des données : {e}")
+
+    except Exception:
         return pd.DataFrame()
 
 def indicateurs(df):
-    close = df["Close"]; ema20 = close.ewm(span=20).mean(); ema50 = close.ewm(span=50).mean()
-    delta = close.diff(); gain = delta.clip(lower=0).rolling(14).mean(); loss = -delta.clip(upper=0).rolling(14).mean()
-    rsi = 100 - (100 / (1 + gain/loss)); macd = close.ewm(span=12).mean() - close.ewm(span=26).mean(); signal = macd.ewm(span=9).mean()
-    return {"close": close, "ema20": ema20, "ema50": ema50, "rsi": rsi, "macd": macd, "signal": signal}
+    close = df["Close"]
+
+    ema20 = close.ewm(
+        span=20,
+        adjust=False
+    ).mean()
+
+    ema50 = close.ewm(
+        span=50,
+        adjust=False
+    ).mean()
+
+    ema200 = close.ewm(
+        span=200,
+        adjust=False
+    ).mean()
+
+    delta = close.diff()
+
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = -delta.clip(upper=0).rolling(14).mean()
+
+    rs = gain / loss.replace(0, np.nan)
+
+    rsi = 100 - (100 / (1 + rs))
+
+    macd = (
+        close.ewm(span=12, adjust=False).mean()
+        -
+        close.ewm(span=26, adjust=False).mean()
+    )
+
+    signal = macd.ewm(
+        span=9,
+        adjust=False
+    ).mean()
+
+    momentum = close.pct_change(10) * 100
+
+    volatility = close.pct_change().rolling(20).std() * 100
+
+    return {
+        "close": close,
+        "ema20": ema20,
+        "ema50": ema50,
+        "ema200": ema200,
+        "rsi": rsi,
+        "macd": macd,
+        "signal": signal,
+        "momentum": momentum,
+        "volatility": volatility
+    }
 
 def prediscore(ind):
-    if len(ind["close"]) < 50: return 50, "🟡 ATTENDRE", "Faible"
-    ema20, ema50, rsi, macd, signal = [float(ind[k].iloc[-1]) for k in ["ema20","ema50","rsi","macd","signal"]]
-    score = 50 + np.clip(((ema20-ema50)/ema50*100)*5, -20, 20) + np.clip(((macd-signal)/ema20*100)*10, -20, 20)
-    score += 20 if rsi<30 else 10 if rsi<40 else -20 if rsi>70 else -10 if rsi>60 else 0
-    score = int(np.clip(round(score), 0, 100))
-    signal_txt = "🟢 ACHAT" if score >= 75 else "🟡 ATTENDRE" if score >= 60 else "🔴 VENTE"
-    confidence = "Très élevée" if score >= 90 else "Élevée" if score >= 75 else "Moyenne" if score >= 60 else "Faible"
-    return score, signal_txt, confidence
 
+    close = ind["close"]
+
+    if len(close) < 50:
+        return 50, "🟡 ATTENDRE", "Faible"
+
+    ema20 = float(ind["ema20"].iloc[-1])
+    ema50 = float(ind["ema50"].iloc[-1])
+    ema200 = float(ind["ema200"].iloc[-1])
+
+    rsi = float(ind["rsi"].iloc[-1])
+    macd = float(ind["macd"].iloc[-1])
+    macd_signal = float(ind["signal"].iloc[-1])
+
+    momentum = float(ind["momentum"].iloc[-1])
+    volatility = float(ind["volatility"].iloc[-1])
+
+    score = 50
+
+    # TENDANCE COURT TERME
+    if ema20 > ema50:
+        score += 10
+    else:
+        score -= 10
+
+    # TENDANCE LONG TERME
+    if ema50 > ema200:
+        score += 10
+    else:
+        score -= 10
+
+    # MACD
+    if macd > macd_signal:
+        score += 10
+    else:
+        score -= 10
+
+    # RSI
+    if 50 <= rsi <= 65:
+        score += 8
+    elif 35 <= rsi < 50:
+        score -= 4
+    elif rsi > 70:
+        score -= 8
+    elif rsi < 30:
+        score += 8
+
+    # MOMENTUM
+    if momentum > 2:
+        score += 8
+    elif momentum < -2:
+        score -= 8
+
+    # VOLATILITÉ
+    if volatility > 5:
+        score -= 5
+
+    score = int(np.clip(round(score), 0, 100))
+
+    if score >= 75:
+        signal = "🟢 ACHAT"
+    elif score >= 60:
+        signal = "🟡 ATTENDRE"
+    else:
+        signal = "🔴 VENTE"
+
+    # Cohérence des indicateurs
+    confirmations = 0
+
+    confirmations += int(ema20 > ema50)
+    confirmations += int(ema50 > ema200)
+    confirmations += int(macd > macd_signal)
+    confirmations += int(50 <= rsi <= 65)
+    confirmations += int(momentum > 0)
+
+    if confirmations >= 4:
+        confidence = "Élevée"
+    elif confirmations >= 3:
+        confidence = "Moyenne"
+    else:
+        confidence = "Faible"
+
+    return score, signal, confidence
 @st.cache_resource
 def gemini_client():
     try: from google import genai; return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
@@ -264,12 +508,71 @@ elif menu == "🧠 Analyse IA Pro":
             c1.metric("PrediScore", f"{score}/100")
             c2.metric("Signal", signal)
             c3.metric("Confiance", conf)
-            fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'])])
-            fig.add_trace(go.Scatter(x=df.index, y=ind['ema20'], name="EMA20")); fig.add_trace(go.Scatter(x=df.index, y=ind['ema50'], name="EMA50"))
-            fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, use_container_width=True)
-            st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal})
+# Graphique sécurisé
+chart_df = df.tail(150).copy()
 
+fig = go.Figure()
+
+fig.add_trace(
+    go.Candlestick(
+        x=chart_df.index,
+        open=chart_df["Open"],
+        high=chart_df["High"],
+        low=chart_df["Low"],
+        close=chart_df["Close"],
+        name="Prix"
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=chart_df.index,
+        y=ind["ema20"].tail(150),
+        name="EMA20",
+        mode="lines"
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=chart_df.index,
+        y=ind["ema50"].tail(150),
+        name="EMA50",
+        mode="lines"
+    )
+)
+
+fig.add_trace(
+    go.Scatter(
+        x=chart_df.index,
+        y=ind["ema200"].tail(150),
+        name="EMA200",
+        mode="lines"
+    )
+)
+
+fig.update_layout(
+    height=550,
+    template="plotly_dark",
+    xaxis_rangeslider_visible=False,
+    margin=dict(l=10, r=10, t=40, b=10),
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="left",
+        x=0
+    )
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True,
+    config={
+        "displaylogo": False,
+        "responsive": True
+    }
+)
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     st.markdown("Scanne tous les actifs et sort ceux avec PrediScore > 75")
@@ -432,29 +735,76 @@ elif menu == "📄 Rapports":
     else: st.info("Aucune donnée à exporter")
 
 elif menu == "🔔 Alertes":
-    import time
-    def generer_prediscore(actif): return np.random.randint(40, 100) # fonction manquante que tu avais
 
     st.title("🔔 Scanner Gratuit")
-    st.info("⚠️ Laisse cet onglet ouvert. Scan toutes les 10s.")
 
-    placeholder = st.empty()
-    actifs = ["BTC", "ETH", "NVDA", "AAPL", "TSLA"]
+    st.info(
+        "Le scanner analyse les opportunités lorsque "
+        "vous lancez manuellement le scan."
+    )
 
-    while True:
+    actifs = {
+        "BTC": ("BTC", "Crypto"),
+        "ETH": ("ETH", "Crypto"),
+        "NVDA": ("NVDA", "Actions"),
+        "AAPL": ("AAPL", "Actions"),
+        "TSLA": ("TSLA", "Actions")
+    }
+
+    if st.button(
+        "🔎 Scanner maintenant",
+        type="primary",
+        use_container_width=True
+    ):
+
         alertes = []
-        for actif in actifs:
-            score = generer_prediscore(actif)
-            if score > 75:
-                alertes.append(f"🔥 {actif} : Score {score}/100 - ACHAT FORT")
+
+        with st.spinner("Analyse des marchés..."):
+
+            for actif, (symbol, categorie) in actifs.items():
+
+                df_alert = charger_donnees(
+                    symbol,
+                    categorie
+                )
+
+                if df_alert.empty:
+                    continue
+
+                ind_alert = indicateurs(df_alert)
+
+                score, signal, confidence = prediscore(
+                    ind_alert
+                )
+
+                if score >= 75:
+
+                    alertes.append({
+                        "Actif": actif,
+                        "Score": score,
+                        "Signal": signal,
+                        "Confiance": confidence
+                    })
 
         if alertes:
-            placeholder.error("\n".join(alertes))
-        else:
-            placeholder.success("Aucune opportunité > 75")
 
-        time.sleep(10)
-        st.rerun()
+            st.success(
+                f"{len(alertes)} opportunité(s) détectée(s)"
+            )
+
+            st.dataframe(
+                pd.DataFrame(alertes).sort_values(
+                    "Score",
+                    ascending=False
+                ),
+                use_container_width=True
+            )
+
+        else:
+
+            st.info(
+                "Aucune opportunité forte détectée."
+        )
 
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
