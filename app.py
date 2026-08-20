@@ -8,22 +8,22 @@ import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 from streamlit_oauth import OAuth2Component
-if not firebase_admin._apps:
-    firebase_config = dict(st.secrets["FIREBASE"])
+#if not firebase_admin._apps:
+    #firebase_config = dict(st.secrets["FIREBASE"])
 
-    firebase_config["type"] = "service_account"
+    #firebase_config["type"] = "service_account"
 
-    firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n").strip()
+    #firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n").strip()
 
-    try:
-        cred = credentials.Certificate(firebase_config)
-        firebase_admin.initialize_app(cred)
-        st.success("✅ Firebase connecté correctement.")
-    except Exception as e:
-        st.error("❌ Firebase refuse le certificat.")
-        st.write("Type :", type(e).__name__)
-        st.write("Erreur :", str(e))
-        st.stop()
+    #try:
+        #cred = credentials.Certificate(firebase_config)
+        #firebase_admin.initialize_app(cred)
+        #st.success("✅ Firebase connecté correctement.")
+    #except Exception as e:
+        #st.error("❌ Firebase refuse le certificat.")
+        #st.write("Type :", type(e).__name__)
+        #st.write("Erreur :", str(e))
+        #st.stop()
 APP_VERSION = "5.0.0"
 
 # FONCTIONS UTILES
