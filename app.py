@@ -190,7 +190,7 @@ def indicateurs(df):
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
     rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs)
+    rsi = 100 - (100 / (1 + rs)) 
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
