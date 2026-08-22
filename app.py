@@ -884,16 +884,16 @@ if nouvelle_notification:
                     c1.metric("PrediScore", f"{score}/100"); c2.metric("Signal", alerte["Signal"]); c3.metric("Confiance", alerte["Confiance"])
                     st.caption(f"💰 Prix actuel : {alerte['Prix']:,.4f}"); st.divider()
         else: st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
-            st.subheader("📊 État du marché")
-            df_analyses = pd.DataFrame(analyses)
-            if "Prix" in df_analyses.columns: df_analyses["Prix"] = df_analyses["Prix"].round(4)
-            st.dataframe(df_analyses, use_container_width=True, hide_index=True)
-            meilleur = analyses[0]
-            st.success(f"🏆 Meilleur actif actuellement : **{meilleur['Actif']}** — PrediScore **{meilleur['Score']}/100**")
-            proches = [a for a in analyses if a["Score"] < seuil]
-            if proches:
-                proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
-                st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
+        st.subheader("📊 État du marché")
+        df_analyses = pd.DataFrame(analyses)
+        if "Prix" in df_analyses.columns: df_analyses["Prix"] = df_analyses["Prix"].round(4)
+        st.dataframe(df_analyses, use_container_width=True, hide_index=True)
+        meilleur = analyses[0]
+        st.success(f"🏆 Meilleur actif actuellement : **{meilleur['Actif']}** — PrediScore **{meilleur['Score']}/100**")
+        proches = [a for a in analyses if a["Score"] < seuil]
+        if proches:
+            proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
+            st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
 elif menu == "🔔 Notifications":
     st.title("🔔 Notifications")
 
