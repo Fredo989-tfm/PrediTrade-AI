@@ -141,9 +141,9 @@ def charger_donnees(symbol, asset_type):
         response = requests.get(url, timeout=20)
         if not response.ok: return pd.DataFrame()
         data = response.json()
-       if "Error Message" in data:
-    st.error(f"❌ Alpha Vantage : {data['Error Message']}")
-    return pd.DataFrame()
+        if "Error Message" in data:
+            st.error(f"❌ Alpha Vantage : {data['Error Message']}")
+            return pd.DataFrame()
 
 if "Note" in data:
     st.warning(f"⚠️ Alpha Vantage : {data['Note']}")
