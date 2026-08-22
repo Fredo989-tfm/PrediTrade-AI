@@ -866,9 +866,8 @@ if nouvelle_notification:
     st.toast(
         f"🚨 {nom} — PrediScore {score}/100",
         icon="🔔"
-                )
-                                                  )
-        if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
+    )
+    if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
         else:
             analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
             if alertes:
