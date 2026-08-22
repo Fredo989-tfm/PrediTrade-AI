@@ -32,6 +32,124 @@ def trial_active():
     trial_until = st.session_state.get("trial_until")
     if not trial_until: return False
     return datetime.now() < trial_until
+# ============================================================
+# 🔔 SYSTÈME DE NOTIFICATIONS PREDITRADE AI
+# ============================================================
+
+def initialiser_notifications():
+    if "notifications" not in st.session_state:
+        st.session_state.notifications = []
+    
+    if "notification_preferences" not in st.session_state:
+        st.session_state.notification_preferences = {
+            "enabled": True,
+            "threshold": 75,
+            "assets": ["Bitcoin (BTC)", "Ethereum (ETH)", "NVIDIA (NVDA)"],
+            "buy_strong": True,
+            "buy": True,
+            "sell": False
+        }
+
+
+def ajouter_notification(actif, score, signal, confiance):
+    initialiser_notifications()
+
+    notification = {
+        "id": hashlib.md5(
+            f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()
+        ).hexdigest(),
+        "actif": actif,
+        "score": score,
+        "signal": signal,
+        "confiance": confiance,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "lu": False
+    }
+
+    # Évite les doublons immédiats
+    for ancienne in st.session_state.notifications[-10:]:
+        if (
+            ancienne["actif"] == actif
+            and ancienne["signal"] == signal
+            and ancienne["score"] == score
+        ):
+            return False
+
+    st.session_state.notifications.append(notification)
+
+    # Maximum 50 notifications conservées
+    if len(st.session_state.notifications) > 50:
+        st.session_state.notifications = st.session_state.notifications[-50:]
+
+    return True
+
+
+def scanner_notifications():
+    initialiser_notifications()
+
+    preferences = st.session_state.notification_preferences
+
+    if not preferences.get("enabled", True):
+        return []
+
+    alertes = []
+
+    for nom in preferences.get("assets", []):
+        categorie_trouvee = None
+        symbole_trouve = None
+
+        for categorie, actifs in ASSETS.items():
+            if nom in actifs:
+                categorie_trouvee = categorie
+                symbole_trouve = actifs[nom]
+                break
+
+        if not symbole_trouve:
+            continue
+
+        try:
+            df = charger_donnees(symbole_trouve, categorie_trouvee)
+
+            if df.empty:
+                continue
+
+            ind = indicateurs(df)
+            score, signal, confiance = prediscore(ind)
+
+            if score < preferences.get("threshold", 75):
+                continue
+
+            autorise = False
+
+            if "ACHAT FORT" in signal and preferences.get("buy_strong", True):
+                autorise = True
+
+            elif signal == "🟢 ACHAT" and preferences.get("buy", True):
+                autorise = True
+
+            elif "VENTE" in signal and preferences.get("sell", False):
+                autorise = True
+
+            if autorise:
+                nouvelle = ajouter_notification(
+                    nom,
+                    score,
+                    signal,
+                    confiance
+                )
+
+                if nouvelle:
+                    alertes.append({
+                        "Actif": nom,
+                        "Score": score,
+                        "Signal": signal,
+                        "Confiance": confiance
+                    })
+
+        except Exception:
+            continue
+
+    return alertes
 
 def landing_page():
     st.title("🚀 PrediTrade AI Pro")
@@ -60,6 +178,7 @@ if "show_landing" not in st.session_state: st.session_state["show_landing"] = Fa
 if "show_login" not in st.session_state: st.session_state["show_login"] = False
 if "trial_until" not in st.session_state: st.session_state["trial_until"] = None
 if "portfolio" not in st.session_state: st.session_state.portfolio = {}
+initialiser_notifications()
 
 ASSETS = {
     "Crypto": {"Bitcoin (BTC)": "BTC","Ethereum (ETH)": "ETH","Solana (SOL)": "SOL","BNB": "BNB","XRP": "XRP","Cardano (ADA)": "ADA","Dogecoin (DOGE)": "DOGE"},
@@ -299,7 +418,25 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash", f"${st.session_state.cash:,.2f}")
     st.metric("📈 Analyses", len(st.session_state.history))
-    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille", "🛡️ Gestion du risque" ,"📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Alertes Pro","⚙️ Paiement"], key="main_menu_v512")
+    menu = st.radio(
+    "Navigation",
+    [
+        "📊 Tableau de bord",
+        "🧠 Analyse IA Pro",
+        "🔍 Scanner intelligent",
+        "⚖️ Comparaison",
+        "💼 Portefeuille",
+        "🛡️ Gestion du risque",
+        "📊 Backtest",
+        "📚 Historique",
+        "🤖 Assistant IA",
+        "📄 Rapports",
+        "🔔 Alertes",
+        "🔔 Alertes Pro",
+        "⚙️ Paiement"
+    ],
+    key="main_menu_v512"
+)
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
@@ -723,6 +860,130 @@ elif menu == "🔔 Alertes":
             if proches:
                 proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
                 st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
+elif menu == "🔔 Notifications":
+    st.title("🔔 Notifications")
+
+    initialiser_notifications()
+
+    st.markdown(
+        "Configure les alertes que PrediTrade doit surveiller pendant "
+        "que tu utilises l'application."
+    )
+
+    preferences = st.session_state.notification_preferences
+
+    st.subheader("⚙️ Préférences")
+
+    preferences["enabled"] = st.toggle(
+        "🔔 Activer les notifications",
+        value=preferences.get("enabled", True)
+    )
+
+    preferences["threshold"] = st.slider(
+        "🎯 Seuil minimum du PrediScore",
+        min_value=50,
+        max_value=95,
+        value=preferences.get("threshold", 75),
+        step=5
+    )
+
+    actifs_disponibles = []
+
+    for categorie, actifs in ASSETS.items():
+        actifs_disponibles.extend(list(actifs.keys()))
+
+    preferences["assets"] = st.multiselect(
+        "📊 Actifs surveillés",
+        actifs_disponibles,
+        default=[
+            actif for actif in preferences.get("assets", [])
+            if actif in actifs_disponibles
+        ]
+    )
+
+    st.subheader("📢 Types d'alertes")
+
+    preferences["buy_strong"] = st.checkbox(
+        "🔥 Achat fort",
+        value=preferences.get("buy_strong", True)
+    )
+
+    preferences["buy"] = st.checkbox(
+        "🟢 Achat",
+        value=preferences.get("buy", True)
+    )
+
+    preferences["sell"] = st.checkbox(
+        "🔴 Vente",
+        value=preferences.get("sell", False)
+    )
+
+    st.session_state.notification_preferences = preferences
+
+    st.divider()
+
+    if st.button(
+        "🔎 Vérifier maintenant",
+        type="primary",
+        use_container_width=True
+    ):
+        with st.spinner("🔎 Analyse des marchés..."):
+
+            nouvelles_alertes = scanner_notifications()
+
+        if nouvelles_alertes:
+            st.success(
+                f"🚨 {len(nouvelles_alertes)} nouvelle(s) alerte(s) détectée(s) !"
+            )
+
+            for alerte in nouvelles_alertes:
+                st.warning(
+                    f"🚨 {alerte['Actif']} — "
+                    f"PrediScore {alerte['Score']}/100 — "
+                    f"{alerte['Signal']}"
+                )
+        else:
+            st.info(
+                "🔎 Aucune nouvelle alerte correspondant à tes critères."
+            )
+
+    st.divider()
+
+    st.subheader("📬 Mes dernières notifications")
+
+    notifications = st.session_state.notifications
+
+    if not notifications:
+        st.info("📭 Aucune notification pour le moment.")
+    else:
+        for notification in reversed(notifications):
+
+            if notification["lu"]:
+                prefix = "📖"
+            else:
+                prefix = "🔴"
+
+            st.markdown(
+                f"""
+                {prefix} **{notification['actif']}**
+                
+                PrediScore : **{notification['score']}/100**  
+                Signal : **{notification['signal']}**  
+                Confiance : **{notification['confiance']}**  
+                🕐 {notification['date']}
+                """
+            )
+
+            st.divider()
+
+        if st.button(
+            "✅ Marquer toutes les notifications comme lues",
+            use_container_width=True
+        ):
+            for notification in st.session_state.notifications:
+                notification["lu"] = True
+
+            st.rerun()
 
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
