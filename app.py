@@ -114,7 +114,6 @@ if not st.session_state.get("logged_in", False):
     if st.session_state.get("show_landing", True): landing_page()
     else: login_page()
     st.stop()
-
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
     try:
@@ -167,22 +166,6 @@ def charger_donnees(symbol, asset_type):
                     f"&apikey={API_KEY}"
                 )
 
-            elif symbol == "BRENT":
-                url = (
-                    f"https://www.alphavantage.co/query"
-                    f"?function=BRENT"
-                    f"&interval=daily"
-                    f"&apikey={API_KEY}"
-                )
-
-            elif symbol == "XAG":
-                url = (
-                    f"https://www.alphavantage.co/query"
-                    f"?function=GOLD_SILVER_SPOT"
-                    f"&symbol=SILVER"
-                    f"&apikey={API_KEY}"
-                )
-
             else:
                 url = (
                     f"https://www.alphavantage.co/query"
@@ -202,7 +185,7 @@ def charger_donnees(symbol, asset_type):
             )
 
         # ==============================
-        # APPEL API
+        # REQUÊTE ALPHA VANTAGE
         # ==============================
 
         response = requests.get(url, timeout=20)
@@ -226,13 +209,14 @@ def charger_donnees(symbol, asset_type):
             return pd.DataFrame()
 
         # ==============================
-        # RECHERCHE DE LA SÉRIE
+        # RÉCUPÉRATION DE LA SÉRIE
         # ==============================
 
         series = None
 
         for key, value in data.items():
             if isinstance(value, dict) and value:
+
                 if any(isinstance(v, dict) for v in value.values()):
                     series = value
                     break
@@ -241,13 +225,17 @@ def charger_donnees(symbol, asset_type):
             return pd.DataFrame()
 
         # ==============================
-        # CONVERSION EN DATAFRAME
+        # CRÉATION DU DATAFRAME
         # ==============================
 
         df = pd.DataFrame.from_dict(series, orient="index")
 
         if df.empty:
             return pd.DataFrame()
+
+        # ==============================
+        # NETTOYAGE
+        # ==============================
 
         df.index = pd.to_datetime(df.index, errors="coerce")
 
@@ -259,7 +247,7 @@ def charger_donnees(symbol, asset_type):
         ]
 
         # ==============================
-        # RECHERCHE DES COLONNES
+        # IDENTIFICATION DES COLONNES
         # ==============================
 
         def trouver_colonne(possibles):
@@ -273,7 +261,8 @@ def charger_donnees(symbol, asset_type):
             "5. adjusted close",
             "close",
             "4. price",
-            "price"
+            "price",
+            "4a. close (usd)"
         ])
 
         open_col = trouver_colonne([
@@ -295,7 +284,7 @@ def charger_donnees(symbol, asset_type):
             return pd.DataFrame()
 
         # ==============================
-        # NORMALISATION DES PRIX
+        # CONVERSION NUMÉRIQUE
         # ==============================
 
         df["Close"] = pd.to_numeric(
@@ -319,7 +308,7 @@ def charger_donnees(symbol, asset_type):
         )
 
         # ==============================
-        # NETTOYAGE
+        # DATAFRAME FINAL
         # ==============================
 
         df = df[
@@ -329,13 +318,9 @@ def charger_donnees(symbol, asset_type):
         df = df.replace(
             [np.inf, -np.inf],
             np.nan
-        )
-
-        df = df.dropna(
+        ).dropna(
             subset=["Open", "High", "Low", "Close"]
-        )
-
-        df = df.sort_index()
+        ).sort_index()
 
         if len(df) < 20:
             return pd.DataFrame()
@@ -343,8 +328,7 @@ def charger_donnees(symbol, asset_type):
         return df
 
     except Exception:
-        return pd.DataFrame()
-
+        return pd.DataFrame() 
 def indicateurs(df):
     close = df["Close"]
     ema20 = close.ewm(span=20, adjust=False).mean()
