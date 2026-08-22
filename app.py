@@ -118,68 +118,230 @@ if not st.session_state.get("logged_in", False):
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
     try:
-        API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
+        API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "").strip()
+
         if not API_KEY:
             return pd.DataFrame()
 
+        # ==============================
+        # CONSTRUCTION DE L'URL
+        # ==============================
+
         if asset_type == "Crypto":
-            url = f"https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_DAILY&symbol={symbol}&market=USD&apikey={API_KEY}"
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=DIGITAL_CURRENCY_DAILY"
+                f"&symbol={symbol}"
+                f"&market=USD"
+                f"&apikey={API_KEY}"
+            )
+
         elif asset_type == "Forex":
             from_symbol = symbol[:3]
             to_symbol = symbol[3:]
-            url = f"https://www.alphavantage.co/query?function=FX_DAILY&from_symbol={from_symbol}&to_symbol={to_symbol}&outputsize=compact&apikey={API_KEY}"
+
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=FX_DAILY"
+                f"&from_symbol={from_symbol}"
+                f"&to_symbol={to_symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
         elif asset_type == "Matières Premières":
+
             if symbol == "XAU":
-                url = f"https://www.alphavantage.co/query?function=GOLD_SILVER_SPOT&symbol=GOLD&apikey={API_KEY}"
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=GOLD_SILVER_SPOT"
+                    f"&symbol=GOLD"
+                    f"&apikey={API_KEY}"
+                )
+
             elif symbol == "WTI":
-                url = f"https://www.alphavantage.co/query?function=WTI&interval=daily&apikey={API_KEY}"
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=WTI"
+                    f"&interval=daily"
+                    f"&apikey={API_KEY}"
+                )
+
+            elif symbol == "BRENT":
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=BRENT"
+                    f"&interval=daily"
+                    f"&apikey={API_KEY}"
+                )
+
+            elif symbol == "XAG":
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=GOLD_SILVER_SPOT"
+                    f"&symbol=SILVER"
+                    f"&apikey={API_KEY}"
+                )
+
             else:
-                url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
+                url = (
+                    f"https://www.alphavantage.co/query"
+                    f"?function=TIME_SERIES_DAILY"
+                    f"&symbol={symbol}"
+                    f"&outputsize=compact"
+                    f"&apikey={API_KEY}"
+                )
+
         else:
-            url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={symbol}&outputsize=compact&apikey={API_KEY}"
+            url = (
+                f"https://www.alphavantage.co/query"
+                f"?function=TIME_SERIES_DAILY"
+                f"&symbol={symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
+        # ==============================
+        # APPEL API
+        # ==============================
 
         response = requests.get(url, timeout=20)
-        if not response.ok: return pd.DataFrame()
+
+        if not response.ok:
+            return pd.DataFrame()
+
         data = response.json()
+
+        # ==============================
+        # GESTION DES ERREURS API
+        # ==============================
+
         if "Error Message" in data:
-            st.error(f"❌ Alpha Vantage : {data['Error Message']}")
             return pd.DataFrame()
-            
+
         if "Note" in data:
-            st.warning(f"⚠️ Alpha Vantage : {data['Note']}")
             return pd.DataFrame()
-            if "Information" in data:
-                st.warning(f"ℹ️ Alpha Vantage : {data['Information']}")
-                return pd.DataFrame() 
-                series = None
-                for key, value in data.items():
-                    if isinstance(value, dict) and value:
-                        if any(isinstance(v, dict) for v in value.values()):
-                            series = value
-                            break
-            if not series: return pd.DataFrame()
-            df = pd.DataFrame.from_dict(series, orient="index")
-            if df.empty: return pd.DataFrame()
-            df.index = pd.to_datetime(df.index, errors="coerce")
-            df = df[~df.index.isna()]
-            df.columns = [str(c).strip().lower() for c in df.columns]
+
+        if "Information" in data:
+            return pd.DataFrame()
+
+        # ==============================
+        # RECHERCHE DE LA SÉRIE
+        # ==============================
+
+        series = None
+
+        for key, value in data.items():
+            if isinstance(value, dict) and value:
+                if any(isinstance(v, dict) for v in value.values()):
+                    series = value
+                    break
+
+        if not series:
+            return pd.DataFrame()
+
+        # ==============================
+        # CONVERSION EN DATAFRAME
+        # ==============================
+
+        df = pd.DataFrame.from_dict(series, orient="index")
+
+        if df.empty:
+            return pd.DataFrame()
+
+        df.index = pd.to_datetime(df.index, errors="coerce")
+
+        df = df[~df.index.isna()]
+
+        df.columns = [
+            str(c).strip().lower()
+            for c in df.columns
+        ]
+
+        # ==============================
+        # RECHERCHE DES COLONNES
+        # ==============================
+
         def trouver_colonne(possibles):
             for colonne in possibles:
-                if colonne in df.columns: return colonne
+                if colonne in df.columns:
+                    return colonne
             return None
-        close_col = trouver_colonne(["4. close","5. adjusted close","close","4. price","price"])
-        open_col = trouver_colonne(["1. open","open"])
-        high_col = trouver_colonne(["2. high","high"])
-        low_col = trouver_colonne(["3. low","low"])
-        if close_col is None: return pd.DataFrame()
-        df["Close"] = pd.to_numeric(df[close_col], errors="coerce")
-        df["Open"] = pd.to_numeric(df[open_col] if open_col else df["Close"], errors="coerce")
-        df["High"] = pd.to_numeric(df[high_col] if high_col else df["Close"], errors="coerce")
-        df["Low"] = pd.to_numeric(df[low_col] if low_col else df["Close"], errors="coerce")
-        df = df[["Open", "High", "Low", "Close"]].copy()
-        df = df.replace([np.inf, -np.inf], np.nan).dropna(subset=["Open", "High", "Low", "Close"]).sort_index()
-        if len(df) < 20: return pd.DataFrame()
+
+        close_col = trouver_colonne([
+            "4. close",
+            "5. adjusted close",
+            "close",
+            "4. price",
+            "price"
+        ])
+
+        open_col = trouver_colonne([
+            "1. open",
+            "open"
+        ])
+
+        high_col = trouver_colonne([
+            "2. high",
+            "high"
+        ])
+
+        low_col = trouver_colonne([
+            "3. low",
+            "low"
+        ])
+
+        if close_col is None:
+            return pd.DataFrame()
+
+        # ==============================
+        # NORMALISATION DES PRIX
+        # ==============================
+
+        df["Close"] = pd.to_numeric(
+            df[close_col],
+            errors="coerce"
+        )
+
+        df["Open"] = pd.to_numeric(
+            df[open_col] if open_col else df["Close"],
+            errors="coerce"
+        )
+
+        df["High"] = pd.to_numeric(
+            df[high_col] if high_col else df["Close"],
+            errors="coerce"
+        )
+
+        df["Low"] = pd.to_numeric(
+            df[low_col] if low_col else df["Close"],
+            errors="coerce"
+        )
+
+        # ==============================
+        # NETTOYAGE
+        # ==============================
+
+        df = df[
+            ["Open", "High", "Low", "Close"]
+        ].copy()
+
+        df = df.replace(
+            [np.inf, -np.inf],
+            np.nan
+        )
+
+        df = df.dropna(
+            subset=["Open", "High", "Low", "Close"]
+        )
+
+        df = df.sort_index()
+
+        if len(df) < 20:
+            return pd.DataFrame()
+
         return df
+
     except Exception:
         return pd.DataFrame()
 
