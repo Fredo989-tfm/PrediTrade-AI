@@ -233,44 +233,138 @@ def indicateurs(df):
     }
 def prediscore(ind):
     close = ind["close"]
+
     if len(close) < 50:
         return 50, "🟡 ATTENDRE", "Faible"
+
+    # Dernières valeurs
+    prix = float(close.iloc[-1])
     ema20 = float(ind["ema20"].iloc[-1])
     ema50 = float(ind["ema50"].iloc[-1])
     ema200 = float(ind["ema200"].iloc[-1])
     rsi = float(ind["rsi"].iloc[-1])
     macd = float(ind["macd"].iloc[-1])
-    macd_signal = float(ind["signal"].iloc[-1])
+    signal = float(ind["signal"].iloc[-1])
     momentum = float(ind["momentum"].iloc[-1])
-    volatility = float(ind["volatility"].iloc[-1])
-    score = 50
-    if ema20 > ema50: score += 10
-    else: score -= 10
-    if ema50 > ema200: score += 10
-    else: score -= 10
-    if macd > macd_signal: score += 10
-    else: score -= 10
-    if 50 <= rsi <= 65: score += 8
-    elif 35 <= rsi < 50: score -= 4
-    elif rsi > 70: score -= 8
-    elif rsi < 30: score += 8
-    if momentum > 2: score += 8
-    elif momentum < -2: score -= 8
-    if volatility > 5: score -= 5
+
+    score = 50.0
+
+    # ==================================================
+    # 1. TENDANCE COURTE : EMA20 vs EMA50 — 25 points
+    # ==================================================
+
+    if ema20 > ema50:
+        score += 15
+    else:
+        score -= 15
+
+    # Écart entre EMA20 et EMA50
+    ecart_ema = ((ema20 - ema50) / ema50) * 100
+
+    if ecart_ema > 1:
+        score += 10
+    elif ecart_ema < -1:
+        score -= 10
+
+    # ==================================================
+    # 2. TENDANCE LONGUE : PRIX vs EMA200 — 20 points
+    # ==================================================
+
+    if prix > ema200:
+        score += 10
+    else:
+        score -= 10
+
+    if ema50 > ema200:
+        score += 10
+    else:
+        score -= 10
+
+    # ==================================================
+    # 3. RSI — 20 points
+    # ==================================================
+
+    if 50 <= rsi <= 65:
+        score += 10
+    elif 65 < rsi <= 70:
+        score += 5
+    elif rsi < 30:
+        score += 10
+    elif 30 <= rsi < 40:
+        score += 5
+    elif rsi > 75:
+        score -= 15
+    elif rsi > 70:
+        score -= 10
+    elif rsi < 25:
+        score -= 5
+
+    # ==================================================
+    # 4. MACD — 20 points
+    # ==================================================
+
+    if macd > signal:
+        score += 10
+    else:
+        score -= 10
+
+    histogram = macd - signal
+
+    if histogram > 0:
+        score += 10
+    else:
+        score -= 10
+
+    # ==================================================
+    # 5. MOMENTUM — 15 points
+    # ==================================================
+
+    if momentum > 3:
+        score += 10
+    elif momentum > 0:
+        score += 5
+    elif momentum < -3:
+        score -= 10
+    else:
+        score -= 5
+
+    # ==================================================
+    # SCORE FINAL
+    # ==================================================
+
     score = int(np.clip(round(score), 0, 100))
-    if score >= 75: signal = "🟢 ACHAT"
-    elif score >= 60: signal = "🟡 ATTENDRE"
-    else: signal = "🔴 VENTE"
-    confirmations = 0
-    confirmations += int(ema20 > ema50)
-    confirmations += int(ema50 > ema200)
-    confirmations += int(macd > macd_signal)
-    confirmations += int(50 <= rsi <= 65)
-    confirmations += int(momentum > 0)
-    if confirmations >= 4: confidence = "Élevée"
-    elif confirmations >= 3: confidence = "Moyenne"
-    else: confidence = "Faible"
-    return score, signal, confidence
+
+    # ==================================================
+    # SIGNAL
+    # ==================================================
+
+    if score >= 80:
+        signal_txt = "🟢 ACHAT FORT"
+    elif score >= 70:
+        signal_txt = "🟢 ACHAT"
+    elif score >= 55:
+        signal_txt = "🟡 ATTENDRE"
+    elif score >= 40:
+        signal_txt = "🟠 PRUDENCE"
+    else:
+        signal_txt = "🔴 VENTE"
+
+    # ==================================================
+    # CONFIANCE
+    # ==================================================
+
+    distance = abs(score - 50)
+
+    if distance >= 35:
+        confidence = "Très élevée"
+    elif distance >= 25:
+        confidence = "Élevée"
+    elif distance >= 10:
+        confidence = "Moyenne"
+    else:
+        confidence = "Faible"
+
+    return score, signal_txt, confidence
 
 @st.cache_resource
 def gemini_client():
