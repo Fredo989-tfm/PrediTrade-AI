@@ -905,31 +905,275 @@ elif menu == "🔔 Alertes":
                 ascending=False
             )
 
+elif menu == "🔔 Alertes":
+    st.title("🔔 Radar d'opportunités")
+
+    st.markdown(
+        "PrediTrade analyse les données réelles du marché "
+        "et détecte les actifs présentant un signal intéressant."
+    )
+
+    # ==========================================
+    # LISTE DES ACTIFS DISPONIBLES
+    # ==========================================
+
+    actifs_disponibles = []
+
+    for categorie, actifs in ASSETS.items():
+        for nom, symbole in actifs.items():
+            actifs_disponibles.append(nom)
+
+    actifs_choisis = st.multiselect(
+        "Actifs à surveiller",
+        actifs_disponibles,
+        default=[
+            "Bitcoin (BTC)",
+            "Ethereum (ETH)",
+            "NVIDIA (NVDA)"
+        ],
+        key="radar_assets"
+    )
+
+    # ==========================================
+    # SEUIL D'ALERTE
+    # ==========================================
+
+    seuil = st.slider(
+        "Seuil d'alerte PrediScore",
+        min_value=50,
+        max_value=95,
+        value=75,
+        step=5,
+        key="radar_threshold"
+    )
+
+    # ==========================================
+    # BOUTON SCANNER
+    # ==========================================
+
+    if st.button(
+        "🔎 Scanner les alertes",
+        type="primary",
+        use_container_width=True,
+        key="scan_radar"
+    ):
+
+        if not actifs_choisis:
+            st.warning(
+                "⚠️ Sélectionne au moins un actif à surveiller."
+            )
+            st.stop()
+
+        alertes = []
+        analyses = []
+
+        with st.spinner(
+            "🔎 PrediTrade analyse les actifs sélectionnés..."
+        ):
+
+            # ==================================
+            # ANALYSE DE CHAQUE ACTIF
+            # ==================================
+
+            for nom in actifs_choisis:
+
+                # Recherche de la catégorie et du symbole
+                categorie_trouvee = None
+                symbole_trouve = None
+
+                for categorie, actifs in ASSETS.items():
+                    if nom in actifs:
+                        categorie_trouvee = categorie
+                        symbole_trouve = actifs[nom]
+                        break
+
+                if not symbole_trouve:
+                    continue
+
+                # Chargement des données
+                df = charger_donnees(
+                    symbole_trouve,
+                    categorie_trouvee
+                )
+
+                if df.empty:
+                    continue
+
+                # Calcul des indicateurs
+                ind = indicateurs(df)
+
+                # PrediScore
+                score, signal, confiance = prediscore(ind)
+
+                # Dernier prix
+                dernier_prix = float(df["Close"].iloc[-1])
+
+                # ==================================
+                # AJOUT À LA LISTE COMPLÈTE
+                # ==================================
+
+                analyses.append({
+                    "Actif": nom,
+                    "Catégorie": categorie_trouvee,
+                    "Prix": dernier_prix,
+                    "Score": score,
+                    "Signal": signal,
+                    "Confiance": confiance
+                })
+
+                # ==================================
+                # DÉTECTION D'OPPORTUNITÉ
+                # ==================================
+
+                if score >= seuil:
+
+                    alertes.append({
+                        "Actif": nom,
+                        "Catégorie": categorie_trouvee,
+                        "Prix": dernier_prix,
+                        "Score": score,
+                        "Signal": signal,
+                        "Confiance": confiance
+                    })
+
+        # ==========================================
+        # RÉSULTATS
+        # ==========================================
+
+        if not analyses:
+            st.error(
+                "❌ Impossible de récupérer les données "
+                "des actifs sélectionnés."
+            )
+
+        else:
+
+            # Trier les résultats du meilleur au moins bon
+            analyses = sorted(
+                analyses,
+                key=lambda x: x["Score"],
+                reverse=True
+            )
+
+            # ======================================
+            # OPPORTUNITÉS
+            # ======================================
+
+            if alertes:
+
+                alertes = sorted(
+                    alertes,
+                    key=lambda x: x["Score"],
+                    reverse=True
+                )
+
+                st.success(
+                    f"🚨 {len(alertes)} opportunité(s) "
+                    f"au-dessus de {seuil}/100"
+                )
+
+                st.subheader("🔥 Opportunités détectées")
+
+                for alerte in alertes:
+
+                    score = alerte["Score"]
+
+                    if score >= 90:
+                        niveau = "🔥 TRÈS FORTE"
+                    elif score >= 80:
+                        niveau = "🟢 FORTE"
+                    else:
+                        niveau = "🟡 MODÉRÉE"
+
+                    st.markdown(
+                        f"### {niveau} — {alerte['Actif']}"
+                    )
+
+                    c1, c2, c3 = st.columns(3)
+
+                    c1.metric(
+                        "PrediScore",
+                        f"{score}/100"
+                    )
+
+                    c2.metric(
+                        "Signal",
+                        alerte["Signal"]
+                    )
+
+                    c3.metric(
+                        "Confiance",
+                        alerte["Confiance"]
+                    )
+
+                    st.caption(
+                        f"💰 Prix actuel : "
+                        f"{alerte['Prix']:,.4f}"
+                    )
+
+                    st.divider()
+
+            else:
+
+                st.info(
+                    f"🔎 Aucune opportunité n'atteint "
+                    f"le seuil de {seuil}/100 actuellement."
+                )
+
+            # ======================================
+            # ÉTAT DE TOUS LES ACTIFS
+            # ======================================
+
+            st.subheader("📊 État du marché")
+
+            df_analyses = pd.DataFrame(analyses)
+
+            # Arrondir le prix
+            if "Prix" in df_analyses.columns:
+                df_analyses["Prix"] = df_analyses["Prix"].round(4)
+
             st.dataframe(
-                analyses_df,
+                df_analyses,
                 use_container_width=True,
                 hide_index=True
             )
 
             # ======================================
-            # ACTIF LE PLUS PROCHE DU SEUIL
+            # MEILLEURE OPPORTUNITÉ
             # ======================================
 
-            meilleur = analyses_df.iloc[0]
+            meilleur = analyses[0]
 
-            st.markdown(
-                f"""
-                ### 🎯 Meilleure opportunité actuelle
+            st.success(
+                f"🏆 Meilleur actif actuellement : "
+                f"**{meilleur['Actif']}** — "
+                f"PrediScore **{meilleur['Score']}/100**"
+            )
 
-                **{meilleur['Actif']}**
+            # ======================================
+            # ACTIF PROCHE DU SEUIL
+            # ======================================
 
-                PrediScore : **{meilleur['Score']}/100**
+            proches = [
+                a for a in analyses
+                if a["Score"] < seuil
+            ]
 
-                Signal : **{meilleur['Signal']}**
+            if proches:
 
-                Confiance : **{meilleur['Confiance']}**
-                """
-    )
+                proche = max(
+                    proches,
+                    key=lambda x: x["Score"]
+                )
+
+                ecart = seuil - proche["Score"]
+
+                st.warning(
+                    f"👀 À surveiller : **{proche['Actif']}** "
+                    f"est à **{proche['Score']}/100**, "
+                    f"soit seulement **{ecart} point(s)** "
+                    f"du seuil de {seuil}."
+        )
 
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
