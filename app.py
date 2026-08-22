@@ -724,24 +724,199 @@ elif menu == "📄 Rapports":
     else: st.info("Aucune donnée à exporter")
 
 elif menu == "🔔 Alertes":
-    st.title("🔔 Scanner Gratuit")
-    st.info("Le scanner analyse les opportunités lorsque vous lancez manuellement le scan.")
-    actifs = {"BTC": ("BTC", "Crypto"), "ETH": ("ETH", "Crypto"), "NVDA": ("NVDA", "Actions"), "AAPL": ("AAPL", "Actions"), "TSLA": ("TSLA", "Actions")}
-    if st.button("🔎 Scanner maintenant", type="primary", use_container_width=True):
+    st.title("🔔 Radar d'opportunités")
+
+    st.markdown(
+        "PrediTrade analyse les données réelles du marché et détecte "
+        "les actifs présentant un signal intéressant."
+    )
+
+    actifs_alertes = {
+        "Bitcoin (BTC)": ("BTC", "Crypto"),
+        "Ethereum (ETH)": ("ETH", "Crypto"),
+        "Solana (SOL)": ("SOL", "Crypto"),
+        "NVIDIA (NVDA)": ("NVDA", "Actions"),
+        "Apple (AAPL)": ("AAPL", "Actions"),
+        "Tesla (TSLA)": ("TSLA", "Actions"),
+        "EUR/USD": ("EURUSD", "Forex"),
+        "GBP/USD": ("GBPUSD", "Forex"),
+        "S&P 500": ("SPY", "Indices"),
+        "Dow Jones": ("DIA", "Indices"),
+    }
+
+    actifs_selectionnes = st.multiselect(
+        "Actifs à surveiller",
+        list(actifs_alertes.keys()),
+        default=[
+            "Bitcoin (BTC)",
+            "Ethereum (ETH)",
+            "NVIDIA (NVDA)",
+            "EUR/USD"
+        ],
+        key="alert_assets"
+    )
+
+    seuil = st.slider(
+        "Seuil d'alerte PrediScore",
+        min_value=60,
+        max_value=95,
+        value=75,
+        step=5,
+        key="alert_threshold"
+    )
+
+    if st.button(
+        "🔎 Scanner les alertes",
+        type="primary",
+        use_container_width=True,
+        key="scan_alerts"
+    ):
+
         alertes = []
-        with st.spinner("Analyse des marchés..."):
-            for actif, (symbol, categorie) in actifs.items():
-                df_alert = charger_donnees(symbol, categorie)
-                if df_alert.empty: continue
-                ind_alert = indicateurs(df_alert)
-                score, signal, confidence = prediscore(ind_alert)
-                if score >= 75:
-                    alertes.append({"Actif": actif, "Score": score, "Signal": signal, "Confiance": confidence})
+        analyses = []
+
+        progress = st.progress(0)
+        status = st.empty()
+
+        total = len(actifs_selectionnes)
+
+        for i, nom in enumerate(actifs_selectionnes):
+
+            symbol, categorie = actifs_alertes[nom]
+
+            progress.progress((i + 1) / total)
+
+            status.info(
+                f"🔎 Analyse de {nom}..."
+            )
+
+            try:
+                df = charger_donnees(
+                    symbol,
+                    categorie
+                )
+
+                if df.empty:
+                    continue
+
+                ind = indicateurs(df)
+
+                score, signal, confiance = prediscore(ind)
+
+                dernier_prix = float(
+                    df["Close"].iloc[-1]
+                )
+
+                analyses.append({
+                    "Actif": nom,
+                    "Prix": dernier_prix,
+                    "Score": score,
+                    "Signal": signal,
+                    "Confiance": confiance
+                })
+
+                if score >= seuil:
+
+                    alertes.append({
+                        "Actif": nom,
+                        "Score": score,
+                        "Signal": signal,
+                        "Confiance": confiance,
+                        "Prix": dernier_prix
+                    })
+
+            except Exception:
+                continue
+
+        progress.empty()
+        status.empty()
+
+        # ==========================================
+        # ALERTES DÉTECTÉES
+        # ==========================================
+
         if alertes:
-            st.success(f"{len(alertes)} opportunité(s) détectée(s)")
-            st.dataframe(pd.DataFrame(alertes).sort_values("Score", ascending=False), use_container_width=True)
+
+            alertes = sorted(
+                alertes,
+                key=lambda x: x["Score"],
+                reverse=True
+            )
+
+            st.success(
+                f"🚨 {len(alertes)} alerte(s) détectée(s)"
+            )
+
+            st.subheader("🔥 Opportunités détectées")
+
+            for alerte in alertes:
+
+                score = alerte["Score"]
+
+                if score >= 90:
+                    niveau = "🔥 TRÈS FORTE"
+                elif score >= 80:
+                    niveau = "🟢 FORTE"
+                else:
+                    niveau = "🟡 MODÉRÉE"
+
+                with st.container():
+
+                    st.markdown(
+                        f"### {niveau} — {alerte['Actif']}"
+                    )
+
+                    c1, c2, c3 = st.columns(3)
+
+                    c1.metric(
+                        "PrediScore",
+                        f"{score}/100"
+                    )
+
+                    c2.metric(
+                        "Signal",
+                        alerte["Signal"]
+                    )
+
+                    c3.metric(
+                        "Confiance",
+                        alerte["Confiance"]
+                    )
+
+                    st.caption(
+                        f"Prix actuel : "
+                        f"{alerte['Prix']:,.4f}"
+                    )
+
+                    st.divider()
+
         else:
-            st.info("Aucune opportunité forte détectée.")
+
+            st.info(
+                f"🔎 Aucune opportunité n'atteint "
+                f"le seuil de {seuil}/100 actuellement."
+            )
+
+        # ==========================================
+        # VUE GLOBALE
+        # ==========================================
+
+        if analyses:
+
+            st.subheader("📊 État du marché")
+
+            analyses_df = pd.DataFrame(analyses)
+
+            analyses_df = analyses_df.sort_values(
+                "Score",
+                ascending=False
+            )
+
+            st.dataframe(
+                analyses_df,
+                use_container_width=True,
+                hide_index=True
+    )
 
 elif menu == "🔔 Alertes Pro":
     st.title("🔔 Alertes Pro Premium 24/24")
