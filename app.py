@@ -832,7 +832,30 @@ elif menu == "🔔 Alertes":
                 if df.empty: continue
                 ind = indicateurs(df); score, signal, confiance = prediscore(ind); dernier_prix = float(df["Close"].iloc[-1])
                 analyses.append({"Actif": nom, "Catégorie": categorie_trouvee, "Prix": dernier_prix, "Score": score, "Signal": signal, "Confiance": confiance})
-                if score >= seuil: alertes.append({"Actif": nom, "Catégorie": categorie_trouvee, "Prix": dernier_prix, "Score": score, "Signal": signal, "Confiance": confiance})
+                if score >= seuil:
+                    alertes.append({
+                        "Actif": nom,
+                        "Catégorie": categorie_trouvee,
+                        "Prix": dernier_prix,
+                        "Score": score,
+                        "Signal": signal,
+                        "Confiance": confiance
+                    })
+
+    # 🔔 Notification dans l'application
+    nouvelle_notification = ajouter_notification(
+        nom,
+        score,
+        signal,
+        confiance
+    )
+
+    # Affichage immédiat pour l'utilisateur connecté
+    if nouvelle_notification:
+        st.toast(
+            f"🚨 {nom} — PrediScore {score}/100 — {signal}",
+            icon="🔔"
+                                                  )
         if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
         else:
             analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
