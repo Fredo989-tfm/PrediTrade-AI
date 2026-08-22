@@ -191,20 +191,46 @@ def charger_donnees(symbol, asset_type):
 
 def indicateurs(df):
     close = df["Close"]
+
+    # Tendances
     ema20 = close.ewm(span=20, adjust=False).mean()
     ema50 = close.ewm(span=50, adjust=False).mean()
     ema200 = close.ewm(span=200, adjust=False).mean()
+
+    # RSI
     delta = close.diff()
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
+
     rs = gain / loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
-    macd = close.ewm(span=12, adjust=False).mean() - close.ewm(span=26, adjust=False).mean()
-    signal = macd.ewm(span=9, adjust=False).mean()
-    momentum = close.pct_change(10) * 100
-    volatility = close.pct_change().rolling(20).std() * 100
-    return {"close": close,"ema20": ema20,"ema50": ema50,"ema200": ema200,"rsi": rsi,"macd": macd,"signal": signal,"momentum": momentum,"volatility": volatility}
 
+    # MACD
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+
+    macd = ema12 - ema26
+    signal = macd.ewm(span=9, adjust=False).mean()
+    histogram = macd - signal
+
+    # Momentum
+    momentum = close.pct_change(10) * 100
+
+    # Volatilité
+    volatility = close.pct_change().rolling(14).std() * 100
+
+    return {
+        "close": close,
+        "ema20": ema20,
+        "ema50": ema50,
+        "ema200": ema200,
+        "rsi": rsi,
+        "macd": macd,
+        "signal": signal,
+        "histogram": histogram,
+        "momentum": momentum,
+        "volatility": volatility
+    }
 def prediscore(ind):
     close = ind["close"]
     if len(close) < 50:
