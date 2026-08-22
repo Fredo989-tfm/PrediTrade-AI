@@ -117,218 +117,70 @@ if not st.session_state.get("logged_in", False):
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
     try:
-        API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "").strip()
-
-        if not API_KEY:
-            return pd.DataFrame()
-
-        # ==============================
-        # CONSTRUCTION DE L'URL
-        # ==============================
-
+        # 1. CRYPTO -> Binance (gratuit, illimité)
         if asset_type == "Crypto":
-            url = (
-                f"https://www.alphavantage.co/query"
-                f"?function=DIGITAL_CURRENCY_DAILY"
-                f"&symbol={symbol}"
-                f"&market=USD"
-                f"&apikey={API_KEY}"
-            )
+            try:
+                # BTC -> BTCUSDT
+                binance_symbol = f"{symbol}USDT"
+                url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
+                r = requests.get(url, timeout=10)
+                if r.ok:
+                    data = r.json()
+                    if isinstance(data, list) and len(data) > 20:
+                        df = pd.DataFrame(data, columns=["time","Open","High","Low","Close","vol","close_time","qav","trades","taker_base","taker_quote","ignore"])
+                        df["Close"] = pd.to_numeric(df["Close"])
+                        df["Open"] = pd.to_numeric(df["Open"])
+                        df["High"] = pd.to_numeric(df["High"])
+                        df["Low"] = pd.to_numeric(df["Low"])
+                        df.index = pd.to_datetime(df["time"], unit='ms')
+                        df = df[["Open","High","Low","Close"]].sort_index()
+                        return df
+            except:
+                pass
 
-        elif asset_type == "Forex":
-            from_symbol = symbol[:3]
-            to_symbol = symbol[3:]
+        # 2. TOUT LE RESTE -> Yahoo Finance (gratuit, sans clé)
+        # On mappe tes symboles vers Yahoo
+        yahoo_map = {
+            "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
+            "XAU": "GC=F", "WTI": "CL=F", "BRENT": "BZ=F", "XAG": "SI=F",
+            "SPY": "SPY", "QQQ": "QQQ", "DIA": "DIA"
+        }
+        yahoo_symbol = yahoo_map.get(symbol, symbol)
+        if asset_type == "Crypto":
+            yahoo_symbol = f"{symbol}-USD"
 
-            url = (
-                f"https://www.alphavantage.co/query"
-                f"?function=FX_DAILY"
-                f"&from_symbol={from_symbol}"
-                f"&to_symbol={to_symbol}"
-                f"&outputsize=compact"
-                f"&apikey={API_KEY}"
-            )
-
-        elif asset_type == "Matières Premières":
-
-            if symbol == "XAU":
-                url = (
-                    f"https://www.alphavantage.co/query"
-                    f"?function=GOLD_SILVER_SPOT"
-                    f"&symbol=GOLD"
-                    f"&apikey={API_KEY}"
-                )
-
-            elif symbol == "WTI":
-                url = (
-                    f"https://www.alphavantage.co/query"
-                    f"?function=WTI"
-                    f"&interval=daily"
-                    f"&apikey={API_KEY}"
-                )
-
-            else:
-                url = (
-                    f"https://www.alphavantage.co/query"
-                    f"?function=TIME_SERIES_DAILY"
-                    f"&symbol={symbol}"
-                    f"&outputsize=compact"
-                    f"&apikey={API_KEY}"
-                )
-
-        else:
-            url = (
-                f"https://www.alphavantage.co/query"
-                f"?function=TIME_SERIES_DAILY"
-                f"&symbol={symbol}"
-                f"&outputsize=compact"
-                f"&apikey={API_KEY}"
-            )
-
-        # ==============================
-        # REQUÊTE ALPHA VANTAGE
-        # ==============================
-
-        response = requests.get(url, timeout=20)
-
-        if not response.ok:
+        # API Yahoo chart sans librairie
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}?range=1y&interval=1d"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=15)
+        if not r.ok:
+            return pd.DataFrame()
+        data = r.json()
+        result = data.get("chart", {}).get("result", [])
+        if not result:
             return pd.DataFrame()
 
-        data = response.json()
-
-        # ==============================
-        # GESTION DES ERREURS API
-        # ==============================
-
-        if "Error Message" in data:
+        quotes = result[0].get("indicators", {}).get("quote", [{}])[0]
+        timestamps = result[0].get("timestamp", [])
+        if not quotes or not timestamps:
             return pd.DataFrame()
 
-        if "Note" in data:
-            return pd.DataFrame()
-
-        if "Information" in data:
-            return pd.DataFrame()
-
-        # ==============================
-        # RÉCUPÉRATION DE LA SÉRIE
-        # ==============================
-
-        series = None
-
-        for key, value in data.items():
-            if isinstance(value, dict) and value:
-
-                if any(isinstance(v, dict) for v in value.values()):
-                    series = value
-                    break
-
-        if not series:
-            return pd.DataFrame()
-
-        # ==============================
-        # CRÉATION DU DATAFRAME
-        # ==============================
-
-        df = pd.DataFrame.from_dict(series, orient="index")
-
-        if df.empty:
-            return pd.DataFrame()
-
-        # ==============================
-        # NETTOYAGE
-        # ==============================
-
-        df.index = pd.to_datetime(df.index, errors="coerce")
-
-        df = df[~df.index.isna()]
-
-        df.columns = [
-            str(c).strip().lower()
-            for c in df.columns
-        ]
-
-        # ==============================
-        # IDENTIFICATION DES COLONNES
-        # ==============================
-
-        def trouver_colonne(possibles):
-            for colonne in possibles:
-                if colonne in df.columns:
-                    return colonne
-            return None
-
-        close_col = trouver_colonne([
-            "4. close",
-            "5. adjusted close",
-            "close",
-            "4. price",
-            "price",
-            "4a. close (usd)"
-        ])
-
-        open_col = trouver_colonne([
-            "1. open",
-            "open"
-        ])
-
-        high_col = trouver_colonne([
-            "2. high",
-            "high"
-        ])
-
-        low_col = trouver_colonne([
-            "3. low",
-            "low"
-        ])
-
-        if close_col is None:
-            return pd.DataFrame()
-
-        # ==============================
-        # CONVERSION NUMÉRIQUE
-        # ==============================
-
-        df["Close"] = pd.to_numeric(
-            df[close_col],
-            errors="coerce"
-        )
-
-        df["Open"] = pd.to_numeric(
-            df[open_col] if open_col else df["Close"],
-            errors="coerce"
-        )
-
-        df["High"] = pd.to_numeric(
-            df[high_col] if high_col else df["Close"],
-            errors="coerce"
-        )
-
-        df["Low"] = pd.to_numeric(
-            df[low_col] if low_col else df["Close"],
-            errors="coerce"
-        )
-
-        # ==============================
-        # DATAFRAME FINAL
-        # ==============================
-
-        df = df[
-            ["Open", "High", "Low", "Close"]
-        ].copy()
-
-        df = df.replace(
-            [np.inf, -np.inf],
-            np.nan
-        ).dropna(
-            subset=["Open", "High", "Low", "Close"]
-        ).sort_index()
-
+        df = pd.DataFrame({
+            "Open": quotes.get("open", []),
+            "High": quotes.get("high", []),
+            "Low": quotes.get("low", []),
+            "Close": quotes.get("close", []),
+        })
+        df.index = pd.to_datetime(timestamps, unit='s')
+        df = df.dropna().sort_index()
         if len(df) < 20:
             return pd.DataFrame()
-
         return df
 
-    except Exception:
-        return pd.DataFrame() 
+    except Exception as e:
+        # print(e) pour debug dans logs Streamlit
+        return pd.DataFrame()
+
 def indicateurs(df):
     close = df["Close"]
     ema20 = close.ewm(span=20, adjust=False).mean()
@@ -338,7 +190,7 @@ def indicateurs(df):
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
     rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs))
+    rsi = 100 - (100 / (1 + rs)
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
