@@ -365,6 +365,95 @@ def prediscore(ind):
         confidence = "Faible"
 
     return score, signal_txt, confidence
+def expliquer_score(ind):
+    prix = float(ind["close"].iloc[-1])
+    ema20 = float(ind["ema20"].iloc[-1])
+    ema50 = float(ind["ema50"].iloc[-1])
+    ema200 = float(ind["ema200"].iloc[-1])
+    rsi = float(ind["rsi"].iloc[-1])
+    macd = float(ind["macd"].iloc[-1])
+    signal = float(ind["signal"].iloc[-1])
+    momentum = float(ind["momentum"].iloc[-1])
+
+    explications = []
+
+    # EMA20 / EMA50
+    if ema20 > ema50:
+        explications.append(
+            ("✅", "Tendance court terme", "EMA20 est au-dessus de EMA50", "Haussier")
+        )
+    else:
+        explications.append(
+            ("🔴", "Tendance court terme", "EMA20 est sous EMA50", "Baissier")
+        )
+
+    # Prix / EMA200
+    if prix > ema200:
+        explications.append(
+            ("✅", "Tendance long terme", "Le prix est au-dessus de EMA200", "Haussier")
+        )
+    else:
+        explications.append(
+            ("🔴", "Tendance long terme", "Le prix est sous EMA200", "Baissier")
+        )
+
+    # EMA50 / EMA200
+    if ema50 > ema200:
+        explications.append(
+            ("✅", "Structure du marché", "EMA50 est au-dessus de EMA200", "Haussière")
+        )
+    else:
+        explications.append(
+            ("🔴", "Structure du marché", "EMA50 est sous EMA200", "Baissière")
+        )
+
+    # RSI
+    if 50 <= rsi <= 65:
+        explications.append(
+            ("✅", "RSI", f"RSI à {rsi:.1f} : zone saine", "Positif")
+        )
+    elif rsi < 30:
+        explications.append(
+            ("🟢", "RSI", f"RSI à {rsi:.1f} : marché survendu", "Opportunité potentielle")
+        )
+    elif rsi > 70:
+        explications.append(
+            ("⚠️", "RSI", f"RSI à {rsi:.1f} : marché fortement acheté", "Risque de correction")
+        )
+    else:
+        explications.append(
+            ("⚠️", "RSI", f"RSI à {rsi:.1f} : zone neutre", "Neutre")
+        )
+
+    # MACD
+    if macd > signal:
+        explications.append(
+            ("✅", "MACD", "MACD au-dessus de sa ligne de signal", "Momentum haussier")
+        )
+    else:
+        explications.append(
+            ("🔴", "MACD", "MACD sous sa ligne de signal", "Momentum baissier")
+        )
+
+    # Momentum
+    if momentum > 3:
+        explications.append(
+            ("✅", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Fort")
+        )
+    elif momentum > 0:
+        explications.append(
+            ("🟢", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Positif")
+        )
+    elif momentum < -3:
+        explications.append(
+            ("🔴", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Faible")
+        )
+    else:
+        explications.append(
+            ("⚠️", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Neutre")
+        )
+
+    return explications
 
 @st.cache_resource
 def gemini_client():
@@ -414,6 +503,20 @@ if menu == "📊 Tableau de bord":
     c1.metric("Actifs suivis", sum(len(v) for v in ASSETS.values()))
     c2.metric("Version", APP_VERSION)
     c3.metric("Statut", "Premium" if st.session_state.is_premium else "Gratuit")
+    st.divider()
+    st.subheader("🔎 Pourquoi ce score ?")
+    explications = expliquer_score(ind) 
+    for icone, indicateur, detail, interpretation in explications:
+    col1, col2, col3 = st.columns([1, 2, 3])
+
+    with col1:
+        st.write(icone)
+
+    with col2:
+        st.write(f"**{indicateur}**")
+
+    with col3:
+        st.write(f"{detail} — **{interpretation}**")
     st.divider()
     st.subheader("Dernières analyses")
     if len(st.session_state.history) > 0:
