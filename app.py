@@ -830,13 +830,11 @@ elif menu == "🔔 Alertes":
 
         progress.empty()
         status.empty()
-
         # ==========================================
-        # ALERTES DÉTECTÉES
+        # AFFICHAGE DES ALERTES
         # ==========================================
 
         if alertes:
-
             alertes = sorted(
                 alertes,
                 key=lambda x: x["Score"],
@@ -850,7 +848,6 @@ elif menu == "🔔 Alertes":
             st.subheader("🔥 Opportunités détectées")
 
             for alerte in alertes:
-
                 score = alerte["Score"]
 
                 if score >= 90:
@@ -860,45 +857,41 @@ elif menu == "🔔 Alertes":
                 else:
                     niveau = "🟡 MODÉRÉE"
 
-                with st.container():
+                st.markdown(
+                    f"### {niveau} — {alerte['Actif']}"
+                )
 
-                    st.markdown(
-                        f"### {niveau} — {alerte['Actif']}"
-                    )
+                c1, c2, c3 = st.columns(3)
 
-                    c1, c2, c3 = st.columns(3)
+                c1.metric(
+                    "PrediScore",
+                    f"{score}/100"
+                )
 
-                    c1.metric(
-                        "PrediScore",
-                        f"{score}/100"
-                    )
+                c2.metric(
+                    "Signal",
+                    alerte["Signal"]
+                )
 
-                    c2.metric(
-                        "Signal",
-                        alerte["Signal"]
-                    )
+                c3.metric(
+                    "Confiance",
+                    alerte["Confiance"]
+                )
 
-                    c3.metric(
-                        "Confiance",
-                        alerte["Confiance"]
-                    )
+                st.caption(
+                    f"💰 Prix actuel : {alerte['Prix']:,.4f}"
+                )
 
-                    st.caption(
-                        f"Prix actuel : "
-                        f"{alerte['Prix']:,.4f}"
-                    )
-
-                    st.divider()
+                st.divider()
 
         else:
-
             st.info(
                 f"🔎 Aucune opportunité n'atteint "
                 f"le seuil de {seuil}/100 actuellement."
             )
 
         # ==========================================
-        # VUE GLOBALE
+        # ÉTAT DE TOUS LES ACTIFS SCANNÉS
         # ==========================================
 
         if analyses:
@@ -916,6 +909,26 @@ elif menu == "🔔 Alertes":
                 analyses_df,
                 use_container_width=True,
                 hide_index=True
+            )
+
+            # ======================================
+            # ACTIF LE PLUS PROCHE DU SEUIL
+            # ======================================
+
+            meilleur = analyses_df.iloc[0]
+
+            st.markdown(
+                f"""
+                ### 🎯 Meilleure opportunité actuelle
+
+                **{meilleur['Actif']}**
+
+                PrediScore : **{meilleur['Score']}/100**
+
+                Signal : **{meilleur['Signal']}**
+
+                Confiance : **{meilleur['Confiance']}**
+                """
     )
 
 elif menu == "🔔 Alertes Pro":
