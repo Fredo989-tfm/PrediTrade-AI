@@ -163,32 +163,127 @@ def charger_donnees(symbol, asset_type):
             return pd.DataFrame()
         df.index = pd.to_datetime(df.index, errors="coerce")
         df = df[~df.index.isna()]
-        df.columns = [str(c).strip().lower() for c in df.columns]
-        def trouver_colonne(possibles):
-            for colonne in possibles:
-                if colonne in df.columns:
-                    return colonne
-            return None
-        close_col = trouver_colonne(["4. close","5. adjusted close","close","4. price","price"])
-        open_col = trouver_colonne(["1. open","open"])
-        high_col = trouver_colonne(["2. high","high"])
-        low_col = trouver_colonne(["3. low","low"])
-        if close_col is None:
-            return pd.DataFrame()
-        df["Close"] = pd.to_numeric(df[close_col], errors="coerce")
-        df["Open"] = pd.to_numeric(df[open_col] if open_col else df["Close"], errors="coerce")
-        df["High"] = pd.to_numeric(df[high_col] if high_col else df["Close"], errors="coerce")
-        df["Low"] = pd.to_numeric(df[low_col] if low_col else df["Close"], errors="coerce")
-        df = df[["Open", "High", "Low", "Close"]].copy()
-        df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.dropna(subset=["Open", "High", "Low", "Close"])
-        df = df.sort_index()
-        if len(df) < 20:
-            return pd.DataFrame()
-        return df
-    except Exception:
-        return pd.DataFrame()
+@st.cache_data(ttl=300, show_spinner=False)
+def charger_donnees(symbol, asset_type):
+    try:
+        API_KEY = st.secrets.get("ALPHAVANTAGE_API_KEY", "")
 
+        if not API_KEY:
+            st.error("❌ Clé Alpha Vantage introuvable.")
+            return pd.DataFrame()
+
+        # =========================
+        # CRYPTO
+        # =========================
+        if asset_type == "Crypto":
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=DIGITAL_CURRENCY_DAILY"
+                f"&symbol={symbol}"
+                f"&market=USD"
+                f"&apikey={API_KEY}"
+            )
+
+            response = requests.get(url, timeout=15)
+            data = response.json()
+
+            if "Time Series (Digital Currency Daily)" not in data:
+                return pd.DataFrame()
+
+            df = pd.DataFrame.from_dict(
+                data["Time Series (Digital Currency Daily)"],
+                orient="index"
+            )
+
+            df.index = pd.to_datetime(df.index)
+
+            # Prix de clôture
+            if "4. close" in df.columns:
+                df["Close"] = pd.to_numeric(
+                    df["4. close"], errors="coerce"
+                )
+
+            df = df.sort_index()
+
+            return df
+
+        # =========================
+        # FOREX
+        # =========================
+        elif asset_type == "Forex":
+
+            from_symbol = symbol[:3]
+            to_symbol = symbol[3:]
+
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=FX_DAILY"
+                f"&from_symbol={from_symbol}"
+                f"&to_symbol={to_symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
+            response = requests.get(url, timeout=15)
+            data = response.json()
+
+            if "Time Series FX (Daily)" not in data:
+                return pd.DataFrame()
+
+            df = pd.DataFrame.from_dict(
+                data["Time Series FX (Daily)"],
+                orient="index"
+            )
+
+            df.index = pd.to_datetime(df.index)
+
+            if "4. close" in df.columns:
+                df["Close"] = pd.to_numeric(
+                    df["4. close"], errors="coerce"
+                )
+
+            df = df.sort_index()
+
+            return df
+
+        # =========================
+        # ACTIONS / INDICES
+        # =========================
+        else:
+
+            url = (
+                "https://www.alphavantage.co/query"
+                f"?function=TIME_SERIES_DAILY"
+                f"&symbol={symbol}"
+                f"&outputsize=compact"
+                f"&apikey={API_KEY}"
+            )
+
+            response = requests.get(url, timeout=15)
+            data = response.json()
+
+            if "Time Series (Daily)" not in data:
+                return pd.DataFrame()
+
+            df = pd.DataFrame.from_dict(
+                data["Time Series (Daily)"],
+                orient="index"
+            )
+
+            df.index = pd.to_datetime(df.index)
+
+            if "4. close" in df.columns:
+                df["Close"] = pd.to_numeric(
+                    df["4. close"], errors="coerce"
+                )
+
+            df = df.sort_index()
+
+            return df
+
+    except Exception as e:
+        st.error(f"❌ Erreur récupération données : {e}")
+        return pd.DataFrame()
 def indicateurs(df):
     close = df["Close"]
     ema20 = close.ewm(span=20, adjust=False).mean()
