@@ -191,53 +191,27 @@ def charger_donnees(symbol, asset_type):
 
 def indicateurs(df):
     close = df["Close"]
-
-    # Tendances
     ema20 = close.ewm(span=20, adjust=False).mean()
     ema50 = close.ewm(span=50, adjust=False).mean()
     ema200 = close.ewm(span=200, adjust=False).mean()
-
-    # RSI
     delta = close.diff()
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
-
     rs = gain / loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
-
-    # MACD
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()
-
     macd = ema12 - ema26
     signal = macd.ewm(span=9, adjust=False).mean()
     histogram = macd - signal
-
-    # Momentum
     momentum = close.pct_change(10) * 100
-
-    # Volatilité
     volatility = close.pct_change().rolling(14).std() * 100
+    return {"close": close,"ema20": ema20,"ema50": ema50,"ema200": ema200,"rsi": rsi,"macd": macd,"signal": signal,"histogram": histogram,"momentum": momentum,"volatility": volatility}
 
-    return {
-        "close": close,
-        "ema20": ema20,
-        "ema50": ema50,
-        "ema200": ema200,
-        "rsi": rsi,
-        "macd": macd,
-        "signal": signal,
-        "histogram": histogram,
-        "momentum": momentum,
-        "volatility": volatility
-    }
 def prediscore(ind):
     close = ind["close"]
-
     if len(close) < 50:
         return 50, "🟡 ATTENDRE", "Faible"
-
-    # Dernières valeurs
     prix = float(close.iloc[-1])
     ema20 = float(ind["ema20"].iloc[-1])
     ema50 = float(ind["ema50"].iloc[-1])
@@ -246,125 +220,45 @@ def prediscore(ind):
     macd = float(ind["macd"].iloc[-1])
     signal = float(ind["signal"].iloc[-1])
     momentum = float(ind["momentum"].iloc[-1])
-
     score = 50.0
-
-    # ==================================================
-    # 1. TENDANCE COURTE : EMA20 vs EMA50 — 25 points
-    # ==================================================
-
-    if ema20 > ema50:
-        score += 15
-    else:
-        score -= 15
-
-    # Écart entre EMA20 et EMA50
+    if ema20 > ema50: score += 15
+    else: score -= 15
     ecart_ema = ((ema20 - ema50) / ema50) * 100
-
-    if ecart_ema > 1:
-        score += 10
-    elif ecart_ema < -1:
-        score -= 10
-
-    # ==================================================
-    # 2. TENDANCE LONGUE : PRIX vs EMA200 — 20 points
-    # ==================================================
-
-    if prix > ema200:
-        score += 10
-    else:
-        score -= 10
-
-    if ema50 > ema200:
-        score += 10
-    else:
-        score -= 10
-
-    # ==================================================
-    # 3. RSI — 20 points
-    # ==================================================
-
-    if 50 <= rsi <= 65:
-        score += 10
-    elif 65 < rsi <= 70:
-        score += 5
-    elif rsi < 30:
-        score += 10
-    elif 30 <= rsi < 40:
-        score += 5
-    elif rsi > 75:
-        score -= 15
-    elif rsi > 70:
-        score -= 10
-    elif rsi < 25:
-        score -= 5
-
-    # ==================================================
-    # 4. MACD — 20 points
-    # ==================================================
-
-    if macd > signal:
-        score += 10
-    else:
-        score -= 10
-
+    if ecart_ema > 1: score += 10
+    elif ecart_ema < -1: score -= 10
+    if prix > ema200: score += 10
+    else: score -= 10
+    if ema50 > ema200: score += 10
+    else: score -= 10
+    if 50 <= rsi <= 65: score += 10
+    elif 65 < rsi <= 70: score += 5
+    elif rsi < 30: score += 10
+    elif 30 <= rsi < 40: score += 5
+    elif rsi > 75: score -= 15
+    elif rsi > 70: score -= 10
+    elif rsi < 25: score -= 5
+    if macd > signal: score += 10
+    else: score -= 10
     histogram = macd - signal
-
-    if histogram > 0:
-        score += 10
-    else:
-        score -= 10
-
-    # ==================================================
-    # 5. MOMENTUM — 15 points
-    # ==================================================
-
-    if momentum > 3:
-        score += 10
-    elif momentum > 0:
-        score += 5
-    elif momentum < -3:
-        score -= 10
-    else:
-        score -= 5
-
-    # ==================================================
-    # SCORE FINAL
-    # ==================================================
-
+    if histogram > 0: score += 10
+    else: score -= 10
+    if momentum > 3: score += 10
+    elif momentum > 0: score += 5
+    elif momentum < -3: score -= 10
+    else: score -= 5
     score = int(np.clip(round(score), 0, 100))
-
-    # ==================================================
-    # SIGNAL
-    # ==================================================
-
-    if score >= 80:
-        signal_txt = "🟢 ACHAT FORT"
-    elif score >= 70:
-        signal_txt = "🟢 ACHAT"
-    elif score >= 55:
-        signal_txt = "🟡 ATTENDRE"
-    elif score >= 40:
-        signal_txt = "🟠 PRUDENCE"
-    else:
-        signal_txt = "🔴 VENTE"
-
-    # ==================================================
-    # CONFIANCE
-    # ==================================================
-
+    if score >= 80: signal_txt = "🟢 ACHAT FORT"
+    elif score >= 70: signal_txt = "🟢 ACHAT"
+    elif score >= 55: signal_txt = "🟡 ATTENDRE"
+    elif score >= 40: signal_txt = "🟠 PRUDENCE"
+    else: signal_txt = "🔴 VENTE"
     distance = abs(score - 50)
-
-    if distance >= 35:
-        confidence = "Très élevée"
-    elif distance >= 25:
-        confidence = "Élevée"
-    elif distance >= 10:
-        confidence = "Moyenne"
-    else:
-        confidence = "Faible"
-
+    if distance >= 35: confidence = "Très élevée"
+    elif distance >= 25: confidence = "Élevée"
+    elif distance >= 10: confidence = "Moyenne"
+    else: confidence = "Faible"
     return score, signal_txt, confidence
+
 def expliquer_score(ind):
     prix = float(ind["close"].iloc[-1])
     ema20 = float(ind["ema20"].iloc[-1])
@@ -374,85 +268,39 @@ def expliquer_score(ind):
     macd = float(ind["macd"].iloc[-1])
     signal = float(ind["signal"].iloc[-1])
     momentum = float(ind["momentum"].iloc[-1])
-
     explications = []
-
-    # EMA20 / EMA50
     if ema20 > ema50:
-        explications.append(
-            ("✅", "Tendance court terme", "EMA20 est au-dessus de EMA50", "Haussier")
-        )
+        explications.append(("✅", "Tendance court terme", "EMA20 est au-dessus de EMA50", "Haussier"))
     else:
-        explications.append(
-            ("🔴", "Tendance court terme", "EMA20 est sous EMA50", "Baissier")
-        )
-
-    # Prix / EMA200
+        explications.append(("🔴", "Tendance court terme", "EMA20 est sous EMA50", "Baissier"))
     if prix > ema200:
-        explications.append(
-            ("✅", "Tendance long terme", "Le prix est au-dessus de EMA200", "Haussier")
-        )
+        explications.append(("✅", "Tendance long terme", "Le prix est au-dessus de EMA200", "Haussier"))
     else:
-        explications.append(
-            ("🔴", "Tendance long terme", "Le prix est sous EMA200", "Baissier")
-        )
-
-    # EMA50 / EMA200
+        explications.append(("🔴", "Tendance long terme", "Le prix est sous EMA200", "Baissier"))
     if ema50 > ema200:
-        explications.append(
-            ("✅", "Structure du marché", "EMA50 est au-dessus de EMA200", "Haussière")
-        )
+        explications.append(("✅", "Structure du marché", "EMA50 est au-dessus de EMA200", "Haussière"))
     else:
-        explications.append(
-            ("🔴", "Structure du marché", "EMA50 est sous EMA200", "Baissière")
-        )
-
-    # RSI
+        explications.append(("🔴", "Structure du marché", "EMA50 est sous EMA200", "Baissière"))
     if 50 <= rsi <= 65:
-        explications.append(
-            ("✅", "RSI", f"RSI à {rsi:.1f} : zone saine", "Positif")
-        )
+        explications.append(("✅", "RSI", f"RSI à {rsi:.1f} : zone saine", "Positif"))
     elif rsi < 30:
-        explications.append(
-            ("🟢", "RSI", f"RSI à {rsi:.1f} : marché survendu", "Opportunité potentielle")
-        )
+        explications.append(("🟢", "RSI", f"RSI à {rsi:.1f} : marché survendu", "Opportunité potentielle"))
     elif rsi > 70:
-        explications.append(
-            ("⚠️", "RSI", f"RSI à {rsi:.1f} : marché fortement acheté", "Risque de correction")
-        )
+        explications.append(("⚠️", "RSI", f"RSI à {rsi:.1f} : marché fortement acheté", "Risque de correction"))
     else:
-        explications.append(
-            ("⚠️", "RSI", f"RSI à {rsi:.1f} : zone neutre", "Neutre")
-        )
-
-    # MACD
+        explications.append(("⚠️", "RSI", f"RSI à {rsi:.1f} : zone neutre", "Neutre"))
     if macd > signal:
-        explications.append(
-            ("✅", "MACD", "MACD au-dessus de sa ligne de signal", "Momentum haussier")
-        )
+        explications.append(("✅", "MACD", "MACD au-dessus de sa ligne de signal", "Momentum haussier"))
     else:
-        explications.append(
-            ("🔴", "MACD", "MACD sous sa ligne de signal", "Momentum baissier")
-        )
-
-    # Momentum
+        explications.append(("🔴", "MACD", "MACD sous sa ligne de signal", "Momentum baissier"))
     if momentum > 3:
-        explications.append(
-            ("✅", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Fort")
-        )
+        explications.append(("✅", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Fort"))
     elif momentum > 0:
-        explications.append(
-            ("🟢", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Positif")
-        )
+        explications.append(("🟢", "Momentum", f"+{momentum:.2f}% sur 10 périodes", "Positif"))
     elif momentum < -3:
-        explications.append(
-            ("🔴", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Faible")
-        )
+        explications.append(("🔴", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Faible"))
     else:
-        explications.append(
-            ("⚠️", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Neutre")
-        )
-
+        explications.append(("⚠️", "Momentum", f"{momentum:.2f}% sur 10 périodes", "Neutre"))
     return explications
 
 @st.cache_resource
@@ -504,20 +352,6 @@ if menu == "📊 Tableau de bord":
     c2.metric("Version", APP_VERSION)
     c3.metric("Statut", "Premium" if st.session_state.is_premium else "Gratuit")
     st.divider()
-    st.subheader("🔎 Pourquoi ce score ?")
-    explications = expliquer_score(ind) 
-    for icone, indicateur, detail, interpretation in explications:
-    col1, col2, col3 = st.columns([1, 2, 3])
-
-    with col1:
-        st.write(icone)
-
-    with col2:
-        st.write(f"**{indicateur}**")
-
-    with col3:
-        st.write(f"{detail} — **{interpretation}**")
-    st.divider()
     st.subheader("Dernières analyses")
     if len(st.session_state.history) > 0:
         st.dataframe(pd.DataFrame(st.session_state.history[-5:]), use_container_width=True)
@@ -541,6 +375,7 @@ elif menu == "🧠 Analyse IA Pro":
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données pour {asset_name}.")
             st.info("Vérifie ta clé Alpha Vantage dans Secrets et réessaie.")
+            st.session_state["analysis_requested"] = False
         else:
             ind = indicateurs(df)
             score, signal, conf = prediscore(ind)
@@ -557,6 +392,18 @@ elif menu == "🧠 Analyse IA Pro":
             fig.add_trace(go.Scatter(x=chart_df.index, y=ind["ema200"].tail(150), name="EMA200", mode="lines"))
             fig.update_layout(height=550, template="plotly_dark", xaxis_rangeslider_visible=False, margin=dict(l=10, r=10, t=40, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0))
             st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False, "responsive": True})
+
+            st.divider()
+            st.subheader("🔎 Pourquoi ce score?")
+            explications = expliquer_score(ind)
+            for icone, indicateur, detail, interpretation in explications:
+                col1, col2, col3 = st.columns([1, 2, 3])
+                with col1:
+                    st.write(icone)
+                with col2:
+                    st.write(f"**{indicateur}**")
+                with col3:
+                    st.write(f"{detail} — **{interpretation}**")
 
             st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal, "confiance": conf})
             st.session_state["analysis_requested"] = False
