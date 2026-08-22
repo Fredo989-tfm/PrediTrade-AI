@@ -410,22 +410,172 @@ elif menu == "🧠 Analyse IA Pro":
 
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
-    st.markdown("Scanne tous les actifs et sort ceux avec PrediScore > 75")
-    if not st.session_state.is_premium: st.warning("⚠️ Fonction Premium")
-    if st.button("Lancer le scan complet", type="primary"):
-        with st.spinner("Scan en cours... 30s environ"):
-            results = []
-            for cat, assets in ASSETS.items():
-                for name, symbol in list(assets.items())[:3]:
-                    df = charger_donnees(symbol, cat)
-                    if not df.empty:
-                        score, signal, conf = prediscore(indicateurs(df))
-                        if score >= 70: results.append({"Catégorie": cat, "Actif": name, "Score": score, "Signal": signal})
-                    time.sleep(0.5)
+
+    st.markdown(
+        "Scanne les actifs sélectionnés et identifie les opportunités "
+        "avec un PrediScore ≥ 75."
+    )
+
+    if not st.session_state.is_premium:
+        st.warning("⚠️ Fonction Premium")
+
+    st.divider()
+
+    if st.button(
+        "🚀 Lancer le scan complet",
+        type="primary",
+        use_container_width=True,
+        key="smart_scanner_button"
+    ):
+        results = []
+        scanned_symbols = set()
+
+        progress = st.progress(0)
+        status = st.empty()
+
+        # Nombre total d'actifs réellement analysables
+        total_assets = sum(
+            min(3, len(assets))
+            for assets in ASSETS.values()
+        )
+
+        current = 0
+
+        for category, assets in ASSETS.items():
+
+            # Maximum 3 actifs par catégorie
+            for name, symbol in list(assets.items())[:3]:
+
+                current += 1
+                progress.progress(
+                    min(current / total_assets, 1.0)
+                )
+
+                status.info(
+                    f"🔎 Analyse de {name}..."
+                )
+
+                # Évite de scanner deux fois le même symbole
+                if symbol in scanned_symbols:
+                    continue
+
+                scanned_symbols.add(symbol)
+
+                try:
+                    df = charger_donnees(symbol, category)
+
+                    if df.empty:
+                        continue
+
+                    ind = indicateurs(df)
+
+                    score, signal, confidence = prediscore(ind)
+
+                    # Seuil officiel du scanner
+                    if score >= 75:
+                        results.append({
+                            "Catégorie": category,
+                            "Actif": name,
+                            "Symbole": symbol,
+                            "Score": score,
+                            "Signal": signal,
+                            "Confiance": confidence
+                        })
+
+                except Exception as e:
+                    continue
+
+        progress.empty()
+        status.empty()
+
+        # ==========================================
+        # RÉSULTATS
+        # ==========================================
+
         if results:
-            st.success(f"{len(results)} opportunités trouvées")
-            st.dataframe(pd.DataFrame(results).sort_values("Score", ascending=False), use_container_width=True)
-        else: st.info("Aucune opportunité forte trouvée actuellement")
+
+            # Classement du meilleur au moins bon
+            results = sorted(
+                results,
+                key=lambda x: x["Score"],
+                reverse=True
+            )
+
+            # Ajouter le classement
+            for i, result in enumerate(results, start=1):
+                result["Rang"] = (
+                    "🥇" if i == 1
+                    else "🥈" if i == 2
+                    else "🥉" if i == 3
+                    else f"{i}"
+                )
+
+            # Mettre Rang en première colonne
+            columns = [
+                "Rang",
+                "Catégorie",
+                "Actif",
+                "Score",
+                "Signal",
+                "Confiance"
+            ]
+
+            results_df = pd.DataFrame(results)[columns]
+
+            st.success(
+                f"🔥 {len(results)} opportunité(s) trouvée(s)"
+            )
+
+            # ======================================
+            # TOP OPPORTUNITÉ
+            # ======================================
+
+            meilleur = results[0]
+
+            st.subheader("🏆 Meilleure opportunité")
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "Actif",
+                meilleur["Actif"]
+            )
+
+            c2.metric(
+                "PrediScore",
+                f'{meilleur["Score"]}/100'
+            )
+
+            c3.metric(
+                "Confiance",
+                meilleur["Confiance"]
+            )
+
+            st.info(
+                f'🏆 {meilleur["Actif"]} présente actuellement '
+                f'le meilleur PrediScore : '
+                f'{meilleur["Score"]}/100 — '
+                f'{meilleur["Signal"]}'
+            )
+
+            # ======================================
+            # TABLEAU COMPLET
+            # ======================================
+
+            st.subheader("📊 Classement des opportunités")
+
+            st.dataframe(
+                results_df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.info(
+                "🔎 Aucune opportunité avec un PrediScore ≥ 75 "
+                "n'a été détectée actuellement."
+            )
 
 elif menu == "⚖️ Comparaison":
     st.title("⚖️ Comparaison d'actifs")
