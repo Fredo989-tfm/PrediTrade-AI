@@ -299,7 +299,7 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash", f"${st.session_state.cash:,.2f}")
     st.metric("📈 Analyses", len(st.session_state.history))
-    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Alertes Pro","⚙️ Paiement"], key="main_menu_v512")
+    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille", "🛡️ Gestion du risque" ,"📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Alertes Pro","⚙️ Paiement"], key="main_menu_v512")
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
@@ -449,6 +449,187 @@ elif menu == "💼 Portefeuille":
     if st.session_state.portfolio: st.json(st.session_state.portfolio)
     st.subheader("Historique des opérations")
     if st.session_state.operations: st.dataframe(pd.DataFrame(st.session_state.operations), use_container_width=True)
+elif menu == "🛡️ Gestion du risque":
+    st.title("🛡️ Gestion intelligente du risque")
+    st.markdown("### Protège ton capital avant chaque opération")
+
+    st.info(
+        "💡 PrediTrade calcule automatiquement le risque, "
+        "la taille de position, le Stop-Loss et le Take-Profit."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        capital = st.number_input(
+            "💰 Capital disponible ($)",
+            min_value=10.0,
+            value=float(st.session_state.cash),
+            step=100.0,
+            key="risk_capital"
+        )
+
+        risque_pct = st.slider(
+            "⚠️ Risque par opération (%)",
+            min_value=0.5,
+            max_value=5.0,
+            value=1.0,
+            step=0.5,
+            key="risk_percent"
+        )
+
+        risk_cat = st.selectbox(
+            "Catégorie",
+            list(ASSETS.keys()),
+            key="risk_category"
+        )
+
+        risk_asset = st.selectbox(
+            "Actif",
+            list(ASSETS[risk_cat].keys()),
+            key="risk_asset"
+        )
+
+    with col2:
+        df_risk = charger_donnees(
+            ASSETS[risk_cat][risk_asset],
+            risk_cat
+        )
+
+        if not df_risk.empty:
+            prix_actuel = float(df_risk["Close"].iloc[-1])
+            st.metric(
+                "📊 Prix actuel",
+                f"${prix_actuel:,.4f}"
+            )
+        else:
+            prix_actuel = 0.0
+            st.warning("⚠️ Prix indisponible.")
+
+        prix_entree = st.number_input(
+            "🎯 Prix d'entrée ($)",
+            min_value=0.0001,
+            value=max(prix_actuel, 0.0001),
+            step=0.01,
+            format="%.4f",
+            key="risk_entry"
+        )
+
+        stop_pct = st.slider(
+            "🛑 Stop-Loss (%)",
+            min_value=0.5,
+            max_value=20.0,
+            value=2.0,
+            step=0.5,
+            key="risk_stop"
+        )
+
+        take_pct = st.slider(
+            "🎯 Take-Profit (%)",
+            min_value=1.0,
+            max_value=50.0,
+            value=4.0,
+            step=0.5,
+            key="risk_take"
+        )
+
+    st.divider()
+
+    risque_montant = capital * risque_pct / 100
+
+    stop_loss = prix_entree * (1 - stop_pct / 100)
+    take_profit = prix_entree * (1 + take_pct / 100)
+
+    distance_stop = abs(prix_entree - stop_loss)
+
+    if distance_stop > 0:
+        quantite = risque_montant / distance_stop
+    else:
+        quantite = 0
+
+    valeur_position = quantite * prix_entree
+    gain_potentiel = abs(take_profit - prix_entree) * quantite
+
+    ratio_rr = (
+        gain_potentiel / risque_montant
+        if risque_montant > 0
+        else 0
+    )
+
+    if risque_pct <= 1:
+        niveau = "🟢 Faible"
+    elif risque_pct <= 2:
+        niveau = "🟡 Modéré"
+    elif risque_pct <= 3:
+        niveau = "🟠 Élevé"
+    else:
+        niveau = "🔴 Très élevé"
+
+    st.subheader("📊 Plan de risque")
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "💰 Risque maximal",
+        f"${risque_montant:,.2f}"
+    )
+
+    c2.metric(
+        "📦 Taille de position",
+        f"{quantite:,.6f}"
+    )
+
+    c3.metric(
+        "⚠️ Niveau de risque",
+        niveau
+    )
+
+    st.divider()
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.metric(
+            "🛑 Stop-Loss",
+            f"${stop_loss:,.4f}"
+        )
+
+        st.metric(
+            "💵 Valeur de la position",
+            f"${valeur_position:,.2f}"
+        )
+
+    with c2:
+        st.metric(
+            "🎯 Take-Profit",
+            f"${take_profit:,.4f}"
+        )
+
+        st.metric(
+            "📈 Gain potentiel",
+            f"${gain_potentiel:,.2f}"
+        )
+
+    st.divider()
+
+    st.subheader("⚖️ Ratio risque / rendement")
+
+    if ratio_rr >= 2:
+        st.success(
+            f"✅ Ratio 1:{ratio_rr:.2f} — configuration favorable."
+        )
+    elif ratio_rr >= 1:
+        st.warning(
+            f"⚠️ Ratio 1:{ratio_rr:.2f} — prudence."
+        )
+    else:
+        st.error(
+            f"🔴 Ratio 1:{ratio_rr:.2f} — risque supérieur au gain potentiel."
+        )
+
+    st.caption(
+        "⚠️ Calcul indicatif. Il ne garantit aucun résultat de trading."
+            )
 
 elif menu == "📊 Backtest":
     st.title("📊 Backtest Stratégie PrediScore")
