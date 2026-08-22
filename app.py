@@ -405,9 +405,16 @@ elif menu == "🧠 Analyse IA Pro":
                 with col3:
                     st.write(f"{detail} — **{interpretation}**")
 
-            st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal, "confiance": conf})
+            st.session_state.history.append({
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "actif": asset_name,
+                "score": score,
+                "signal": signal,
+                "confiance": conf,
+                "prix": float(df["Close"].iloc[-1])
+            })
             st.session_state["analysis_requested"] = False
-
+    
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
 
