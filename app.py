@@ -868,9 +868,9 @@ if nouvelle_notification:
         icon="🔔"
     )
     if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
-        else:
-            analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
-            if alertes:
+    else:
+        analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
+        if alertes:
                 alertes = sorted(alertes, key=lambda x: x["Score"], reverse=True)
                 st.success(f"🚨 {len(alertes)} opportunité(s) au-dessus de {seuil}/100")
                 st.subheader("🔥 Opportunités détectées")
