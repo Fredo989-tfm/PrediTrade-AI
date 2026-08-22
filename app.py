@@ -814,86 +814,78 @@ elif menu == "📄 Rapports":
 elif menu == "🔔 Alertes":
     st.title("🔔 Radar d'opportunités")
     st.markdown("PrediTrade analyse les données réelles du marché et détecte les actifs présentant un signal intéressant.")
+
     actifs_disponibles = []
     for categorie, actifs in ASSETS.items():
-        for nom in actifs.keys(): actifs_disponibles.append(nom)
+        for nom in actifs.keys():
+            actifs_disponibles.append(nom)
+
     actifs_choisis = st.multiselect("Actifs à surveiller", actifs_disponibles, default=["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"], key="radar_assets")
     seuil = st.slider("Seuil d'alerte PrediScore", min_value=50, max_value=95, value=75, step=5, key="radar_threshold")
+
     if st.button("🔎 Scanner les alertes", type="primary", use_container_width=True, key="scan_radar"):
-        if not actifs_choisis: st.warning("⚠️ Sélectionne au moins un actif à surveiller."); st.stop()
+        if not actifs_choisis:
+            st.warning("⚠️ Sélectionne au moins un actif."); st.stop()
+
         alertes = []; analyses = []
         with st.spinner("🔎 PrediTrade analyse les actifs sélectionnés..."):
             for nom in actifs_choisis:
-                categorie_trouvee = None; symbole_trouve = None
+                cat_trouvee = None; sym_trouve = None
                 for categorie, actifs in ASSETS.items():
-                    if nom in actifs: categorie_trouvee = categorie; symbole_trouve = actifs[nom]; break
-                if not symbole_trouve: continue
-                df = charger_donnees(symbole_trouve, categorie_trouvee)
+                    if nom in actifs:
+                        cat_trouvee = categorie
+                        sym_trouve = actifs[nom]
+                        break
+                if not sym_trouve: continue
+
+                df = charger_donnees(sym_trouve, cat_trouvee)
                 if df.empty: continue
-                ind = indicateurs(df)
-score, signal, confiance = prediscore(ind)
-dernier_prix = float(df["Close"].iloc[-1])
 
-analyses.append({
-    "Actif": nom,
-    "Catégorie": categorie_trouvee,
-    "Prix": dernier_prix,
-    "Score": score,
-    "Signal": signal,
-    "Confiance": confiance
-})
+                try:
+                    ind = indicateurs(df)
+                    # 👇 On renomme les variables pour éviter le conflit avec ind["signal"]
+                    p_score, p_signal, p_conf = prediscore(ind)
+                    dernier_prix = float(df["Close"].iloc[-1])
 
-if score >= seuil:
-    alertes.append({
-        "Actif": nom,
-        "Catégorie": categorie_trouvee,
-        "Prix": dernier_prix,
-        "Score": score,
-        "Signal": signal,
-        "Confiance": confiance
-    })
+                    analyses.append({"Actif": nom, "Catégorie": cat_trouvee, "Prix": dernier_prix, "Score": p_score, "Signal": p_signal, "Confiance": p_conf})
+                    if p_score >= seuil:
+                        alertes.append({"Actif": nom, "Catégorie": cat_trouvee, "Prix": dernier_prix, "Score": p_score, "Signal": p_signal, "Confiance": p_conf})
+                except Exception:
+                    continue
 
-# 🔔 Notification dans l'application
-nouvelle_notification = ajouter_notification(
-    nom,
-    score,
-    signal,
-    confiance
-)
-
-# 📱 Affichage immédiat pour l'utilisateur
-if nouvelle_notification:
-    st.toast(
-        f"🚨 {nom} — PrediScore {score}/100",
-        icon="🔔"
-    )
-    if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
-    else:
-        analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
-        if alertes:
+        if not analyses:
+            st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
+        else:
+            analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
+            if alertes:
                 alertes = sorted(alertes, key=lambda x: x["Score"], reverse=True)
                 st.success(f"🚨 {len(alertes)} opportunité(s) au-dessus de {seuil}/100")
                 st.subheader("🔥 Opportunités détectées")
                 for alerte in alertes:
-                    score = alerte["Score"]
-                    if score >= 90: niveau = "🔥 TRÈS FORTE"
-                    elif score >= 80: niveau = "🟢 FORTE"
+                    score_val = alerte["Score"]
+                    if score_val >= 90: niveau = "🔥 TRÈS FORTE"
+                    elif score_val >= 80: niveau = "🟢 FORTE"
                     else: niveau = "🟡 MODÉRÉE"
                     st.markdown(f"### {niveau} — {alerte['Actif']}")
                     c1, c2, c3 = st.columns(3)
-                    c1.metric("PrediScore", f"{score}/100"); c2.metric("Signal", alerte["Signal"]); c3.metric("Confiance", alerte["Confiance"])
+                    c1.metric("PrediScore", f"{score_val}/100"); c2.metric("Signal", alerte["Signal"]); c3.metric("Confiance", alerte["Confiance"])
                     st.caption(f"💰 Prix actuel : {alerte['Prix']:,.4f}"); st.divider()
-        else: st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
-        st.subheader("📊 État du marché")
-        df_analyses = pd.DataFrame(analyses)
-        if "Prix" in df_analyses.columns: df_analyses["Prix"] = df_analyses["Prix"].round(4)
-        st.dataframe(df_analyses, use_container_width=True, hide_index=True)
-        meilleur = analyses[0]
-        st.success(f"🏆 Meilleur actif actuellement : **{meilleur['Actif']}** — PrediScore **{meilleur['Score']}/100**")
-        proches = [a for a in analyses if a["Score"] < seuil]
-        if proches:
-            proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
-            st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
+            else:
+                st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
+
+            st.subheader("📊 État du marché")
+            df_analyses = pd.DataFrame(analyses)
+            if "Prix" in df_analyses.columns:
+                df_analyses["Prix"] = df_analyses["Prix"].round(4)
+            st.dataframe(df_analyses, use_container_width=True, hide_index=True)
+
+            meilleur = analyses[0]
+            st.success(f"🏆 Meilleur actif actuellement : **{meilleur['Actif']}** — PrediScore **{meilleur['Score']}/100**")
+
+            proches = [a for a in analyses if a["Score"] < seuil]
+            if proches:
+                proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
+                st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
 elif menu == "🔔 Notifications":
     st.title("🔔 Notifications")
 
