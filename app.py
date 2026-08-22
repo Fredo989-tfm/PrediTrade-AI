@@ -144,26 +144,25 @@ def charger_donnees(symbol, asset_type):
         if "Error Message" in data:
             st.error(f"❌ Alpha Vantage : {data['Error Message']}")
             return pd.DataFrame()
-
-if "Note" in data:
-    st.warning(f"⚠️ Alpha Vantage : {data['Note']}")
-    return pd.DataFrame()
-
-if "Information" in data:
-    st.warning(f"ℹ️ Alpha Vantage : {data['Information']}")
-    return pd.DataFrame() 
-        series = None
-        for key, value in data.items():
-            if isinstance(value, dict) and value:
-                if any(isinstance(v, dict) for v in value.values()):
-                    series = value
-                    break
-        if not series: return pd.DataFrame()
-        df = pd.DataFrame.from_dict(series, orient="index")
-        if df.empty: return pd.DataFrame()
-        df.index = pd.to_datetime(df.index, errors="coerce")
-        df = df[~df.index.isna()]
-        df.columns = [str(c).strip().lower() for c in df.columns]
+            
+        if "Note" in data:
+            st.warning(f"⚠️ Alpha Vantage : {data['Note']}")
+            return pd.DataFrame()
+            if "Information" in data:
+                st.warning(f"ℹ️ Alpha Vantage : {data['Information']}")
+                return pd.DataFrame() 
+                series = None
+                for key, value in data.items():
+                    if isinstance(value, dict) and value:
+                        if any(isinstance(v, dict) for v in value.values()):
+                            series = value
+                            break
+            if not series: return pd.DataFrame()
+                df = pd.DataFrame.from_dict(series, orient="index")
+            if df.empty: return pd.DataFrame()
+                df.index = pd.to_datetime(df.index, errors="coerce")
+            df = df[~df.index.isna()]
+            df.columns = [str(c).strip().lower() for c in df.columns]
         def trouver_colonne(possibles):
             for colonne in possibles:
                 if colonne in df.columns: return colonne
