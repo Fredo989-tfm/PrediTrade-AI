@@ -883,7 +883,7 @@ if nouvelle_notification:
                     c1, c2, c3 = st.columns(3)
                     c1.metric("PrediScore", f"{score}/100"); c2.metric("Signal", alerte["Signal"]); c3.metric("Confiance", alerte["Confiance"])
                     st.caption(f"💰 Prix actuel : {alerte['Prix']:,.4f}"); st.divider()
-            else: st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
+        else: st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
             st.subheader("📊 État du marché")
             df_analyses = pd.DataFrame(analyses)
             if "Prix" in df_analyses.columns: df_analyses["Prix"] = df_analyses["Prix"].round(4)
