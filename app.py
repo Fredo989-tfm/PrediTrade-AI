@@ -7,6 +7,7 @@ import numpy as np
 import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import hmac
 from streamlit_oauth import OAuth2Component
 #if not firebase_admin._apps:
     #firebase_config = dict(st.secrets["FIREBASE"])
@@ -403,6 +404,65 @@ try:
     CAMPAY_OK = True
 except:
     campay = None; CAMPAY_OK = False
+# ============================================================
+# 🔗 CONNEXION AUX PLATEFORMES
+# ============================================================
+
+def binance_signature(query_string, secret):
+    return hmac.new(
+        secret.encode("utf-8"),
+        query_string.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def tester_connexion_binance(api_key, api_secret):
+    try:
+        timestamp = int(time.time() * 1000)
+
+        params = {
+            "timestamp": timestamp,
+            "recvWindow": 5000
+        }
+
+        query_string = "&".join(
+            f"{key}={value}"
+            for key, value in params.items()
+        )
+
+        signature = binance_signature(
+            query_string,
+            api_secret
+        )
+
+        url = (
+            "https://api.binance.com/api/v3/account?"
+            f"{query_string}&signature={signature}"
+        )
+
+        headers = {
+            "X-MBX-APIKEY": api_key
+        }
+
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            return True, "Connexion Binance réussie."
+
+        try:
+            erreur = response.json()
+            message = erreur.get("msg", "Erreur inconnue.")
+        except:
+            message = response.text
+
+        return False, message
+
+    except Exception as e:
+        return False, str(e)
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg", width=80)
@@ -433,7 +493,7 @@ with st.sidebar:
         "📄 Rapports",
         "🔔 Alertes",
         "🔔 Alertes Pro",
-        "⚙️ Paiement"
+        "⚙️ Paiement", 
         "🔗 Connexions aux plateformes"
     ],
     key="main_menu_v512"
