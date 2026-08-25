@@ -1162,44 +1162,42 @@ elif menu == "🔗 Connexions aux plateformes":
             st.error(
                 "❌ Renseigne l'API Key et l'API Secret."
             ) 
-        def recuperer_compte_binance(api_key, api_secret):
-            try:
-                timestamp = int(time.time() * 1000)
-                params = {
-                    "timestamp": timestamp,
-                    "recvWindow": 5000
-                }
-                query_string = "&".join(
-                    f"{key}={value}"
-                    for key, value in params.items()
-                )
-                signature = binance_signature(
-                    query_string,
-                    api_secret
+    def recuperer_compte_binance(api_key, api_secret):
+        try:
+            timestamp = int(time.time() * 1000)
+            params = {
+                "timestamp": timestamp,
+                "recvWindow": 5000
+            }
+            query_string = "&".join(
+                f"{key}={value}"
+                for key, value in params.items()
+            )
+            signature = binance_signature(
+                query_string,
+                    
+                api_secret
 
-                )
-                url = (
-                    "https://api.binance.com/api/v3/account?"
-                    f"{query_string}&signature={signature}"
-                )
-                headers = {
-                    "X-MBX-APIKEY": api_key
-                }
-                response = requests.get(
-                    url,
-                    headers=headers,
-                    timeout=10
-                )
-
-        if response.status_code != 200:
-            try:
-                return None, response.json().get("msg", "Erreur Binance")
-            except:
-                return None, response.text
-
-        return response.json(), None
-
-    except Exception as e:
+            )
+            url = (
+                "https://api.binance.com/api/v3/account?"
+                f"{query_string}&signature={signature}"
+            )
+            headers = {
+                "X-MBX-APIKEY": api_key
+            }
+            response = requests.get(
+                url,
+                headers=headers,
+                timeout=10
+            )
+            if response.status_code != 200:
+                try:
+                    return None, response.json().get("msg", "Erreur Binance")
+                    except:
+                        return None, response.text
+                        return response.json(), None
+            except Exception as e:
         return None, str(e)
 
         else:
@@ -1255,11 +1253,8 @@ if compte:
     else:
         st.info(
             "ℹ️ Aucun solde disponible sur ce compte."
-        )
-
-else:
-
-    st.warning(
+        ) 
+    else: st.warning(
         f"⚠️ Connexion réussie, mais impossible de récupérer "
         f"les informations du compte : {erreur_compte}"
             )
