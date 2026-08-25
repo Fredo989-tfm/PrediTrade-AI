@@ -1194,22 +1194,19 @@ elif menu == "🔗 Connexions aux plateformes":
             if response.status_code != 200:
                 try:
                     return None, response.json().get("msg", "Erreur Binance")
-                    except:
-                        return None, response.text
-                        return response.json(), None
-            except Exception as e:
-        return None, str(e)
-
-        else:
-
-            with st.spinner(
-                "🔄 Vérification de la connexion Binance..."
-            ):
-
-                succes, message = tester_connexion_binance(
-                    api_key,
-                    api_secret
-                )
+                except:
+                    return None, response.text
+                    return response.json(), None
+                except Exception as e:
+                    return None, str(e)
+            else:
+                with st.spinner(
+                    "🔄 Vérification de la connexion Binance..."
+                ):
+                    succes, message = tester_connexion_binance(
+                        api_key,
+                        api_secret
+                    )
 
             if succes:
 
@@ -1219,17 +1216,13 @@ elif menu == "🔗 Connexions aux plateformes":
                     "✅ Connexion Binance réussie !"
                 )
                 compte, erreur_compte = recuperer_compte_binance(
-    api_key,
-    api_secret
-)
-
-if compte:
-
-    st.subheader("💰 Mon compte Binance")
-
-    balances = compte.get("balances", [])
-
-    balances_utiles = []
+                    api_key,
+                    api_secre
+                )
+            if compte:
+                st.subheader("💰 Mon compte Binance")
+                balances = compte.get("balances", [])
+                balances_utiles = []
 
     for balance in balances:
         free = float(balance.get("free", 0))
