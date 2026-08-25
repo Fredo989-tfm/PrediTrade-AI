@@ -9,19 +9,7 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import hmac
 from streamlit_oauth import OAuth2Component
-#if not firebase_admin._apps:
-    #firebase_config = dict(st.secrets["FIREBASE"])
-    #firebase_config["type"] = "service_account"
-    #firebase_config["private_key"] = firebase_config["private_key"].replace("\\n", "\n").strip()
-    #try:
-        #cred = credentials.Certificate(firebase_config)
-        #firebase_admin.initialize_app(cred)
-        #st.success("✅ Firebase connecté correctement.")
-    #except Exception as e:
-        #st.error("❌ Firebase refuse le certificat.")
-        #st.write("Type :", type(e).__name__)
-        #st.write("Erreur :", str(e))
-        #st.stop()
+
 APP_VERSION = "5.0.0"
 
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
@@ -33,124 +21,31 @@ def trial_active():
     trial_until = st.session_state.get("trial_until")
     if not trial_until: return False
     return datetime.now() < trial_until
-# ============================================================
-# 🔔 SYSTÈME DE NOTIFICATIONS PREDITRADE AI
-# ============================================================
 
 def initialiser_notifications():
     if "notifications" not in st.session_state:
         st.session_state.notifications = []
-    
     if "notification_preferences" not in st.session_state:
         st.session_state.notification_preferences = {
-            "enabled": True,
-            "threshold": 75,
+            "enabled": True, "threshold": 75,
             "assets": ["Bitcoin (BTC)", "Ethereum (ETH)", "NVIDIA (NVDA)"],
-            "buy_strong": True,
-            "buy": True,
-            "sell": False
+            "buy_strong": True, "buy": True, "sell": False
         }
-
 
 def ajouter_notification(actif, score, signal, confiance):
     initialiser_notifications()
-
     notification = {
-        "id": hashlib.md5(
-            f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()
-        ).hexdigest(),
-        "actif": actif,
-        "score": score,
-        "signal": signal,
-        "confiance": confiance,
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "lu": False
+        "id": hashlib.md5(f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()).hexdigest(),
+        "actif": actif, "score": score, "signal": signal, "confiance": confiance,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "lu": False
     }
-
-    # Évite les doublons immédiats
     for ancienne in st.session_state.notifications[-10:]:
-        if (
-            ancienne["actif"] == actif
-            and ancienne["signal"] == signal
-            and ancienne["score"] == score
-        ):
+        if ancienne["actif"] == actif and ancienne["signal"] == signal and ancienne["score"] == score:
             return False
-
     st.session_state.notifications.append(notification)
-
-    # Maximum 50 notifications conservées
     if len(st.session_state.notifications) > 50:
         st.session_state.notifications = st.session_state.notifications[-50:]
-
     return True
-
-
-def scanner_notifications():
-    initialiser_notifications()
-
-    preferences = st.session_state.notification_preferences
-
-    if not preferences.get("enabled", True):
-        return []
-
-    alertes = []
-
-    for nom in preferences.get("assets", []):
-        categorie_trouvee = None
-        symbole_trouve = None
-
-        for categorie, actifs in ASSETS.items():
-            if nom in actifs:
-                categorie_trouvee = categorie
-                symbole_trouve = actifs[nom]
-                break
-
-        if not symbole_trouve:
-            continue
-
-        try:
-            df = charger_donnees(symbole_trouve, categorie_trouvee)
-
-            if df.empty:
-                continue
-
-            ind = indicateurs(df)
-            score, signal, confiance = prediscore(ind)
-
-            if score < preferences.get("threshold", 75):
-                continue
-
-            autorise = False
-
-            if "ACHAT FORT" in signal and preferences.get("buy_strong", True):
-                autorise = True
-
-            elif signal == "🟢 ACHAT" and preferences.get("buy", True):
-                autorise = True
-
-            elif "VENTE" in signal and preferences.get("sell", False):
-                autorise = True
-
-            if autorise:
-                nouvelle = ajouter_notification(
-                    nom,
-                    score,
-                    signal,
-                    confiance
-                )
-
-                if nouvelle:
-                    alertes.append({
-                        "Actif": nom,
-                        "Score": score,
-                        "Signal": signal,
-                        "Confiance": confiance
-                    })
-
-        except Exception:
-            continue
-
-    return alertes
 
 def landing_page():
     st.title("🚀 PrediTrade AI Pro")
@@ -234,13 +129,12 @@ if not st.session_state.get("logged_in", False):
     if st.session_state.get("show_landing", True): landing_page()
     else: login_page()
     st.stop()
+
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
     try:
-        # 1. CRYPTO -> Binance (gratuit, illimité)
         if asset_type == "Crypto":
             try:
-                # BTC -> BTCUSDT
                 binance_symbol = f"{symbol}USDT"
                 url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
                 r = requests.get(url, timeout=10)
@@ -248,83 +142,42 @@ def charger_donnees(symbol, asset_type):
                     data = r.json()
                     if isinstance(data, list) and len(data) > 20:
                         df = pd.DataFrame(data, columns=["time","Open","High","Low","Close","vol","close_time","qav","trades","taker_base","taker_quote","ignore"])
-                        df["Close"] = pd.to_numeric(df["Close"])
-                        df["Open"] = pd.to_numeric(df["Open"])
-                        df["High"] = pd.to_numeric(df["High"])
-                        df["Low"] = pd.to_numeric(df["Low"])
+                        df["Close"] = pd.to_numeric(df["Close"]); df["Open"] = pd.to_numeric(df["Open"]); df["High"] = pd.to_numeric(df["High"]); df["Low"] = pd.to_numeric(df["Low"])
                         df.index = pd.to_datetime(df["time"], unit='ms')
                         df = df[["Open","High","Low","Close"]].sort_index()
                         return df
-            except:
-                pass
-
-        # 2. TOUT LE RESTE -> Yahoo Finance (gratuit, sans clé)
-        # On mappe tes symboles vers Yahoo
-        yahoo_map = {
-            "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
-            "XAU": "GC=F", "WTI": "CL=F", "BRENT": "BZ=F", "XAG": "SI=F",
-            "SPY": "SPY", "QQQ": "QQQ", "DIA": "DIA"
-        }
+            except: pass
+        yahoo_map = {"EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X", "XAU": "GC=F", "WTI": "CL=F", "BRENT": "BZ=F", "XAG": "SI=F", "SPY": "SPY", "QQQ": "QQQ", "DIA": "DIA"}
         yahoo_symbol = yahoo_map.get(symbol, symbol)
-        if asset_type == "Crypto":
-            yahoo_symbol = f"{symbol}-USD"
-
-        # API Yahoo chart sans librairie
+        if asset_type == "Crypto": yahoo_symbol = f"{symbol}-USD"
         url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}?range=1y&interval=1d"
         headers = {"User-Agent": "Mozilla/5.0"}
         r = requests.get(url, headers=headers, timeout=15)
-        if not r.ok:
-            return pd.DataFrame()
-        data = r.json()
-        result = data.get("chart", {}).get("result", [])
-        if not result:
-            return pd.DataFrame()
-
-        quotes = result[0].get("indicators", {}).get("quote", [{}])[0]
-        timestamps = result[0].get("timestamp", [])
-        if not quotes or not timestamps:
-            return pd.DataFrame()
-
-        df = pd.DataFrame({
-            "Open": quotes.get("open", []),
-            "High": quotes.get("high", []),
-            "Low": quotes.get("low", []),
-            "Close": quotes.get("close", []),
-        })
-        df.index = pd.to_datetime(timestamps, unit='s')
-        df = df.dropna().sort_index()
-        if len(df) < 20:
-            return pd.DataFrame()
+        if not r.ok: return pd.DataFrame()
+        data = r.json(); result = data.get("chart", {}).get("result", [])
+        if not result: return pd.DataFrame()
+        quotes = result[0].get("indicators", {}).get("quote", [{}])[0]; timestamps = result[0].get("timestamp", [])
+        if not quotes or not timestamps: return pd.DataFrame()
+        df = pd.DataFrame({"Open": quotes.get("open", []), "High": quotes.get("high", []), "Low": quotes.get("low", []), "Close": quotes.get("close", []),})
+        df.index = pd.to_datetime(timestamps, unit='s'); df = df.dropna().sort_index()
+        if len(df) < 20: return pd.DataFrame()
         return df
-
-    except Exception as e:
-        # print(e) pour debug dans logs Streamlit
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
 def indicateurs(df):
     close = df["Close"]
-    ema20 = close.ewm(span=20, adjust=False).mean()
-    ema50 = close.ewm(span=50, adjust=False).mean()
-    ema200 = close.ewm(span=200, adjust=False).mean()
-    delta = close.diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = -delta.clip(upper=0).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi = 100 - (100 / (1 + rs)) 
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26
-    signal = macd.ewm(span=9, adjust=False).mean()
-    histogram = macd - signal
-    momentum = close.pct_change(10) * 100
-    volatility = close.pct_change().rolling(14).std() * 100
+    ema20 = close.ewm(span=20, adjust=False).mean(); ema50 = close.ewm(span=50, adjust=False).mean(); ema200 = close.ewm(span=200, adjust=False).mean()
+    delta = close.diff(); gain = delta.clip(lower=0).rolling(14).mean(); loss = -delta.clip(upper=0).rolling(14).mean()
+    rs = gain / loss.replace(0, np.nan); rsi = 100 - (100 / (1 + rs))
+    ema12 = close.ewm(span=12, adjust=False).mean(); ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26; signal = macd.ewm(span=9, adjust=False).mean(); histogram = macd - signal
+    momentum = close.pct_change(10) * 100; volatility = close.pct_change().rolling(14).std() * 100
     return {"close": close,"ema20": ema20,"ema50": ema50,"ema200": ema200,"rsi": rsi,"macd": macd,"signal": signal,"histogram": histogram,"momentum": momentum,"volatility": volatility}
 
 def prediscore(ind):
     close = ind["close"]
     if len(close) < 50: return 50, "🟡 ATTENDRE", "Faible"
-    prix = float(close.iloc[-1])
-    ema20 = float(ind["ema20"].iloc[-1]); ema50 = float(ind["ema50"].iloc[-1]); ema200 = float(ind["ema200"].iloc[-1])
+    prix = float(close.iloc[-1]); ema20 = float(ind["ema20"].iloc[-1]); ema50 = float(ind["ema50"].iloc[-1]); ema200 = float(ind["ema200"].iloc[-1])
     rsi = float(ind["rsi"].iloc[-1]); macd = float(ind["macd"].iloc[-1]); signal = float(ind["signal"].iloc[-1]); momentum = float(ind["momentum"].iloc[-1])
     score = 50.0
     if ema20 > ema50: score += 15
@@ -402,67 +255,67 @@ try:
     from campay.sdk import Client as CamPayClient
     campay = CamPayClient({"app_username": st.secrets["CAMPAY_USERNAME"],"app_password": st.secrets["CAMPAY_PASSWORD"],"environment": "DEV"})
     CAMPAY_OK = True
-except:
-    campay = None; CAMPAY_OK = False
-# ============================================================
-# 🔗 CONNEXION AUX PLATEFORMES
-# ============================================================
+except: campay = None; CAMPAY_OK = False
 
 def binance_signature(query_string, secret):
-    return hmac.new(
-        secret.encode("utf-8"),
-        query_string.encode("utf-8"),
-        hashlib.sha256
-    ).hexdigest()
-
+    return hmac.new(secret.encode("utf-8"), query_string.encode("utf-8"), hashlib.sha256).hexdigest()
 
 def tester_connexion_binance(api_key, api_secret):
     try:
         timestamp = int(time.time() * 1000)
-
-        params = {
-            "timestamp": timestamp,
-            "recvWindow": 5000
-        }
-
-        query_string = "&".join(
-            f"{key}={value}"
-            for key, value in params.items()
-        )
-
-        signature = binance_signature(
-            query_string,
-            api_secret
-        )
-
-        url = (
-            "https://api.binance.com/api/v3/account?"
-            f"{query_string}&signature={signature}"
-        )
-
-        headers = {
-            "X-MBX-APIKEY": api_key
-        }
-
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=10
-        )
-
+        params = {"timestamp": timestamp, "recvWindow": 5000}
+        query_string = "&".join(f"{key}={value}" for key, value in params.items())
+        signature = binance_signature(query_string, api_secret)
+        url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        headers = {"X-MBX-APIKEY": api_key}
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             return True, "Connexion Binance réussie."
-
-        try:
-            erreur = response.json()
-            message = erreur.get("msg", "Erreur inconnue.")
-        except:
-            message = response.text
-
+        try: message = response.json().get("msg", "Erreur inconnue.")
+        except: message = response.text
         return False, message
-
     except Exception as e:
         return False, str(e)
+
+def recuperer_compte_binance(api_key, api_secret):
+    try:
+        timestamp = int(time.time() * 1000)
+        params = {"timestamp": timestamp, "recvWindow": 5000}
+        query_string = "&".join(f"{key}={value}" for key, value in params.items())
+        signature = binance_signature(query_string, api_secret)
+        url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        headers = {"X-MBX-APIKEY": api_key}
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code!= 200:
+            try: return None, response.json().get("msg", "Erreur Binance")
+            except: return None, response.text
+        return response.json(), None
+    except Exception as e:
+        return None, str(e)
+
+def scanner_notifications_complet():
+    initialiser_notifications()
+    preferences = st.session_state.notification_preferences
+    if not preferences.get("enabled", True): return []
+    alertes = []
+    for nom in preferences.get("assets", []):
+        cat_trouvee = None; sym_trouve = None
+        for categorie, actifs in ASSETS.items():
+            if nom in actifs: cat_trouvee = categorie; sym_trouve = actifs[nom]; break
+        if not sym_trouve: continue
+        try:
+            df = charger_donnees(sym_trouve, cat_trouvee)
+            if df.empty: continue
+            ind = indicateurs(df); score, signal, confiance = prediscore(ind)
+            if score < preferences.get("threshold", 75): continue
+            autorise = False
+            if "ACHAT FORT" in signal and preferences.get("buy_strong", True): autorise = True
+            elif signal == "🟢 ACHAT" and preferences.get("buy", True): autorise = True
+            elif "VENTE" in signal and preferences.get("sell", False): autorise = True
+            if autorise and ajouter_notification(nom, score, signal, confiance):
+                alertes.append({"Actif": nom, "Score": score, "Signal": signal, "Confiance": confiance})
+        except: continue
+    return alertes
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg", width=80)
@@ -478,26 +331,7 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash", f"${st.session_state.cash:,.2f}")
     st.metric("📈 Analyses", len(st.session_state.history))
-    menu = st.radio(
-    "Navigation",
-    [
-        "📊 Tableau de bord",
-        "🧠 Analyse IA Pro",
-        "🔍 Scanner intelligent",
-        "⚖️ Comparaison",
-        "💼 Portefeuille",
-        "🛡️ Gestion du risque",
-        "📊 Backtest",
-        "📚 Historique",
-        "🤖 Assistant IA",
-        "📄 Rapports",
-        "🔔 Alertes",
-        "🔔 Alertes Pro",
-        "⚙️ Paiement", 
-        "🔗 Connexions aux plateformes"
-    ],
-    key="main_menu_v512"
-)
+    menu = st.radio("Navigation", ["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"], key="main_menu_v512")
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
@@ -517,22 +351,16 @@ if menu == "📊 Tableau de bord":
 
 elif menu == "🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
-    st.image("IMG-20260810-WA1501.jpg", width=80)
     asset_cat = st.selectbox("Catégorie", list(ASSETS.keys()))
     asset_name = st.selectbox("Actif", list(ASSETS.get(asset_cat, {}).keys()))
     if st.button("🚀 Lancer l'analyse", type="primary", use_container_width=True, key="launch_analysis"):
-        st.session_state["analysis_requested"] = True
-    if st.session_state.get("analysis_requested", False):
         with st.spinner("🤖 Analyse du marché en cours..."):
             symbol = ASSETS[asset_cat][asset_name]
             df = charger_donnees(symbol, asset_cat)
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données pour {asset_name}.")
-            st.info("Vérifie ta clé Alpha Vantage dans Secrets et réessaie.")
-            st.session_state["analysis_requested"] = False
         else:
-            ind = indicateurs(df)
-            score, signal, conf = prediscore(ind)
+            ind = indicateurs(df); score, signal, conf = prediscore(ind)
             c1, c2, c3 = st.columns(3)
             c1.metric("PrediScore", f"{score}/100"); c2.metric("Signal", signal); c3.metric("Confiance", conf)
             chart_df = df.tail(150).copy()
@@ -552,7 +380,6 @@ elif menu == "🧠 Analyse IA Pro":
                 with col2: st.write(f"**{indicateur}**")
                 with col3: st.write(f"{detail} — **{interpretation}**")
             st.session_state.history.append({"date": datetime.now().strftime("%Y-%m-%d %H:%M"), "actif": asset_name, "score": score, "signal": signal, "confiance": conf, "prix": float(df["Close"].iloc[-1])})
-            st.session_state["analysis_requested"] = False
 
 elif menu == "🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
@@ -647,187 +474,50 @@ elif menu == "💼 Portefeuille":
     if st.session_state.portfolio: st.json(st.session_state.portfolio)
     st.subheader("Historique des opérations")
     if st.session_state.operations: st.dataframe(pd.DataFrame(st.session_state.operations), use_container_width=True)
+
 elif menu == "🛡️ Gestion du risque":
     st.title("🛡️ Gestion intelligente du risque")
     st.markdown("### Protège ton capital avant chaque opération")
-
-    st.info(
-        "💡 PrediTrade calcule automatiquement le risque, "
-        "la taille de position, le Stop-Loss et le Take-Profit."
-    )
-
+    st.info("💡 PrediTrade calcule automatiquement le risque, la taille de position, le Stop-Loss et le Take-Profit.")
     col1, col2 = st.columns(2)
-
     with col1:
-        capital = st.number_input(
-            "💰 Capital disponible ($)",
-            min_value=10.0,
-            value=float(st.session_state.cash),
-            step=100.0,
-            key="risk_capital"
-        )
-
-        risque_pct = st.slider(
-            "⚠️ Risque par opération (%)",
-            min_value=0.5,
-            max_value=5.0,
-            value=1.0,
-            step=0.5,
-            key="risk_percent"
-        )
-
-        risk_cat = st.selectbox(
-            "Catégorie",
-            list(ASSETS.keys()),
-            key="risk_category"
-        )
-
-        risk_asset = st.selectbox(
-            "Actif",
-            list(ASSETS[risk_cat].keys()),
-            key="risk_asset"
-        )
-
+        capital = st.number_input("💰 Capital disponible ($)", min_value=10.0, value=float(st.session_state.cash), step=100.0, key="risk_capital")
+        risque_pct = st.slider("⚠️ Risque par opération (%)", min_value=0.5, max_value=5.0, value=1.0, step=0.5, key="risk_percent")
+        risk_cat = st.selectbox("Catégorie", list(ASSETS.keys()), key="risk_category")
+        risk_asset = st.selectbox("Actif", list(ASSETS[risk_cat].keys()), key="risk_asset")
     with col2:
-        df_risk = charger_donnees(
-            ASSETS[risk_cat][risk_asset],
-            risk_cat
-        )
-
+        df_risk = charger_donnees(ASSETS[risk_cat][risk_asset], risk_cat)
         if not df_risk.empty:
-            prix_actuel = float(df_risk["Close"].iloc[-1])
-            st.metric(
-                "📊 Prix actuel",
-                f"${prix_actuel:,.4f}"
-            )
+            prix_actuel = float(df_risk["Close"].iloc[-1]); st.metric("📊 Prix actuel", f"${prix_actuel:,.4f}")
         else:
-            prix_actuel = 0.0
-            st.warning("⚠️ Prix indisponible.")
-
-        prix_entree = st.number_input(
-            "🎯 Prix d'entrée ($)",
-            min_value=0.0001,
-            value=max(prix_actuel, 0.0001),
-            step=0.01,
-            format="%.4f",
-            key="risk_entry"
-        )
-
-        stop_pct = st.slider(
-            "🛑 Stop-Loss (%)",
-            min_value=0.5,
-            max_value=20.0,
-            value=2.0,
-            step=0.5,
-            key="risk_stop"
-        )
-
-        take_pct = st.slider(
-            "🎯 Take-Profit (%)",
-            min_value=1.0,
-            max_value=50.0,
-            value=4.0,
-            step=0.5,
-            key="risk_take"
-        )
-
+            prix_actuel = 0.0; st.warning("⚠️ Prix indisponible.")
+        prix_entree = st.number_input("🎯 Prix d'entrée ($)", min_value=0.0001, value=max(prix_actuel, 0.0001), step=0.01, format="%.4f", key="risk_entry")
+        stop_pct = st.slider("🛑 Stop-Loss (%)", min_value=0.5, max_value=20.0, value=2.0, step=0.5, key="risk_stop")
+        take_pct = st.slider("🎯 Take-Profit (%)", min_value=1.0, max_value=50.0, value=4.0, step=0.5, key="risk_take")
     st.divider()
-
     risque_montant = capital * risque_pct / 100
-
-    stop_loss = prix_entree * (1 - stop_pct / 100)
-    take_profit = prix_entree * (1 + take_pct / 100)
-
+    stop_loss = prix_entree * (1 - stop_pct / 100); take_profit = prix_entree * (1 + take_pct / 100)
     distance_stop = abs(prix_entree - stop_loss)
-
-    if distance_stop > 0:
-        quantite = risque_montant / distance_stop
-    else:
-        quantite = 0
-
-    valeur_position = quantite * prix_entree
-    gain_potentiel = abs(take_profit - prix_entree) * quantite
-
-    ratio_rr = (
-        gain_potentiel / risque_montant
-        if risque_montant > 0
-        else 0
-    )
-
-    if risque_pct <= 1:
-        niveau = "🟢 Faible"
-    elif risque_pct <= 2:
-        niveau = "🟡 Modéré"
-    elif risque_pct <= 3:
-        niveau = "🟠 Élevé"
-    else:
-        niveau = "🔴 Très élevé"
-
+    quantite = risque_montant / distance_stop if distance_stop > 0 else 0
+    valeur_position = quantite * prix_entree; gain_potentiel = abs(take_profit - prix_entree) * quantite
+    ratio_rr = gain_potentiel / risque_montant if risque_montant > 0 else 0
+    if risque_pct <= 1: niveau = "🟢 Faible"
+    elif risque_pct <= 2: niveau = "🟡 Modéré"
+    elif risque_pct <= 3: niveau = "🟠 Élevé"
+    else: niveau = "🔴 Très élevé"
     st.subheader("📊 Plan de risque")
-
     c1, c2, c3 = st.columns(3)
-
-    c1.metric(
-        "💰 Risque maximal",
-        f"${risque_montant:,.2f}"
-    )
-
-    c2.metric(
-        "📦 Taille de position",
-        f"{quantite:,.6f}"
-    )
-
-    c3.metric(
-        "⚠️ Niveau de risque",
-        niveau
-    )
-
+    c1.metric("💰 Risque maximal", f"${risque_montant:,.2f}"); c2.metric("📦 Taille de position", f"{quantite:,.6f}"); c3.metric("⚠️ Niveau de risque", niveau)
     st.divider()
-
     c1, c2 = st.columns(2)
-
-    with c1:
-        st.metric(
-            "🛑 Stop-Loss",
-            f"${stop_loss:,.4f}"
-        )
-
-        st.metric(
-            "💵 Valeur de la position",
-            f"${valeur_position:,.2f}"
-        )
-
-    with c2:
-        st.metric(
-            "🎯 Take-Profit",
-            f"${take_profit:,.4f}"
-        )
-
-        st.metric(
-            "📈 Gain potentiel",
-            f"${gain_potentiel:,.2f}"
-        )
-
+    with c1: st.metric("🛑 Stop-Loss", f"${stop_loss:,.4f}"); st.metric("💵 Valeur de la position", f"${valeur_position:,.2f}")
+    with c2: st.metric("🎯 Take-Profit", f"${take_profit:,.4f}"); st.metric("📈 Gain potentiel", f"${gain_potentiel:,.2f}")
     st.divider()
-
     st.subheader("⚖️ Ratio risque / rendement")
-
-    if ratio_rr >= 2:
-        st.success(
-            f"✅ Ratio 1:{ratio_rr:.2f} — configuration favorable."
-        )
-    elif ratio_rr >= 1:
-        st.warning(
-            f"⚠️ Ratio 1:{ratio_rr:.2f} — prudence."
-        )
-    else:
-        st.error(
-            f"🔴 Ratio 1:{ratio_rr:.2f} — risque supérieur au gain potentiel."
-        )
-
-    st.caption(
-        "⚠️ Calcul indicatif. Il ne garantit aucun résultat de trading."
-            )
+    if ratio_rr >= 2: st.success(f"✅ Ratio 1:{ratio_rr:.2f} — configuration favorable.")
+    elif ratio_rr >= 1: st.warning(f"⚠️ Ratio 1:{ratio_rr:.2f} — prudence.")
+    else: st.error(f"🔴 Ratio 1:{ratio_rr:.2f} — risque supérieur au gain potentiel.")
+    st.caption("⚠️ Calcul indicatif. Il ne garantit aucun résultat de trading.")
 
 elif menu == "📊 Backtest":
     st.title("📊 Backtest Stratégie PrediScore")
@@ -875,47 +565,28 @@ elif menu == "📄 Rapports":
 elif menu == "🔔 Alertes":
     st.title("🔔 Radar d'opportunités")
     st.markdown("PrediTrade analyse les données réelles du marché et détecte les actifs présentant un signal intéressant.")
-
     actifs_disponibles = []
     for categorie, actifs in ASSETS.items():
-        for nom in actifs.keys():
-            actifs_disponibles.append(nom)
-
+        for nom in actifs.keys(): actifs_disponibles.append(nom)
     actifs_choisis = st.multiselect("Actifs à surveiller", actifs_disponibles, default=["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"], key="radar_assets")
     seuil = st.slider("Seuil d'alerte PrediScore", min_value=50, max_value=95, value=75, step=5, key="radar_threshold")
-
     if st.button("🔎 Scanner les alertes", type="primary", use_container_width=True, key="scan_radar"):
-        if not actifs_choisis:
-            st.warning("⚠️ Sélectionne au moins un actif."); st.stop()
-
+        if not actifs_choisis: st.warning("⚠️ Sélectionne au moins un actif."); st.stop()
         alertes = []; analyses = []
         with st.spinner("🔎 PrediTrade analyse les actifs sélectionnés..."):
             for nom in actifs_choisis:
                 cat_trouvee = None; sym_trouve = None
                 for categorie, actifs in ASSETS.items():
-                    if nom in actifs:
-                        cat_trouvee = categorie
-                        sym_trouve = actifs[nom]
-                        break
+                    if nom in actifs: cat_trouvee = categorie; sym_trouve = actifs[nom]; break
                 if not sym_trouve: continue
-
                 df = charger_donnees(sym_trouve, cat_trouvee)
                 if df.empty: continue
-
                 try:
-                    ind = indicateurs(df)
-                    # 👇 On renomme les variables pour éviter le conflit avec ind["signal"]
-                    p_score, p_signal, p_conf = prediscore(ind)
-                    dernier_prix = float(df["Close"].iloc[-1])
-
+                    ind = indicateurs(df); p_score, p_signal, p_conf = prediscore(ind); dernier_prix = float(df["Close"].iloc[-1])
                     analyses.append({"Actif": nom, "Catégorie": cat_trouvee, "Prix": dernier_prix, "Score": p_score, "Signal": p_signal, "Confiance": p_conf})
-                    if p_score >= seuil:
-                        alertes.append({"Actif": nom, "Catégorie": cat_trouvee, "Prix": dernier_prix, "Score": p_score, "Signal": p_signal, "Confiance": p_conf})
-                except Exception:
-                    continue
-
-        if not analyses:
-            st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
+                    if p_score >= seuil: alertes.append({"Actif": nom, "Catégorie": cat_trouvee, "Prix": dernier_prix, "Score": p_score, "Signal": p_signal, "Confiance": p_conf})
+                except: continue
+        if not analyses: st.error("❌ Impossible de récupérer les données des actifs sélectionnés.")
         else:
             analyses = sorted(analyses, key=lambda x: x["Score"], reverse=True)
             if alertes:
@@ -931,145 +602,48 @@ elif menu == "🔔 Alertes":
                     c1, c2, c3 = st.columns(3)
                     c1.metric("PrediScore", f"{score_val}/100"); c2.metric("Signal", alerte["Signal"]); c3.metric("Confiance", alerte["Confiance"])
                     st.caption(f"💰 Prix actuel : {alerte['Prix']:,.4f}"); st.divider()
-            else:
-                st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
-
+            else: st.info(f"🔎 Aucune opportunité n'atteint le seuil de {seuil}/100 actuellement.")
             st.subheader("📊 État du marché")
             df_analyses = pd.DataFrame(analyses)
-            if "Prix" in df_analyses.columns:
-                df_analyses["Prix"] = df_analyses["Prix"].round(4)
+            if "Prix" in df_analyses.columns: df_analyses["Prix"] = df_analyses["Prix"].round(4)
             st.dataframe(df_analyses, use_container_width=True, hide_index=True)
-
             meilleur = analyses[0]
             st.success(f"🏆 Meilleur actif actuellement : **{meilleur['Actif']}** — PrediScore **{meilleur['Score']}/100**")
 
-            proches = [a for a in analyses if a["Score"] < seuil]
-            if proches:
-                proche = max(proches, key=lambda x: x["Score"]); ecart = seuil - proche["Score"]
-                st.warning(f"👀 À surveiller : **{proche['Actif']}** est à **{proche['Score']}/100**, soit seulement **{ecart} point(s)** du seuil de {seuil}.")
 elif menu == "🔔 Notifications":
     st.title("🔔 Notifications")
-
     initialiser_notifications()
-
-    st.markdown(
-        "Configure les alertes que PrediTrade doit surveiller pendant "
-        "que tu utilises l'application."
-    )
-
+    st.markdown("Configure les alertes que PrediTrade doit surveiller pendant que tu utilises l'application.")
     preferences = st.session_state.notification_preferences
-
     st.subheader("⚙️ Préférences")
-
-    preferences["enabled"] = st.toggle(
-        "🔔 Activer les notifications",
-        value=preferences.get("enabled", True)
-    )
-
-    preferences["threshold"] = st.slider(
-        "🎯 Seuil minimum du PrediScore",
-        min_value=50,
-        max_value=95,
-        value=preferences.get("threshold", 75),
-        step=5
-    )
-
+    preferences["enabled"] = st.toggle("🔔 Activer les notifications", value=preferences.get("enabled", True))
+    preferences["threshold"] = st.slider("🎯 Seuil minimum du PrediScore", min_value=50, max_value=95, value=preferences.get("threshold", 75), step=5)
     actifs_disponibles = []
-
-    for categorie, actifs in ASSETS.items():
-        actifs_disponibles.extend(list(actifs.keys()))
-
-    preferences["assets"] = st.multiselect(
-        "📊 Actifs surveillés",
-        actifs_disponibles,
-        default=[
-            actif for actif in preferences.get("assets", [])
-            if actif in actifs_disponibles
-        ]
-    )
-
+    for categorie, actifs in ASSETS.items(): actifs_disponibles.extend(list(actifs.keys()))
+    preferences["assets"] = st.multiselect("📊 Actifs surveillés", actifs_disponibles, default=[actif for actif in preferences.get("assets", []) if actif in actifs_disponibles])
     st.subheader("📢 Types d'alertes")
-
-    preferences["buy_strong"] = st.checkbox(
-        "🔥 Achat fort",
-        value=preferences.get("buy_strong", True)
-    )
-
-    preferences["buy"] = st.checkbox(
-        "🟢 Achat",
-        value=preferences.get("buy", True)
-    )
-
-    preferences["sell"] = st.checkbox(
-        "🔴 Vente",
-        value=preferences.get("sell", False)
-    )
-
+    preferences["buy_strong"] = st.checkbox("🔥 Achat fort", value=preferences.get("buy_strong", True))
+    preferences["buy"] = st.checkbox("🟢 Achat", value=preferences.get("buy", True))
+    preferences["sell"] = st.checkbox("🔴 Vente", value=preferences.get("sell", False))
     st.session_state.notification_preferences = preferences
-
     st.divider()
-
-    if st.button(
-        "🔎 Vérifier maintenant",
-        type="primary",
-        use_container_width=True
-    ):
-        with st.spinner("🔎 Analyse des marchés..."):
-
-            nouvelles_alertes = scanner_notifications()
-
+    if st.button("🔎 Vérifier maintenant", type="primary", use_container_width=True):
+        with st.spinner("🔎 Analyse des marchés..."): nouvelles_alertes = scanner_notifications_complet()
         if nouvelles_alertes:
-            st.success(
-                f"🚨 {len(nouvelles_alertes)} nouvelle(s) alerte(s) détectée(s) !"
-            )
-
-            for alerte in nouvelles_alertes:
-                st.warning(
-                    f"🚨 {alerte['Actif']} — "
-                    f"PrediScore {alerte['Score']}/100 — "
-                    f"{alerte['Signal']}"
-                )
-        else:
-            st.info(
-                "🔎 Aucune nouvelle alerte correspondant à tes critères."
-            )
-
+            st.success(f"🚨 {len(nouvelles_alertes)} nouvelle(s) alerte(s) détectée(s)!")
+            for alerte in nouvelles_alertes: st.warning(f"🚨 {alerte['Actif']} — PrediScore {alerte['Score']}/100 — {alerte['Signal']}")
+        else: st.info("🔎 Aucune nouvelle alerte correspondant à tes critères.")
     st.divider()
-
     st.subheader("📬 Mes dernières notifications")
-
     notifications = st.session_state.notifications
-
-    if not notifications:
-        st.info("📭 Aucune notification pour le moment.")
+    if not notifications: st.info("📭 Aucune notification pour le moment.")
     else:
         for notification in reversed(notifications):
-
-            if notification["lu"]:
-                prefix = "📖"
-            else:
-                prefix = "🔴"
-
-            st.markdown(
-                f"""
-                {prefix} **{notification['actif']}**
-                
-                PrediScore : **{notification['score']}/100**  
-                Signal : **{notification['signal']}**  
-                Confiance : **{notification['confiance']}**  
-                🕐 {notification['date']}
-                """
-            )
-
+            prefix = "📖" if notification["lu"] else "🔴"
+            st.markdown(f"{prefix} **{notification['actif']}**\n\nPrediScore : **{notification['score']}/100** \nSignal : **{notification['signal']}** \nConfiance : **{notification['confiance']}** \n🕐 {notification['date']}")
             st.divider()
-
-        if st.button(
-            "✅ Marquer toutes les notifications comme lues",
-            use_container_width=True
-        ):
-            for notification in st.session_state.notifications:
-                notification["lu"] = True
-
+        if st.button("✅ Marquer toutes les notifications comme lues", use_container_width=True):
+            for notification in st.session_state.notifications: notification["lu"] = True
             st.rerun()
 
 elif menu == "🔔 Alertes Pro":
@@ -1083,256 +657,60 @@ elif menu == "🔔 Alertes Pro":
         if st.button("3. Activer les Push 24/24"):
             db.reference('users_premium').push({'email': st.session_state.user_email, 'token': token_fcm, 'actifs': actifs_choisis, 'date': datetime.now().isoformat()})
             st.success(f"✅ C'est bon! Le cloud scanne {actifs_choisis} pour toi H24"); st.info("Tu vas recevoir la notif même si l'app est fermée")
+
 elif menu == "🔗 Connexions aux plateformes":
-
     st.title("🔗 Connexions aux plateformes")
-
-    st.markdown(
-        "Connecte progressivement tes plateformes de trading "
-        "à PrediTrade AI pour centraliser tes données."
-    )
-
-    st.info(
-        "🛡️ Première étape : connexion Binance en lecture seule. "
-        "PrediTrade AI ne passera aucun ordre réel."
-    )
-
+    st.markdown("Connecte progressivement tes plateformes de trading à PrediTrade AI pour centraliser tes données.")
+    st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
     st.divider()
-
-    # ========================================================
-    # BINANCE
-    # ========================================================
-
     st.subheader("🟡 Binance")
-
-    if st.session_state.get("binance_connected", False):
-        st.success("🟢 Binance connecté — Lecture seule")
-    else:
-        st.warning("⚪ Binance non connecté")
-
-    st.markdown(
-        """
-        **Ce que PrediTrade pourra faire :**
-        - 📊 Lire les informations du compte
-        - 💰 Consulter les soldes
-        - 📈 Suivre les positions
-        - 🔎 Croiser les données avec le PrediScore
-
-        **Ce qu'il ne pourra pas faire :**
-        - ❌ Retirer de l'argent
-        - ❌ Modifier les paramètres du compte
-        - ❌ Passer des ordres automatiquement
-        """
-    )
-
+    if st.session_state.get("binance_connected", False): st.success("🟢 Binance connecté — Lecture seule")
+    else: st.warning("⚪ Binance non connecté")
+    st.markdown("""**Ce que PrediTrade pourra faire :**\n- 📊 Lire les informations du compte\n- 💰 Consulter les soldes\n- 📈 Suivre les positions\n\n**Ce qu'il ne pourra pas faire :**\n- ❌ Retirer de l'argent\n- ❌ Modifier les paramètres du compte\n- ❌ Passer des ordres automatiquement""")
     st.divider()
-
     st.subheader("🔐 Identifiants API")
-
-    st.caption(
-        "Pour la sécurité, ne publie jamais ces clés dans GitHub."
-    )
-
-    api_key = st.text_input(
-        "API Key Binance",
-        type="password",
-        key="binance_api_key_input"
-    )
-
-    api_secret = st.text_input(
-        "API Secret Binance",
-        type="password",
-        key="binance_api_secret_input"
-    )
-
-    st.warning(
-        "⚠️ Ta clé Binance doit être configurée en "
-        "**lecture seule**, sans retrait et sans permission de trading."
-    )
-
-    if st.button(
-        "🔌 Tester la connexion Binance",
-        type="primary",
-        use_container_width=True,
-        key="test_binance_connection"
-    ):
-
+    api_key = st.text_input("API Key Binance", type="password", key="binance_api_key_input")
+    api_secret = st.text_input("API Secret Binance", type="password", key="binance_api_secret_input")
+    st.warning("⚠️ Ta clé Binance doit être configurée en **lecture seule**, sans retrait et sans permission de trading.")
+    if st.button("🔌 Tester la connexion Binance", type="primary", use_container_width=True, key="test_binance_connection"):
         if not api_key or not api_secret:
-
-            st.error(
-                "❌ Renseigne l'API Key et l'API Secret."
-            ) 
-    def recuperer_compte_binance(api_key, api_secret):
-        try:
-            timestamp = int(time.time() * 1000)
-            params = {
-                "timestamp": timestamp,
-                "recvWindow": 5000
-            }
-            query_string = "&".join(
-                f"{key}={value}"
-                for key, value in params.items()
-            )
-            signature = binance_signature(
-                query_string,
-                    
-                api_secret
-
-            )
-            url = (
-                "https://api.binance.com/api/v3/account?"
-                f"{query_string}&signature={signature}"
-            )
-            headers = {
-                "X-MBX-APIKEY": api_key
-            }
-            response = requests.get(
-                url,
-                headers=headers,
-                timeout=10
-            )
-            if response.status_code != 200:
-                try:
-                    return None, response.json().get("msg", "Erreur Binance")
-                except:
-                    return None, response.text
-                    return response.json(), None
-                except Exception as e:
-                    return None, str(e)
-            else:
-                with st.spinner(
-                    "🔄 Vérification de la connexion Binance..."
-                ):
-                    succes, message = tester_connexion_binance(
-                        api_key,
-                        api_secret
-                    )
-
+            st.error("❌ Renseigne l'API Key et l'API Secret.")
+        else:
+            with st.spinner("🔄 Vérification de la connexion Binance..."):
+                succes, message = tester_connexion_binance(api_key, api_secret)
             if succes:
-
                 st.session_state["binance_connected"] = True
-
-                st.success(
-                    "✅ Connexion Binance réussie !"
-                )
-                compte, erreur_compte = recuperer_compte_binance(
-                    api_key,
-                    api_secre
-                )
-            if compte:
-                st.subheader("💰 Mon compte Binance")
-                balances = compte.get("balances", [])
-                balances_utiles = []
-
-    for balance in balances:
-        free = float(balance.get("free", 0))
-        locked = float(balance.get("locked", 0))
-
-        if free > 0 or locked > 0:
-            balances_utiles.append({
-                "Actif": balance.get("asset"),
-                "Disponible": free,
-                "Bloqué": locked
-            })
-
-    if balances_utiles:
-        df_balances = pd.DataFrame(balances_utiles)
-
-        st.dataframe(
-            df_balances,
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info(
-            "ℹ️ Aucun solde disponible sur ce compte."
-        ) 
-    else: st.warning(
-        f"⚠️ Connexion réussie, mais impossible de récupérer "
-        f"les informations du compte : {erreur_compte}"
-            )
-
-                st.info(
-                    "🛡️ PrediTrade AI est connecté en lecture seule."
-                )
-
+                st.success("✅ Connexion Binance réussie!")
+                compte, erreur_compte = recuperer_compte_binance(api_key, api_secret)
+                if compte:
+                    st.subheader("💰 Mon compte Binance")
+                    balances = compte.get("balances", [])
+                    balances_utiles = []
+                    for balance in balances:
+                        free = float(balance.get("free", 0)); locked = float(balance.get("locked", 0))
+                        if free > 0 or locked > 0:
+                            balances_utiles.append({"Actif": balance.get("asset"), "Disponible": free, "Bloqué": locked})
+                    if balances_utiles:
+                        df_balances = pd.DataFrame(balances_utiles)
+                        st.dataframe(df_balances, use_container_width=True, hide_index=True)
+                    else: st.info("ℹ️ Aucun solde disponible sur ce compte.")
+                else: st.warning(f"⚠️ Connexion réussie, mais impossible de récupérer les informations du compte : {erreur_compte}")
+                st.info("🛡️ PrediTrade AI est connecté en lecture seule.")
             else:
-
                 st.session_state["binance_connected"] = False
-
-                st.error(
-                    f"❌ Connexion Binance refusée : {message}"
-                )
-
+                st.error(f"❌ Connexion Binance refusée : {message}")
     st.divider()
-
-    # ========================================================
-    # AUTRES PLATEFORMES
-    # ========================================================
-
     st.subheader("🌐 Autres plateformes")
-
     c1, c2 = st.columns(2)
-
-    with c1:
-
-        st.markdown("### 🔵 MetaTrader 5")
-
-        st.caption(
-            "Forex / CFD"
-        )
-
-        st.button(
-            "🚧 Bientôt disponible",
-            disabled=True,
-            use_container_width=True,
-            key="mt5_future"
-        )
-
-    with c2:
-
-        st.markdown("### 🟠 Bybit")
-
-        st.caption(
-            "Crypto"
-        )
-
-        st.button(
-            "🚧 Bientôt disponible",
-            disabled=True,
-            use_container_width=True,
-            key="bybit_future"
-        )
-
+    with c1: st.markdown("### 🔵 MetaTrader 5"); st.caption("Forex / CFD"); st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="mt5_future")
+    with c2: st.markdown("### 🟠 Bybit"); st.caption("Crypto"); st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="bybit_future")
     st.divider()
-
     st.subheader("🚀 Évolution de PrediTrade AI")
-
     c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.metric(
-            "📊 Analyse",
-            "ACTIVE"
-        )
-
-    with c2:
-        st.metric(
-            "🔗 Connexion",
-            "BINANCE"
-        )
-
-    with c3:
-        st.metric(
-            "⚡ Trading automatique",
-            "FUTUR"
-        )
-
-    st.success(
-        "🎯 Prochaine évolution : récupérer automatiquement "
-        "les données du compte Binance et les intégrer au "
-        "PrediScore et à la gestion du risque."
-                )
+    with c1: st.metric("📊 Analyse", "ACTIVE")
+    with c2: st.metric("🔗 Connexion", "BINANCE")
+    with c3: st.metric("⚡ Trading automatique", "FUTUR")
+    st.success("🎯 Prochaine évolution : récupérer automatiquement les données du compte Binance et les intégrer au PrediScore et à la gestion du risque.")
 
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
@@ -1354,9 +732,10 @@ elif menu == "⚙️ Paiement":
                 import uuid; external_reference = "PREDITRADE-" + str(uuid.uuid4())[:8].upper()
                 with st.spinner("📲 Envoi de la demande à CamPay..."): res = campay.initCollect({"amount": montant, "currency": "XAF", "from": numero_camPay, "description": "Abonnement PrediTrade AI Premium", "external_reference": external_reference})
                 st.write("### Réponse CamPay"); st.json(res); statut = "PENDING"
+                statut_res = None
                 if isinstance(res, dict) and res.get("reference"):
                     st.session_state["campay_reference"] = res["reference"]
-                    try: statut_res = campay.get_transaction_status({"reference": res["reference"]});
+                    try: statut_res = campay.get_transaction_status({"reference": res["reference"]})
                     except: pass
                     if isinstance(statut_res, dict): statut = str(statut_res.get("status", "PENDING")).upper()
                 else: statut = str(res.get("status", "PENDING")).upper() if isinstance(res, dict) else "PENDING"
