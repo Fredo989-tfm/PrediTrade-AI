@@ -1161,7 +1161,46 @@ elif menu == "🔗 Connexions aux plateformes":
 
             st.error(
                 "❌ Renseigne l'API Key et l'API Secret."
-            )
+            ) 
+        def recuperer_compte_binance(api_key, api_secret):
+            try:
+                timestamp = int(time.time() * 1000)
+                params = {
+                    "timestamp": timestamp,
+                    "recvWindow": 5000
+                }
+                query_string = "&".join(
+                    f"{key}={value}"
+                    for key, value in params.items()
+                )
+                signature = binance_signature(
+                    query_string,
+                    api_secret
+
+                )
+                url = (
+                    "https://api.binance.com/api/v3/account?"
+                    f"{query_string}&signature={signature}"
+                )
+                headers = {
+                    "X-MBX-APIKEY": api_key
+                }
+                response = requests.get(
+                    url,
+                    headers=headers,
+                    timeout=10
+                )
+
+        if response.status_code != 200:
+            try:
+                return None, response.json().get("msg", "Erreur Binance")
+            except:
+                return None, response.text
+
+        return response.json(), None
+
+    except Exception as e:
+        return None, str(e)
 
         else:
 
@@ -1181,6 +1220,49 @@ elif menu == "🔗 Connexions aux plateformes":
                 st.success(
                     "✅ Connexion Binance réussie !"
                 )
+                compte, erreur_compte = recuperer_compte_binance(
+    api_key,
+    api_secret
+)
+
+if compte:
+
+    st.subheader("💰 Mon compte Binance")
+
+    balances = compte.get("balances", [])
+
+    balances_utiles = []
+
+    for balance in balances:
+        free = float(balance.get("free", 0))
+        locked = float(balance.get("locked", 0))
+
+        if free > 0 or locked > 0:
+            balances_utiles.append({
+                "Actif": balance.get("asset"),
+                "Disponible": free,
+                "Bloqué": locked
+            })
+
+    if balances_utiles:
+        df_balances = pd.DataFrame(balances_utiles)
+
+        st.dataframe(
+            df_balances,
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info(
+            "ℹ️ Aucun solde disponible sur ce compte."
+        )
+
+else:
+
+    st.warning(
+        f"⚠️ Connexion réussie, mais impossible de récupérer "
+        f"les informations du compte : {erreur_compte}"
+            )
 
                 st.info(
                     "🛡️ PrediTrade AI est connecté en lecture seule."
