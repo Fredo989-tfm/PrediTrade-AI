@@ -7,3 +7,4 @@ streamlit-oauth
 campay==1.1.0
 google-genai
 firebase-admin
+python-binance
