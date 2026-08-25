@@ -1083,162 +1083,160 @@ elif menu == "🔔 Alertes Pro":
         if st.button("3. Activer les Push 24/24"):
             db.reference('users_premium').push({'email': st.session_state.user_email, 'token': token_fcm, 'actifs': actifs_choisis, 'date': datetime.now().isoformat()})
             st.success(f"✅ C'est bon! Le cloud scanne {actifs_choisis} pour toi H24"); st.info("Tu vas recevoir la notif même si l'app est fermée")
-elif menu == "🔗 Plateformes":
+elif menu == "🔗 Connexions aux plateformes":
 
-    st.title("🔗 Connexion aux plateformes")
+    st.title("🔗 Connexions aux plateformes")
+
     st.markdown(
-        "Connecte progressivement tes plateformes à PrediTrade AI "
-        "pour centraliser tes analyses et ton suivi."
+        "Connecte progressivement tes plateformes de trading "
+        "à PrediTrade AI pour centraliser tes données."
     )
 
     st.info(
-        "🛡️ Pour cette version, PrediTrade AI fonctionne uniquement "
-        "en mode lecture/analyse. Aucun ordre réel n'est envoyé."
+        "🛡️ Première étape : connexion Binance en lecture seule. "
+        "PrediTrade AI ne passera aucun ordre réel."
     )
 
     st.divider()
 
-    st.subheader("📊 Plateformes disponibles")
-
-    # Initialisation
-    if "platform_connections" not in st.session_state:
-        st.session_state.platform_connections = {
-            "Binance": False,
-            "MetaTrader": False
-        }
-
-    # =========================================================
+    # ========================================================
     # BINANCE
-    # =========================================================
+    # ========================================================
 
-    st.markdown("### 🟡 Binance")
+    st.subheader("🟡 Binance")
 
-    binance_status = st.session_state.platform_connections.get(
-        "Binance",
-        False
-    )
-
-    if binance_status:
-        st.success("🟢 Binance connecté — mode lecture")
+    if st.session_state.get("binance_connected", False):
+        st.success("🟢 Binance connecté — Lecture seule")
     else:
         st.warning("⚪ Binance non connecté")
 
-    with st.expander("⚙️ Configurer Binance"):
+    st.markdown(
+        """
+        **Ce que PrediTrade pourra faire :**
+        - 📊 Lire les informations du compte
+        - 💰 Consulter les soldes
+        - 📈 Suivre les positions
+        - 🔎 Croiser les données avec le PrediScore
 
-        st.caption(
-            "Pour la sécurité, utilise uniquement une clé API "
-            "avec accès lecture seule."
-        )
-
-        binance_api_key = st.text_input(
-            "API Key Binance",
-            type="password",
-            key="binance_api_key"
-        )
-
-        binance_secret = st.text_input(
-            "Secret API Binance",
-            type="password",
-            key="binance_secret"
-        )
-
-        if st.button(
-            "🔗 Tester la connexion Binance",
-            use_container_width=True,
-            key="connect_binance"
-        ):
-
-            if not binance_api_key or not binance_secret:
-
-                st.error(
-                    "❌ Veuillez renseigner les deux informations."
-                )
-
-            else:
-
-                # Version prototype :
-                # aucune opération réelle n'est effectuée.
-                st.session_state.platform_connections["Binance"] = True
-
-                st.success(
-                    "✅ Configuration enregistrée."
-                )
-
-                st.info(
-                    "🛡️ Mode lecture activé. "
-                    "Aucun ordre ne sera envoyé."
-                )
-
-    st.divider()
-
-    # =========================================================
-    # METATRADER
-    # =========================================================
-
-    st.markdown("### 🟢 MetaTrader")
-
-    mt_status = st.session_state.platform_connections.get(
-        "MetaTrader",
-        False
+        **Ce qu'il ne pourra pas faire :**
+        - ❌ Retirer de l'argent
+        - ❌ Modifier les paramètres du compte
+        - ❌ Passer des ordres automatiquement
+        """
     )
 
-    if mt_status:
-        st.success("🟢 MetaTrader configuré")
-    else:
-        st.warning("⚪ MetaTrader non connecté")
+    st.divider()
 
-    with st.expander("⚙️ Configurer MetaTrader"):
+    st.subheader("🔐 Identifiants API")
 
-        st.caption(
-            "La connexion MetaTrader sera activée dans une prochaine "
-            "version de PrediTrade AI."
-        )
+    st.caption(
+        "Pour la sécurité, ne publie jamais ces clés dans GitHub."
+    )
 
-        mt_account = st.text_input(
-            "Numéro de compte",
-            key="mt_account"
-        )
+    api_key = st.text_input(
+        "API Key Binance",
+        type="password",
+        key="binance_api_key_input"
+    )
 
-        mt_server = st.text_input(
-            "Serveur",
-            placeholder="Exemple : Broker-Server",
-            key="mt_server"
-        )
+    api_secret = st.text_input(
+        "API Secret Binance",
+        type="password",
+        key="binance_api_secret_input"
+    )
 
-        if st.button(
-            "🔗 Préparer la connexion",
-            use_container_width=True,
-            key="prepare_mt"
-        ):
+    st.warning(
+        "⚠️ Ta clé Binance doit être configurée en "
+        "**lecture seule**, sans retrait et sans permission de trading."
+    )
 
-            if not mt_account or not mt_server:
+    if st.button(
+        "🔌 Tester la connexion Binance",
+        type="primary",
+        use_container_width=True,
+        key="test_binance_connection"
+    ):
 
-                st.error(
-                    "❌ Renseigne le numéro de compte et le serveur."
+        if not api_key or not api_secret:
+
+            st.error(
+                "❌ Renseigne l'API Key et l'API Secret."
+            )
+
+        else:
+
+            with st.spinner(
+                "🔄 Vérification de la connexion Binance..."
+            ):
+
+                succes, message = tester_connexion_binance(
+                    api_key,
+                    api_secret
+                )
+
+            if succes:
+
+                st.session_state["binance_connected"] = True
+
+                st.success(
+                    "✅ Connexion Binance réussie !"
+                )
+
+                st.info(
+                    "🛡️ PrediTrade AI est connecté en lecture seule."
                 )
 
             else:
 
-                st.session_state.platform_connections[
-                    "MetaTrader"
-                ] = True
+                st.session_state["binance_connected"] = False
 
-                st.success(
-                    "✅ MetaTrader est prêt pour la prochaine étape."
-                )
-
-                st.info(
-                    "🚧 L'exécution réelle des ordres sera ajoutée "
-                    "ultérieurement."
+                st.error(
+                    f"❌ Connexion Binance refusée : {message}"
                 )
 
     st.divider()
 
-    # =========================================================
-    # ARCHITECTURE FUTURE
-    # =========================================================
+    # ========================================================
+    # AUTRES PLATEFORMES
+    # ========================================================
 
-    st.subheader("🚀 Évolution prévue")
+    st.subheader("🌐 Autres plateformes")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        st.markdown("### 🔵 MetaTrader 5")
+
+        st.caption(
+            "Forex / CFD"
+        )
+
+        st.button(
+            "🚧 Bientôt disponible",
+            disabled=True,
+            use_container_width=True,
+            key="mt5_future"
+        )
+
+    with c2:
+
+        st.markdown("### 🟠 Bybit")
+
+        st.caption(
+            "Crypto"
+        )
+
+        st.button(
+            "🚧 Bientôt disponible",
+            disabled=True,
+            use_container_width=True,
+            key="bybit_future"
+        )
+
+    st.divider()
+
+    st.subheader("🚀 Évolution de PrediTrade AI")
 
     c1, c2, c3 = st.columns(3)
 
@@ -1251,19 +1249,20 @@ elif menu == "🔗 Plateformes":
     with c2:
         st.metric(
             "🔗 Connexion",
-            "EN PRÉPARATION"
+            "BINANCE"
         )
 
     with c3:
         st.metric(
-            "🤖 Trading automatique",
+            "⚡ Trading automatique",
             "FUTUR"
         )
 
-    st.caption(
-        "PrediTrade AI doit d'abord analyser et sécuriser les "
-        "connexions avant toute possibilité d'exécution."
-    )
+    st.success(
+        "🎯 Prochaine évolution : récupérer automatiquement "
+        "les données du compte Binance et les intégrer au "
+        "PrediScore et à la gestion du risque."
+                )
 
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
