@@ -316,25 +316,25 @@ def scanner_notifications_complet():
                 alertes.append({"Actif": nom, "Score": score, "Signal": signal, "Confiance": confiance})
         except: continue
     return alertes
-    # ==============================
-# CONNEXION BINANCE
+# ==============================
+# 🔐 CONNEXION BINANCE
 # ==============================
 
 from binance.client import Client
 
-BINANCE_API_KEY = st.secrets["BINANCE_API_KEY"]
-BINANCE_API_SECRET = st.secrets["BINANCE_API_SECRET"]
+BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", "")
+BINANCE_API_SECRET = st.secrets.get("BINANCE_API_SECRET", "")
 
-binance_client = Client(
-    BINANCE_API_KEY,
-    BINANCE_API_SECRET
-)
+binance_client = None
 
-try:
-    binance_client.get_account()
-    binance_connected = True
-except Exception:
-    binance_connected = False
+if BINANCE_API_KEY and BINANCE_API_SECRET:
+    try:
+        binance_client = Client(
+            BINANCE_API_KEY,
+            BINANCE_API_SECRET
+        )
+    except Exception as e:
+        binance_client = None
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg", width=80)
