@@ -316,25 +316,6 @@ def scanner_notifications_complet():
                 alertes.append({"Actif": nom, "Score": score, "Signal": signal, "Confiance": confiance})
         except: continue
     return alertes
-# ==============================
-# 🔐 CONNEXION BINANCE
-# ==============================
-
-from binance.client import Client
-
-binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
-binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
-
-binance_client = None
-
-if binance_api_key and binance_api_secret:
-    try:
-        binance_client = Client(
-            binance_api_key,
-            binance_api_secret
-        )
-    except Exception:
-        binance_client = None 
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg", width=80)
@@ -685,230 +666,104 @@ elif menu == "🔗 Connexions aux plateformes":
         ip_data = ip_response.json()
         server_ip = ip_data.get("ip", "Inconnue")
 
-    location_response = requests.get(
-        f"https://ipinfo.io/{server_ip}/json",
-        timeout=10
-    )
-    location_data = location_response.json()
+        location_response = requests.get(f"https://ipinfo.io/{server_ip}/json", timeout=10)
+        location_data = location_response.json()
 
-    st.info(
-        f"🌐 IP du serveur : {server_ip}\n\n"
-        f"📍 Pays : {location_data.get('country', 'Inconnu')}\n\n"
-        f"🏙️ Ville : {location_data.get('city', 'Inconnue')}\n\n"
-        f"🏢 Organisation : {location_data.get('org', 'Inconnue')}"
-    )
+        st.info(
+            f"🌐 IP du serveur : {server_ip}\n\n"
+            f"📍 Pays : {location_data.get('country', 'Inconnu')}\n\n"
+            f"🏙️ Ville : {location_data.get('city', 'Inconnue')}\n\n"
+            f"🏢 Organisation : {location_data.get('org', 'Inconnue')}"
+        )
+    except Exception as e:
+        st.warning(f"⚠️ Diagnostic impossible : {e}")
 
-except Exception as e:
-    st.warning(f"⚠️ Diagnostic impossible : {e}")
-
-    st.markdown(
-        "Connecte progressivement tes plateformes de trading à PrediTrade AI "
-        "pour centraliser tes données."
-    )
-
-    st.info(
-        "🛡️ Première étape : connexion Binance en lecture seule. "
-        "PrediTrade AI ne passera aucun ordre réel."
-    )
-
+    st.markdown("Connecte progressivement tes plateformes de trading à PrediTrade AI pour centraliser tes données.")
+    st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
     st.divider()
-
-    # ==============================
-    # 🟡 BINANCE
-    # ==============================
-
     st.subheader("🟡 Binance")
 
-    # Les clés sont récupérées automatiquement depuis Streamlit Secrets
     binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
     binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
 
     if not binance_api_key or not binance_api_secret:
-        st.error(
-            "❌ Les identifiants Binance ne sont pas configurés "
-            "dans les Secrets Streamlit."
-        )
-        st.info(
-            "Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans "
-            "Streamlit → Settings → Secrets."
-        )
-
+        st.error("❌ Les identifiants Binance ne sont pas configurés dans les Secrets Streamlit.")
+        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Streamlit → Settings → Secrets.")
     else:
         st.success("🔐 Identifiants Binance détectés dans les Secrets.")
-
         st.markdown("""
         **PrediTrade AI pourra actuellement :**
-
         - 📊 Lire les informations du compte
         - 💰 Consulter les soldes
         - 📈 Suivre les actifs disponibles
 
         **PrediTrade AI ne pourra pas :**
-
         - ❌ Retirer de l'argent
         - ❌ Effectuer des transferts
         - ❌ Passer des ordres
-        - ❌ Modifier ton compte Binance
         """)
-
         st.divider()
 
-        if st.button(
-            "🔌 Tester la connexion Binance",
-            type="primary",
-            use_container_width=True,
-            key="test_binance_connection_secrets"
-        ):
-
+        if st.button("🔌 Tester la connexion Binance", type="primary", use_container_width=True, key="test_binance_connection_secrets"):
             with st.spinner("🔄 Connexion à Binance..."):
-
-                succes, message = tester_connexion_binance(
-                    binance_api_key,
-                    binance_api_secret
-                )
+                succes, message = tester_connexion_binance(binance_api_key, binance_api_secret)
 
             if succes:
-
                 st.session_state["binance_connected"] = True
-
-                st.success("✅ Connexion Binance réussie !")
-
-                # Récupération des informations du compte
+                st.success("✅ Connexion Binance réussie!")
                 with st.spinner("💰 Récupération du compte Binance..."):
-
-                    compte, erreur_compte = recuperer_compte_binance(
-                        binance_api_key,
-                        binance_api_secret
-                    )
+                    compte, erreur_compte = recuperer_compte_binance(binance_api_key, binance_api_secret)
 
                 if compte:
-
                     st.subheader("💰 Mon compte Binance")
-
                     balances = compte.get("balances", [])
-
                     balances_utiles = []
-
                     for balance in balances:
-
                         try:
                             free = float(balance.get("free", 0))
                             locked = float(balance.get("locked", 0))
                         except:
                             free = 0
                             locked = 0
-
                         if free > 0 or locked > 0:
-
-                            balances_utiles.append({
-                                "Actif": balance.get("asset"),
-                                "Disponible": free,
-                                "Bloqué": locked
-                            })
-
+                            balances_utiles.append({"Actif": balance.get("asset"), "Disponible": free, "Bloqué": locked})
                     if balances_utiles:
-
                         df_balances = pd.DataFrame(balances_utiles)
-
-                        st.dataframe(
-                            df_balances,
-                            use_container_width=True,
-                            hide_index=True
-                        )
-
+                        st.dataframe(df_balances, use_container_width=True, hide_index=True)
                     else:
-
-                        st.info(
-                            "ℹ️ Aucun solde disponible sur ce compte Binance."
-                        )
-
+                        st.info("ℹ️ Aucun solde disponible sur ce compte Binance.")
                 else:
+                    st.warning(f"⚠️ Connexion réussie, mais impossible de récupérer les informations du compte : {erreur_compte}")
 
-                    st.warning(
-                        "⚠️ Connexion réussie, mais impossible de récupérer "
-                        f"les informations du compte : {erreur_compte}"
-                    )
-
-                st.success(
-                    "🛡️ PrediTrade AI est actuellement connecté à Binance "
-                    "en lecture seule."
-                )
-
+                st.success("🛡️ PrediTrade AI est actuellement connecté à Binance en lecture seule.")
             else:
-
                 st.session_state["binance_connected"] = False
+                st.error(f"❌ Connexion Binance refusée : {message}")
 
-                st.error(
-                    f"❌ Connexion Binance refusée : {message}"
-                )
-
-        # Statut de connexion
         if st.session_state.get("binance_connected", False):
-
             st.success("🟢 Binance : CONNECTÉ")
-
         else:
-
             st.warning("⚪ Binance : NON TESTÉ")
 
     st.divider()
-
-    # ==============================
-    # 🌐 AUTRES PLATEFORMES
-    # ==============================
-
     st.subheader("🌐 Autres plateformes")
-
     c1, c2 = st.columns(2)
-
     with c1:
-
         st.markdown("### 🔵 MetaTrader 5")
         st.caption("Forex / CFD")
-
-        st.button(
-            "🚧 Bientôt disponible",
-            disabled=True,
-            use_container_width=True,
-            key="mt5_future"
-        )
-
+        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="mt5_future")
     with c2:
-
         st.markdown("### 🟠 Bybit")
         st.caption("Crypto")
-
-        st.button(
-            "🚧 Bientôt disponible",
-            disabled=True,
-            use_container_width=True,
-            key="bybit_future"
-        )
-
+        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="bybit_future")
     st.divider()
-
-    # ==============================
-    # 🚀 ÉVOLUTION DE PREDITRADE AI
-    # ==============================
-
     st.subheader("🚀 Évolution de PrediTrade AI")
-
     c1, c2, c3 = st.columns(3)
+    with c1: st.metric("📊 Analyse", "ACTIVE")
+    with c2: st.metric("🔗 Connexion", "BINANCE")
+    with c3: st.metric("⚡ Trading automatique", "FUTUR")
+    st.success("🎯 Prochaine évolution : intégrer automatiquement les données du compte Binance au portefeuille, au PrediScore et à la gestion du risque.")
 
-    with c1:
-        st.metric("📊 Analyse", "ACTIVE")
-
-    with c2:
-        st.metric("🔗 Connexion", "BINANCE")
-
-    with c3:
-        st.metric("⚡ Trading automatique", "FUTUR")
-
-    st.success(
-        "🎯 Prochaine évolution : intégrer automatiquement les données "
-        "du compte Binance au portefeuille, au PrediScore et à la "
-        "gestion du risque."
-        )
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
     st.image("IMG-20260810-WA1501.jpg", width=80)
