@@ -322,8 +322,27 @@ def scanner_notifications_complet():
 
 from binance.client import Client
 
-BINANCE_API_KEY = st.secrets.get("BINANCE_API_KEY", "")
-BINANCE_API_SECRET = st.secrets.get("BINANCE_API_SECRET", "")
+# ==============================
+# 🔐 RÉCUPÉRATION DES SECRETS BINANCE
+# ==============================
+
+binance_api_key = ""
+binance_api_secret = ""
+
+# Format 1 : clés directement dans Secrets
+try:
+    binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
+    binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
+except:
+    pass
+
+# Format 2 : clés dans [binance]
+if not binance_api_key or not binance_api_secret:
+    try:
+        binance_api_key = st.secrets["binance"].get("API_KEY", "")
+        binance_api_secret = st.secrets["binance"].get("API_SECRET", "")
+    except:
+        pass
 
 binance_client = None
 
