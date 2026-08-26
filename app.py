@@ -322,38 +322,19 @@ def scanner_notifications_complet():
 
 from binance.client import Client
 
-# ==============================
-# 🔐 RÉCUPÉRATION DES SECRETS BINANCE
-# ==============================
-
-binance_api_key = ""
-binance_api_secret = ""
-
-# Format 1 : clés directement dans Secrets
-try:
-    binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
-    binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
-except:
-    pass
-
-# Format 2 : clés dans [binance]
-if not binance_api_key or not binance_api_secret:
-    try:
-        binance_api_key = st.secrets["binance"].get("API_KEY", "")
-        binance_api_secret = st.secrets["binance"].get("API_SECRET", "")
-    except:
-        pass
+binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
+binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
 
 binance_client = None
 
-if BINANCE_API_KEY and BINANCE_API_SECRET:
+if binance_api_key and binance_api_secret:
     try:
         binance_client = Client(
-            BINANCE_API_KEY,
-            BINANCE_API_SECRET
+            binance_api_key,
+            binance_api_secret
         )
-    except Exception as e:
-        binance_client = None
+    except Exception:
+        binance_client = None 
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg", width=80)
