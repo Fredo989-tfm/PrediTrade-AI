@@ -680,11 +680,10 @@ elif menu == "🔔 Alertes Pro":
 elif menu == "🔗 Connexions aux plateformes":
     st.title("🔗 Connexions aux plateformes")
     st.subheader("🧪 Diagnostic du serveur")
-
-try:
-    ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
-    ip_data = ip_response.json()
-    server_ip = ip_data.get("ip", "Inconnue")
+    try:
+        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
+        ip_data = ip_response.json()
+        server_ip = ip_data.get("ip", "Inconnue")
 
     location_response = requests.get(
         f"https://ipinfo.io/{server_ip}/json",
