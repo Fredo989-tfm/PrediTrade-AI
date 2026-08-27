@@ -660,24 +660,6 @@ elif menu == "🔔 Alertes Pro":
 
 elif menu == "🔗 Connexions aux plateformes":
     st.title("🔗 Connexions aux plateformes")
-    st.subheader("🧪 Diagnostic du serveur")
-    try:
-        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
-        ip_data = ip_response.json()
-        server_ip = ip_data.get("ip", "Inconnue")
-
-        location_response = requests.get(f"https://ipinfo.io/{server_ip}/json", timeout=10)
-        location_data = location_response.json()
-
-        st.info(
-            f"🌐 IP du serveur : {server_ip}\n\n"
-            f"📍 Pays : {location_data.get('country', 'Inconnu')}\n\n"
-            f"🏙️ Ville : {location_data.get('city', 'Inconnue')}\n\n"
-            f"🏢 Organisation : {location_data.get('org', 'Inconnue')}"
-        )
-    except Exception as e:
-        st.warning(f"⚠️ Diagnostic impossible : {e}")
-
     st.markdown("Connecte progressivement tes plateformes de trading à PrediTrade AI pour centraliser tes données.")
     st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
     st.divider()
