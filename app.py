@@ -667,8 +667,8 @@ elif menu == "🔗 Connexions aux plateformes":
     st.divider()
     st.subheader("🟡 Binance")
 
-    binance_api_key = st.secrets.get("BINANCE_API_KEY", "")
-    binance_api_secret = st.secrets.get("BINANCE_API_SECRET", "")
+    binance_api_key = os.environ.get("BINANCE_API_KEY", "")
+    binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
 
     if not binance_api_key or not binance_api_secret:
         st.error("❌ Les identifiants Binance ne sont pas configurés dans les Secrets Streamlit.")
