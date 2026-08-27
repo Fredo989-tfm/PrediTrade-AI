@@ -4,6 +4,7 @@ from firebase_admin import credentials, db
 import base64
 import pandas as pd
 import numpy as np
+import os
 import requests, time, hashlib, json, os, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
@@ -88,8 +89,9 @@ ASSETS = {
 if not st.session_state.is_premium and trial_active():
     st.session_state.is_premium = True
 
-CLIENT_ID = st.secrets["auth"]["client_id"]
-CLIENT_SECRET = st.secrets["auth"]["client_secret"]
+
+CLIENT_ID = os.environ["CLIENT_ID"]
+CLIENT_SECRET = os.environ["CLIENT_SECRET"]
 oauth = OAuth2Component(CLIENT_ID, CLIENT_SECRET, "https://accounts.google.com/o/oauth2/auth", "https://oauth2.googleapis.com/token", "https://oauth2.googleapis.com/token", "https://oauth2.googleapis.com/revoke")
 REDIRECT_URI = "https://preditradeai.streamlit.app/component/streamlit_oauth.authorize_button"
 
