@@ -691,6 +691,21 @@ elif menu == "🔗 Connexions aux plateformes":
         if st.button("🔌 Tester la connexion Binance", type="primary", use_container_width=True, key="test_binance_connection_secrets"):
             with st.spinner("🔄 Connexion à Binance..."):
                 succes, message = tester_connexion_binance(binance_api_key, binance_api_secret)
+        def diagnostiquer_binance():
+    try:
+        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
+        ip_data = ip_response.json()
+        public_ip = ip_data.get("ip", "Inconnue")
+
+        binance_response = requests.get(
+            "https://api.binance.com/api/v3/ping",
+            timeout=10
+        )
+
+        return public_ip, binance_response.status_code, binance_response.text
+
+    except Exception as e:
+        return None, None, str(e)
 
             if succes:
                 st.session_state["binance_connected"] = True
