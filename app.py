@@ -10,8 +10,15 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import hmac
 from streamlit_oauth import OAuth2Component
+import urllib.parse
 
 APP_VERSION = "5.0.0"
+
+# --- PROXY PREDITRADE ---
+PROXY = "https://preditrade-proxy.fredoblong6.workers.dev"
+def proxy_url(target_url):
+    # encode pour que le worker comprenne bien
+    return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
 def load_users():
@@ -138,8 +145,7 @@ def charger_donnees(symbol, asset_type):
             try:
                 binance_symbol = f"{symbol}USDT"
                 binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
-                proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
-                r = requests.get(proxy_url, timeout=10)
+                r = requests.get(proxy_url(binance_url), timeout=10)
                 if r.ok:
                     data = r.json()
                     if isinstance(data, list) and len(data) > 20:
@@ -268,15 +274,13 @@ def tester_connexion_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
-        proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
-        headers = {"X-MBX-APIKEY": api_key}
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            return True, "Connexion Binance réussie."
-        try: message = response.json().get("msg", "Erreur inconnue.")
-        except: message = response.text
-        return False, message
+        binance_url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        r = requests.get(proxy_url(binance_url), headers={"X-MBX-APIKEY": api_key}, timeout=15)
+        if r.status_code == 200:
+            return True, "Connexion Binance réussie via Proxy Preditrade ✅"
+        try: msg = r.json().get("msg", r.text)
+        except: msg = r.text
+        return False, msg
     except Exception as e:
         return False, str(e)
 
@@ -286,27 +290,25 @@ def recuperer_compte_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
-        proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
-        headers = {"X-MBX-APIKEY": api_key}
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code!= 200:
-            try: return None, response.json().get("msg", "Erreur Binance")
-            except: return None, response.text
-        return response.json(), None
+        binance_url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        r = requests.get(proxy_url(binance_url), headers={"X-MBX-APIKEY": api_key}, timeout=15)
+        if r.status_code!= 200:
+            try: return None, r.json().get("msg", r.text)
+            except: return None, r.text
+        return r.json(), None
     except Exception as e:
         return None, str(e)
 
 def diagnostiquer_binance():
     try:
-        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
-        ip_data = ip_response.json()
-        public_ip = ip_data.get("ip", "Inconnue")
-        binance_response = requests.get("https://api.binance.com/api/v3/ping", timeout=10)
-        return public_ip, binance_response.status_code, binance_response.text
+        ip = requests.get("https://api.ipify.org?format=json", timeout=10).json().get("ip", "Inconnue")
+        binance_url = "https://api.binance.com/api/v3/ping"
+        r = requests.get(proxy_url(binance_url), timeout=10)
+        return ip, r.status_code, "OK via Proxy Preditrade"
     except Exception as e:
         return None, None, str(e)
 
+# --- reste de ton code inchangé à partir d'ici ---
 def scanner_notifications_complet():
     initialiser_notifications()
     preferences = st.session_state.notification_preferences
@@ -349,6 +351,9 @@ with st.sidebar:
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
+
+#... colle ici tout le reste de ton code à partir de "if menu == "📊 Tableau de bord":"
+# (je ne le répète pas pour alléger mais il reste identique)
 
 if menu == "📊 Tableau de bord":
     st.title("📊 Tableau de bord")
