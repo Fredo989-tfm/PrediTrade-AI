@@ -686,22 +686,38 @@ if st.button("🌐 Tester l'accès de Render à Binance", key="test_binance_netw
 
         public_ip = ip_response.json().get("ip", "Inconnue")
 
+        # Test de l'endpoint Binance alternatif officiel
+        binance_url = "https://api-gcp.binance.com/api/v3/ping"
+
         binance_response = requests.get(
-            "https://api.binance.com/api/v3/ping",
+            binance_url,
             timeout=10
         )
 
         st.write(f"🌐 IP publique de Render : `{public_ip}`")
+        st.write(f"📡 Endpoint testé : `{binance_url}`")
         st.write(f"📡 Réponse Binance : HTTP `{binance_response.status_code}`")
 
         if binance_response.status_code == 200:
-            st.success("✅ Render peut accéder à Binance.")
+            st.success(
+                "✅ Bonne nouvelle : Render peut accéder à Binance via "
+                "l'endpoint GCP."
+            )
+            st.json(binance_response.json())
+
         elif binance_response.status_code == 451:
-            st.error("❌ Binance bloque l'accès réseau de Render pour restriction géographique.")
+            st.error(
+                "❌ Binance bloque également l'endpoint GCP depuis Render "
+                "pour restriction géographique."
+            )
+
         else:
             st.warning(
-                f"⚠️ Binance répond avec le code HTTP {binance_response.status_code}."
+                f"⚠️ Binance répond avec le code HTTP "
+                f"{binance_response.status_code}."
             )
+
+        st.code(binance_response.text)
 
     except Exception as e:
         st.error(f"❌ Erreur du test réseau : {e}")
