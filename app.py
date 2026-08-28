@@ -14,11 +14,12 @@ import urllib.parse
 
 APP_VERSION = "5.0.0"
 
-# --- PROXY PREDITRADE ---
+# --- PROXY PREDITRADE - CORRIGÉ ---
 PROXY = "https://preditrade-proxy.fredoblong6.workers.dev"
-def proxy_url(target_url):
-    # encode pour que le worker comprenne bien
-    return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
+def proxy_url(path_or_full):
+    if path_or_full.startswith("http"):
+        return path_or_full.replace("https://api.binance.com", PROXY).replace("https://data-api.binance.vision", PROXY)
+    return f"{PROXY}{path_or_full}"
 
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
 def load_users():
@@ -143,8 +144,9 @@ def charger_donnees(symbol, asset_type):
     try:
         if asset_type == "Crypto":
             try:
-                binance_url = f"https://data-api.binance.vision/api/v3/klines?symbol={binance_symbol}&interval=4h&limit=100"
-                r = requests.get(binance_url, timeout=10)
+                binance_symbol = f"{symbol}USDT" if symbol in ["BTC","ETH","SOL","BNB","XRP","ADA","DOGE"] else symbol
+                if len(symbol) <= 4 and not symbol.endswith("USDT"): binance_symbol = f"{symbol}USDT"
+                r = requests.get(proxy_url(f"/api/v3/klines?symbol={binance_symbol}&interval=4h&limit=100"), timeout=10)
                 if r.ok:
                     data = r.json()
                     if isinstance(data, list) and len(data) > 20:
@@ -273,13 +275,13 @@ def tester_connexion_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        binance_url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
-        r = requests.get(proxy_url(binance_url), headers={"X-MBX-APIKEY": api_key}, timeout=15)
+        full_path = f"/api/v3/account?{query_string}&signature={signature}"
+        r = requests.get(proxy_url(full_path), headers={"X-MBX-APIKEY": api_key}, timeout=15)
         if r.status_code == 200:
             return True, "Connexion Binance réussie via Proxy Preditrade ✅"
         try: msg = r.json().get("msg", r.text)
         except: msg = r.text
-        return False, msg
+        return False, f"{r.status_code} - {msg}"
     except Exception as e:
         return False, str(e)
 
@@ -289,8 +291,8 @@ def recuperer_compte_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        binance_url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
-        r = requests.get(proxy_url(binance_url), headers={"X-MBX-APIKEY": api_key}, timeout=15)
+        full_path = f"/api/v3/account?{query_string}&signature={signature}"
+        r = requests.get(proxy_url(full_path), headers={"X-MBX-APIKEY": api_key}, timeout=15)
         if r.status_code!= 200:
             try: return None, r.json().get("msg", r.text)
             except: return None, r.text
@@ -301,13 +303,11 @@ def recuperer_compte_binance(api_key, api_secret):
 def diagnostiquer_binance():
     try:
         ip = requests.get("https://api.ipify.org?format=json", timeout=10).json().get("ip", "Inconnue")
-        binance_url = "https://api.binance.com/api/v3/ping"
-        r = requests.get(proxy_url(binance_url), timeout=10)
+        r = requests.get(proxy_url("/api/v3/ping"), timeout=10)
         return ip, r.status_code, "OK via Proxy Preditrade"
     except Exception as e:
         return None, None, str(e)
 
-# --- reste de ton code inchangé à partir d'ici ---
 def scanner_notifications_complet():
     initialiser_notifications()
     preferences = st.session_state.notification_preferences
@@ -350,9 +350,6 @@ with st.sidebar:
     if st.button("🚪 Déconnexion", use_container_width=True):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
-
-#... colle ici tout le reste de ton code à partir de "if menu == "📊 Tableau de bord":"
-# (je ne le répète pas pour alléger mais il reste identique)
 
 if menu == "📊 Tableau de bord":
     st.title("📊 Tableau de bord")
@@ -676,84 +673,6 @@ elif menu == "🔔 Alertes Pro":
             db.reference('users_premium').push({'email': st.session_state.user_email, 'token': token_fcm, 'actifs': actifs_choisis, 'date': datetime.now().isoformat()})
             st.success(f"✅ C'est bon! Le cloud scanne {actifs_choisis} pour toi H24"); st.info("Tu vas recevoir la notif même si l'app est fermée")
 
-elif menu == "🔗 Connexions aux plateformes":
-    st.title("🔗 Connexions aux plateformes")
-    st.markdown("Connecte tes plateformes via le Proxy Preditrade.")
-    st.success("✅ Proxy Actif: `preditrade-proxy.fredoblong6.workers.dev` - Contourne le bloc 451 Binance")
-    st.divider()
-
-    # ==========================================================
-    # BINANCE AVEC PROXY
-    # ==========================================================
-    st.subheader("🟡 Binance - Connexion via Proxy")
-
-    binance_api_key = os.environ.get("BINANCE_API_KEY", "")
-    binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
-
-    if not binance_api_key or not binance_api_secret:
-        st.error("❌ Les identifiants Binance ne sont pas configurés dans les Secrets Streamlit.")
-        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Streamlit → Settings → Secrets.")
-    else:
-        st.success("🔐 Identifiants Binance détectés.")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Tester connexion Binance", type="primary", use_container_width=True):
-                with st.spinner("Test via Proxy Preditrade..."):
-                    ok, msg = tester_connexion_binance(binance_api_key, binance_api_secret)
-                    ip, code, detail = diagnostiquer_binance()
-                
-                st.write(f"**IP:** {ip} | **Code HTTP Binance:** {code}")
-                if ok:
-                    st.balloons()
-                    st.success(f"✅ {msg}")
-                else:
-                    st.error(f"❌ {msg}")
-        
-        with col2:
-            if st.button("💰 Voir mes soldes", use_container_width=True):
-                with st.spinner("Récupération..."):
-                    compte, err = recuperer_compte_binance(binance_api_key, binance_api_secret)
-                if compte:
-                    st.success("✅ Compte récupéré")
-                    balances = [b for b in compte.get("balances", []) if float(b['free']) > 0 or float(b['locked']) > 0]
-                    if balances:
-                        st.dataframe(pd.DataFrame(balances), use_container_width=True)
-                    else:
-                        st.info("Solde vide ou que des zéros")
-                    # st.json(compte) # décommente si tu veux tout voir
-                else:
-                    st.error(f"Erreur: {err}")
-
-        st.divider()
-        st.markdown("### 🛡️ Sécurité")
-        c1, c2, c3 = st.columns(3)
-        with c1: st.metric("🔑 Clés", "DÉTECTÉES")
-        with c2: st.metric("🌐 Proxy", "ACTIF")
-        with c3: st.metric("🔓 Connexion", "DÉBLOQUÉE")
-
-    st.divider()
-
-    # ==========================================================
-    # AUTRES PLATEFORMES
-    # ==========================================================
-    st.subheader("🌐 Autres plateformes")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("### 🔵 MetaTrader 5")
-        st.caption("Forex / CFD")
-        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="mt5_future")
-    with c2:
-        st.markdown("### 🟠 Bybit")
-        st.caption("Crypto")
-        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="bybit_future")
-
-    st.divider()
-    st.subheader("🚀 Évolution de PrediTrade AI")
-    c1, c2, c3 = st.columns(3)
-    with c1: st.metric("📊 Analyse", "ACTIVE")
-    with c2: st.metric("🔗 Connexion", "ACTIVE VIA PROXY")
-    with c3: st.metric("⚡ Trading auto", "FUTUR")
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
     st.image("IMG-20260810-WA1501.jpg", width=80)
@@ -789,3 +708,62 @@ elif menu == "⚙️ Paiement":
                 elif statut in ["PENDING", "INITIATED", "PROCESSING"]: st.warning("⏳ Paiement en attente de confirmation.")
                 elif statut in ["FAILED", "CANCELLED", "CANCELED"]: st.error("❌ Paiement non effectué")
             except Exception as e: st.error(f"❌ Erreur pendant le paiement CamPay : {e}")
+
+elif menu == "🔗 Connexions aux plateformes":
+    st.title("🔗 Connexions aux plateformes")
+    st.success(f"✅ Proxy Actif: `{PROXY}` - Contourne le bloc 451 Binance")
+    st.divider()
+    st.subheader("🟡 Binance - Connexion via Proxy")
+    binance_api_key = os.environ.get("BINANCE_API_KEY", "")
+    binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
+    if not binance_api_key or not binance_api_secret:
+        st.error("❌ Les identifiants Binance ne sont pas configurés dans les Secrets Streamlit.")
+        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Streamlit → Settings → Secrets.")
+    else:
+        st.success("🔐 Identifiants Binance détectés.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Tester connexion Binance", type="primary", use_container_width=True):
+                with st.spinner("Test via Proxy Preditrade..."):
+                    ok, msg = tester_connexion_binance(binance_api_key, binance_api_secret)
+                    ip, code, detail = diagnostiquer_binance()
+                st.write(f"**IP:** {ip} | **Code HTTP Binance:** {code}")
+                if ok:
+                    st.balloons()
+                    st.success(f"✅ {msg}")
+                else:
+                    st.error(f"❌ {msg}")
+        with col2:
+            if st.button("💰 Voir mes soldes", use_container_width=True):
+                with st.spinner("Récupération..."):
+                    compte, err = recuperer_compte_binance(binance_api_key, binance_api_secret)
+                if compte:
+                    st.success("✅ Compte récupéré")
+                    balances = [b for b in compte.get("balances", []) if float(b['free']) > 0 or float(b['locked']) > 0]
+                    if balances: st.dataframe(pd.DataFrame(balances), use_container_width=True)
+                    else: st.info("Solde vide ou que des zéros")
+                else:
+                    st.error(f"Erreur: {err}")
+        st.divider()
+        st.markdown("### 🛡️ Sécurité")
+        c1, c2, c3 = st.columns(3)
+        with c1: st.metric("🔑 Clés", "DÉTECTÉES")
+        with c2: st.metric("🌐 Proxy", "ACTIF")
+        with c3: st.metric("🔓 Connexion", "DÉBLOQUÉE")
+    st.divider()
+    st.subheader("🌐 Autres plateformes")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("### 🔵 MetaTrader 5")
+        st.caption("Forex / CFD")
+        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="mt5_future")
+    with c2:
+        st.markdown("### 🟠 Bybit")
+        st.caption("Crypto")
+        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="bybit_future")
+    st.divider()
+    st.subheader("🚀 Évolution de PrediTrade AI")
+    c1, c2, c3 = st.columns(3)
+    with c1: st.metric("📊 Analyse", "ACTIVE")
+    with c2: st.metric("🔗 Connexion", "ACTIVE VIA PROXY")
+    with c3: st.metric("⚡ Trading auto", "FUTUR") 
