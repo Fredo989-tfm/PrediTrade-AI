@@ -143,9 +143,8 @@ def charger_donnees(symbol, asset_type):
     try:
         if asset_type == "Crypto":
             try:
-                binance_symbol = f"{symbol}USDT"
-                binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
-                r = requests.get(proxy_url(binance_url), timeout=10)
+                binance_url = f"https://data-api.binance.vision/api/v3/klines?symbol={binance_symbol}&interval=4h&limit=100"
+                r = requests.get(binance_url, timeout=10)
                 if r.ok:
                     data = r.json()
                     if isinstance(data, list) and len(data) > 20:
