@@ -137,8 +137,9 @@ def charger_donnees(symbol, asset_type):
         if asset_type == "Crypto":
             try:
                 binance_symbol = f"{symbol}USDT"
-                url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
-                r = requests.get(url, timeout=10)
+                binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
+                proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
+                r = requests.get(proxy_url, timeout=10)
                 if r.ok:
                     data = r.json()
                     if isinstance(data, list) and len(data) > 20:
@@ -267,7 +268,8 @@ def tester_connexion_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
+        proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
         headers = {"X-MBX-APIKEY": api_key}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
@@ -284,7 +286,8 @@ def recuperer_compte_binance(api_key, api_secret):
         params = {"timestamp": timestamp, "recvWindow": 5000}
         query_string = "&".join(f"{key}={value}" for key, value in params.items())
         signature = binance_signature(query_string, api_secret)
-        url = f"https://api.binance.com/api/v3/account?{query_string}&signature={signature}"
+        binance_url = f"https://api.binance.com/api/v3/klines?symbol={binance_symbol}&interval=1d&limit=250"
+        proxy_url = f"https://preditrade-proxy.fredoblong6.workers.dev?url={binance_url}"
         headers = {"X-MBX-APIKEY": api_key}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code!= 200:
