@@ -671,151 +671,183 @@ elif menu == "🔔 Alertes Pro":
 
 elif menu == "🔗 Connexions aux plateformes":
     st.title("🔗 Connexions aux plateformes")
-    st.markdown("Connecte progressivement tes plateformes de trading à PrediTrade AI pour centraliser tes données.")
-    st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
+
+    st.markdown(
+        "Connecte progressivement tes plateformes de trading à PrediTrade AI "
+        "pour centraliser tes données."
+    )
+
+    st.info(
+        "🛡️ PrediTrade AI utilise actuellement les connexions en lecture seule. "
+        "Aucun ordre réel ne sera envoyé par cette application."
+    )
+
     st.divider()
+
+    # ==========================================================
+    # BINANCE
+    # ==========================================================
+
     st.subheader("🟡 Binance")
-    st.subheader("🔎 Test réseau Binance")
 
-if st.button("🌐 Tester l'accès de Render à Binance", key="test_binance_network"):
-    try:
-        ip_response = requests.get(
-            "https://api.ipify.org?format=json",
-            timeout=10
-        )
+    st.markdown("""
+    **Connexion du compte Binance**
 
-        public_ip = ip_response.json().get("ip", "Inconnue")
+    PrediTrade AI est conçu pour pouvoir consulter :
 
-        # Test de l'endpoint Binance alternatif officiel
-        binance_url = "https://api-gcp.binance.com/api/v3/ping"
+    - 💰 les soldes
+    - 📊 les actifs détenus
+    - 📈 les informations du compte
 
-        binance_response = requests.get(
-            binance_url,
-            timeout=10
-        )
+    Les permissions de trading et de retrait ne sont pas nécessaires.
+    """)
 
-        st.write(f"🌐 IP publique de Render : `{public_ip}`")
-        st.write(f"📡 Endpoint testé : `{binance_url}`")
-        st.write(f"📡 Réponse Binance : HTTP `{binance_response.status_code}`")
-
-        if binance_response.status_code == 200:
-            st.success(
-                "✅ Bonne nouvelle : Render peut accéder à Binance via "
-                "l'endpoint GCP."
-            )
-            st.json(binance_response.json())
-
-        elif binance_response.status_code == 451:
-            st.error(
-                "❌ Binance bloque également l'endpoint GCP depuis Render "
-                "pour restriction géographique."
-            )
-
-        else:
-            st.warning(
-                f"⚠️ Binance répond avec le code HTTP "
-                f"{binance_response.status_code}."
-            )
-
-        st.code(binance_response.text)
-
-    except Exception as e:
-        st.error(f"❌ Erreur du test réseau : {e}")
-    st.subheader("🔎 Diagnostic serveur Binance")
-
-    if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
-        ip, status, response = diagnostiquer_binance()
-        st.write("🌐 IP publique du serveur :", ip)
-        st.write("📡 HTTP Binance :", status)
-        if status == 200:
-            st.success("✅ Le serveur Render peut joindre Binance.")
-        elif status == 451:
-            st.error("❌ Binance bloque l'IP du serveur pour une restriction géographique.")
-        else:
-            st.warning(f"⚠️ Binance répond avec HTTP {status}")
-        st.code(response)
-
-    st.divider()
     binance_api_key = os.environ.get("BINANCE_API_KEY", "")
     binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
 
     if not binance_api_key or not binance_api_secret:
-        st.error("❌ Les identifiants Binance ne sont pas configurés.")
-        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Render -> Environment")
-    else:
-        st.success("🔐 Identifiants Binance détectés dans les variables d'environnement.")
-        st.markdown("""
-        **PrediTrade AI pourra actuellement :**
-        - 📊 Lire les informations du compte
-        - 💰 Consulter les soldes
-        - 📈 Suivre les actifs disponibles
 
-        **PrediTrade AI ne pourra pas :**
-        - ❌ Retirer de l'argent
-        - ❌ Effectuer des transferts
-        - ❌ Passer des ordres
-        """)
+        st.error(
+            "❌ Les identifiants Binance ne sont pas configurés "
+            "dans les Secrets Streamlit."
+        )
+
+        st.info(
+            "Ajoute BINANCE_API_KEY et BINANCE_API_SECRET "
+            "dans Streamlit → Settings → Secrets."
+        )
+
+    else:
+
+        st.success("🔐 Identifiants Binance détectés.")
+
         st.divider()
 
-        if st.button("🔌 Tester la connexion Binance", type="primary", use_container_width=True, key="test_binance_connection_secrets"):
-            with st.spinner("🔄 Connexion à Binance..."):
-                succes, message = tester_connexion_binance(binance_api_key, binance_api_secret)
+        st.markdown("### État de la connexion")
 
-            if succes:
-                st.session_state["binance_connected"] = True
-                st.success("✅ Connexion Binance réussie!")
-                with st.spinner("💰 Récupération du compte Binance..."):
-                    compte, erreur_compte = recuperer_compte_binance(binance_api_key, binance_api_secret)
+        # ------------------------------------------------------
+        # La connexion est conservée comme indisponible tant que
+        # l'infrastructure Render est bloquée par Binance.
+        # ------------------------------------------------------
 
-                if compte:
-                    st.subheader("💰 Mon compte Binance")
-                    balances = compte.get("balances", [])
-                    balances_utiles = []
-                    for balance in balances:
-                        try:
-                            free = float(balance.get("free", 0))
-                            locked = float(balance.get("locked", 0))
-                        except:
-                            free = 0
-                            locked = 0
-                        if free > 0 or locked > 0:
-                            balances_utiles.append({"Actif": balance.get("asset"), "Disponible": free, "Bloqué": locked})
-                    if balances_utiles:
-                        df_balances = pd.DataFrame(balances_utiles)
-                        st.dataframe(df_balances, use_container_width=True, hide_index=True)
-                    else:
-                        st.info("ℹ️ Aucun solde disponible sur ce compte Binance.")
-                else:
-                    st.warning(f"⚠️ Connexion réussie, mais impossible de récupérer les informations du compte : {erreur_compte}")
+        st.warning(
+            "⚠️ Connexion Binance indisponible depuis l'infrastructure "
+            "actuelle de PrediTrade AI."
+        )
 
-                st.success("🛡️ PrediTrade AI est actuellement connecté à Binance en lecture seule.")
-            else:
-                st.session_state["binance_connected"] = False
-                st.error(f"❌ Connexion Binance refusée : {message}")
+        st.caption(
+            "Binance retourne actuellement HTTP 451 lorsqu'une requête "
+            "provient de cette infrastructure. Il s'agit d'une restriction "
+            "géographique du réseau Binance et non d'une erreur de clé API."
+        )
 
-        if st.session_state.get("binance_connected", False):
-            st.success("🟢 Binance : CONNECTÉ")
-        else:
-            st.warning("⚪ Binance : NON TESTÉ")
+        st.divider()
+
+        st.markdown("### 🛡️ Sécurité")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("🔑 Clés détectées", "OUI")
+
+        with col2:
+            st.metric("📊 Lecture du compte", "BLOQUÉE")
+
+        with col3:
+            st.metric("🤖 Ordres réels", "DÉSACTIVÉS")
+
+        st.divider()
+
+        st.markdown("### 📌 Situation actuelle")
+
+        st.info("""
+        **PrediTrade AI fonctionne normalement.**
+
+        Le blocage concerne uniquement la communication :
+
+        `PrediTrade AI → Render → Binance`
+
+        Binance refuse actuellement les requêtes provenant de cette
+        infrastructure avec une restriction géographique.
+
+        Nous n'allons donc pas modifier tes clés API ni générer de
+        nouvelles clés pour résoudre ce problème.
+        """)
+
+        st.divider()
+
+        st.markdown("### 🚀 Architecture prévue")
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.markdown("#### 1️⃣ PrediTrade AI")
+            st.caption("Analyse et interface utilisateur")
+
+        with c2:
+            st.markdown("#### 2️⃣ Couche connexion")
+            st.caption("Service compatible avec Binance")
+
+        with c3:
+            st.markdown("#### 3️⃣ Binance")
+            st.caption("Données du compte")
+
+        st.success(
+            "🎯 Prochaine étape : déplacer la connexion Binance vers "
+            "une infrastructure compatible avec les restrictions "
+            "géographiques de Binance."
+        )
 
     st.divider()
+
+    # ==========================================================
+    # AUTRES PLATEFORMES
+    # ==========================================================
+
     st.subheader("🌐 Autres plateformes")
+
     c1, c2 = st.columns(2)
+
     with c1:
         st.markdown("### 🔵 MetaTrader 5")
         st.caption("Forex / CFD")
-        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="mt5_future")
+        st.button(
+            "🚧 Bientôt disponible",
+            disabled=True,
+            use_container_width=True,
+            key="mt5_future"
+        )
+
     with c2:
         st.markdown("### 🟠 Bybit")
         st.caption("Crypto")
-        st.button("🚧 Bientôt disponible", disabled=True, use_container_width=True, key="bybit_future")
+        st.button(
+            "🚧 Bientôt disponible",
+            disabled=True,
+            use_container_width=True,
+            key="bybit_future"
+        )
+
     st.divider()
+
     st.subheader("🚀 Évolution de PrediTrade AI")
+
     c1, c2, c3 = st.columns(3)
-    with c1: st.metric("📊 Analyse", "ACTIVE")
-    with c2: st.metric("🔗 Connexion", "BINANCE")
-    with c3: st.metric("⚡ Trading automatique", "FUTUR")
-    st.success("🎯 Prochaine évolution : intégrer automatiquement les données du compte Binance au portefeuille, au PrediScore et à la gestion du risque.")
+
+    with c1:
+        st.metric("📊 Analyse", "ACTIVE")
+
+    with c2:
+        st.metric("🔗 Connexion", "EN PRÉPARATION")
+
+    with c3:
+        st.metric("⚡ Trading automatique", "FUTUR")
+
+    st.caption(
+        "⚠️ PrediTrade AI ne contourne pas les restrictions géographiques "
+        "des plateformes. La prochaine intégration sera conçue avec une "
+        "infrastructure autorisée."
+            )
 
 elif menu == "⚙️ Paiement":
     st.title("⚙️ Paiement Premium")
