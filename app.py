@@ -675,6 +675,36 @@ elif menu == "🔗 Connexions aux plateformes":
     st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
     st.divider()
     st.subheader("🟡 Binance")
+    st.subheader("🔎 Test réseau Binance")
+
+if st.button("🌐 Tester l'accès de Render à Binance", key="test_binance_network"):
+    try:
+        ip_response = requests.get(
+            "https://api.ipify.org?format=json",
+            timeout=10
+        )
+
+        public_ip = ip_response.json().get("ip", "Inconnue")
+
+        binance_response = requests.get(
+            "https://api.binance.com/api/v3/ping",
+            timeout=10
+        )
+
+        st.write(f"🌐 IP publique de Render : `{public_ip}`")
+        st.write(f"📡 Réponse Binance : HTTP `{binance_response.status_code}`")
+
+        if binance_response.status_code == 200:
+            st.success("✅ Render peut accéder à Binance.")
+        elif binance_response.status_code == 451:
+            st.error("❌ Binance bloque l'accès réseau de Render pour restriction géographique.")
+        else:
+            st.warning(
+                f"⚠️ Binance répond avec le code HTTP {binance_response.status_code}."
+            )
+
+    except Exception as e:
+        st.error(f"❌ Erreur du test réseau : {e}")
     st.subheader("🔎 Diagnostic serveur Binance")
 
     if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
