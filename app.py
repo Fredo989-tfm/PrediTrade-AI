@@ -5,7 +5,7 @@ import base64
 import pandas as pd
 import numpy as np
 import os
-import requests, time, hashlib, json, os, re, io
+import requests, time, hashlib, json, re, io
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import hmac
@@ -88,7 +88,6 @@ ASSETS = {
 
 if not st.session_state.is_premium and trial_active():
     st.session_state.is_premium = True
-
 
 CLIENT_ID = os.environ["CLIENT_ID"]
 CLIENT_SECRET = os.environ["CLIENT_SECRET"]
@@ -294,6 +293,16 @@ def recuperer_compte_binance(api_key, api_secret):
         return response.json(), None
     except Exception as e:
         return None, str(e)
+
+def diagnostiquer_binance():
+    try:
+        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
+        ip_data = ip_response.json()
+        public_ip = ip_data.get("ip", "Inconnue")
+        binance_response = requests.get("https://api.binance.com/api/v3/ping", timeout=10)
+        return public_ip, binance_response.status_code, binance_response.text
+    except Exception as e:
+        return None, None, str(e)
 
 def scanner_notifications_complet():
     initialiser_notifications()
@@ -668,29 +677,27 @@ elif menu == "🔗 Connexions aux plateformes":
     st.subheader("🟡 Binance")
     st.subheader("🔎 Diagnostic serveur Binance")
 
-if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
-    ip, status, response = diagnostiquer_binance()
+    if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
+        ip, status, response = diagnostiquer_binance()
+        st.write("🌐 IP publique du serveur :", ip)
+        st.write("📡 HTTP Binance :", status)
+        if status == 200:
+            st.success("✅ Le serveur Render peut joindre Binance.")
+        elif status == 451:
+            st.error("❌ Binance bloque l'IP du serveur pour une restriction géographique.")
+        else:
+            st.warning(f"⚠️ Binance répond avec HTTP {status}")
+        st.code(response)
 
-    st.write("🌐 IP publique du serveur :", ip)
-    st.write("📡 HTTP Binance :", status)
-
-    if status == 200:
-        st.success("✅ Le serveur Render peut joindre Binance.")
-    elif status == 451:
-        st.error("❌ Binance bloque l'IP du serveur pour une restriction géographique.")
-    else:
-        st.warning(f"⚠️ Binance répond avec HTTP {status}")
-
-    st.code(response)
-
+    st.divider()
     binance_api_key = os.environ.get("BINANCE_API_KEY", "")
     binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
 
     if not binance_api_key or not binance_api_secret:
-        st.error("❌ Les identifiants Binance ne sont pas configurés dans les Secrets Streamlit.")
-        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Streamlit → Settings → Secrets.")
+        st.error("❌ Les identifiants Binance ne sont pas configurés.")
+        st.info("Ajoute BINANCE_API_KEY et BINANCE_API_SECRET dans Render -> Environment")
     else:
-        st.success("🔐 Identifiants Binance détectés dans les Secrets.")
+        st.success("🔐 Identifiants Binance détectés dans les variables d'environnement.")
         st.markdown("""
         **PrediTrade AI pourra actuellement :**
         - 📊 Lire les informations du compte
@@ -707,21 +714,6 @@ if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
         if st.button("🔌 Tester la connexion Binance", type="primary", use_container_width=True, key="test_binance_connection_secrets"):
             with st.spinner("🔄 Connexion à Binance..."):
                 succes, message = tester_connexion_binance(binance_api_key, binance_api_secret)
-        def diagnostiquer_binance():
-    try:
-        ip_response = requests.get("https://api.ipify.org?format=json", timeout=10)
-        ip_data = ip_response.json()
-        public_ip = ip_data.get("ip", "Inconnue")
-
-        binance_response = requests.get(
-            "https://api.binance.com/api/v3/ping",
-            timeout=10
-        )
-
-        return public_ip, binance_response.status_code, binance_response.text
-
-    except Exception as e:
-        return None, None, str(e)
 
             if succes:
                 st.session_state["binance_connected"] = True
