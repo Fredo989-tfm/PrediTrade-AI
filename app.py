@@ -666,6 +666,22 @@ elif menu == "🔗 Connexions aux plateformes":
     st.info("🛡️ Première étape : connexion Binance en lecture seule. PrediTrade AI ne passera aucun ordre réel.")
     st.divider()
     st.subheader("🟡 Binance")
+    st.subheader("🔎 Diagnostic serveur Binance")
+
+if st.button("Tester l'accès réseau à Binance", key="diagnostic_binance"):
+    ip, status, response = diagnostiquer_binance()
+
+    st.write("🌐 IP publique du serveur :", ip)
+    st.write("📡 HTTP Binance :", status)
+
+    if status == 200:
+        st.success("✅ Le serveur Render peut joindre Binance.")
+    elif status == 451:
+        st.error("❌ Binance bloque l'IP du serveur pour une restriction géographique.")
+    else:
+        st.warning(f"⚠️ Binance répond avec HTTP {status}")
+
+    st.code(response)
 
     binance_api_key = os.environ.get("BINANCE_API_KEY", "")
     binance_api_secret = os.environ.get("BINANCE_API_SECRET", "")
