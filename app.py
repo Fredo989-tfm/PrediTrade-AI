@@ -175,31 +175,166 @@ try:
     campay=CamPayClient({"app_username":st.secrets["CAMPAY_USERNAME"],"app_password":st.secrets["CAMPAY_PASSWORD"],"environment":"DEV"}); CAMPAY_OK=True
 except: campay=None; CAMPAY_OK=False
 
-def binance_signature(qs,sec): return hmac.new(sec.encode("utf-8"),qs.encode("utf-8"),hashlib.sha256).hexdigest()
-def tester_connexion_binance(k,s):
+# =========================
+# BINANCE — CONNEXION VIA PROXY
+# =========================
+
+def binance_signature(query_string, secret):
+    """Génère la signature HMAC SHA256 requise par Binance."""
+    return hmac.new(
+        secret.encode("utf-8"),
+        query_string.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def binance_request(endpoint, api_key, api_secret):
+    """
+    Effectue une requête signée Binance via le Proxy Cloudflare.
+    Retourne (data, erreur).
+    """
+
     try:
-        ts=int(time.time()*1000); qs=f"timestamp={ts}&recvWindow=5000"; sig=binance_signature(qs,s); url=f"https://api.binance.com/api/v3/account?{qs}&signature={sig}"
-        r=requests.get(proxy_url(url),headers={"X-MBX-APIKEY":k},timeout=15)
-        if r.status_code==200: return True,"Connexion Binance réussie via Proxy ✅"
-        try: msg=r.json().get("msg",r.text)
-        except: msg=r.text
-        return False,f"{r.status_code} - {msg}"
-    except Exception as e: return False,str(e)
-def recuperer_compte_binance(k,s):
-    try:
-        ts=int(time.time()*1000); qs=f"timestamp={ts}&recvWindow=5000"; sig=binance_signature(qs,s); url=f"https://api.binance.com/api/v3/account?{qs}&signature={sig}"
-        r=requests.get(proxy_url(url),headers={"X-MBX-APIKEY":k},timeout=15)
-        if r.status_code!=200:
-            try: return None,r.json().get("msg",r.text)
-            except: return None,r.text
-        return r.json(),None
-    except Exception as e: return None,str(e)
+        timestamp = int(time.time() * 1000)
+
+        # IMPORTANT :
+        # La chaîne signée doit être exactement celle envoyée.
+        query_string = (
+            f"timestamp={timestamp}"
+            f"&recvWindow=5000"
+        )
+
+        signature = binance_signature(
+            query_string,
+            api_secret
+        )
+
+        target_url = (
+            f"https://api.binance.com"
+            f"{endpoint}"
+            f"?{query_string}"
+            f"&signature={signature}"
+        )
+
+        response = requests.get(
+            proxy_url(target_url),
+            headers={
+                "X-MBX-APIKEY": api_key,
+                "Accept": "application/json"
+            },
+            timeout=20
+        )
+
+        # Réponse HTTP
+        if response.status_code != 200:
+
+            try:
+                error_data = response.json()
+                message = error_data.get(
+                    "msg",
+                    response.text
+                )
+                code = error_data.get(
+                    "code",
+                    response.status_code
+                )
+
+                return None, f"Binance {code}: {message}"
+
+            except Exception:
+                return None, (
+                    f"HTTP {response.status_code}: "
+                    f"{response.text[:300]}"
+                )
+
+        try:
+            return response.json(), None
+
+        except Exception:
+            return None, "Réponse Binance invalide."
+
+    except requests.exceptions.Timeout:
+        return None, "Timeout lors de la connexion à Binance."
+
+    except requests.exceptions.RequestException as e:
+        return None, f"Erreur réseau: {e}"
+
+    except Exception as e:
+        return None, f"Erreur Binance: {e}"
+
+
+def tester_connexion_binance(api_key, api_secret):
+    """Teste l'authentification du compte Binance."""
+
+    compte, erreur = binance_request(
+        "/api/v3/account",
+        api_key,
+        api_secret
+    )
+
+    if compte is not None:
+        return True, "Connexion Binance réussie via Proxy ✅"
+
+    return False, erreur
+
+
+def recuperer_compte_binance(api_key, api_secret):
+    """Récupère les informations et soldes du compte Binance."""
+
+    compte, erreur = binance_request(
+        "/api/v3/account",
+        api_key,
+        api_secret
+    )
+
+    if compte is not None:
+        return compte, None
+
+    return None, erreur
+
+
 def diagnostiquer_binance():
+    """
+    Vérifie simplement que le serveur peut joindre
+    Binance à travers le Proxy.
+    """
+
     try:
-        ip=requests.get("https://api.ipify.org?format=json",timeout=10).json().get("ip","Inconnue")
-        r=requests.get(proxy_url("https://api.binance.com/api/v3/ping"),timeout=10)
-        return ip,r.status_code,"OK via Proxy"
-    except Exception as e: return None,None,str(e)
+        # IP publique du serveur
+        ip_response = requests.get(
+            "https://api.ipify.org?format=json",
+            timeout=10
+        )
+
+        ip = "Inconnue"
+
+        if ip_response.ok:
+            try:
+                ip = ip_response.json().get(
+                    "ip",
+                    "Inconnue"
+                )
+            except Exception:
+                pass
+
+        # Test Binance public
+        target = "https://api.binance.com/api/v3/ping"
+
+        response = requests.get(
+            proxy_url(target),
+            timeout=15
+        )
+
+        return (
+            ip,
+            response.status_code,
+            "Connexion Binance via Proxy OK"
+            if response.status_code == 200
+            else f"Binance HTTP {response.status_code}"
+        )
+
+    except Exception as e:
+        return None, None, str(e)
 def scanner_notifications_complet():
     initialiser_notifications(); pref=st.session_state.notification_preferences
     if not pref.get("enabled",True): return []
@@ -406,8 +541,13 @@ elif menu=="⚙️ Paiement":
                 else: st.error("❌ Échec")
             except Exception as e: st.error(f"❌ {e}")
 elif menu=="🔗 Connexions aux plateformes":
-    st.title("🔗 Connexions aux plateformes"); st.success(f"✅ Proxy Actif: `{PROXY}` - Contourne 451")
-    st.divider(); st.subheader("🟡 Binance - Via Proxy"); ak=os.environ.get("BINANCE_API_KEY",""); ask=os.environ.get("BINANCE_API_SECRET","")
+    st.title("🔗 Connexions aux plateformes")
+    st.info(
+    f"🌐 Proxy Binance actif\n\n"
+    f"`{PROXY}`"
+    )
+    st.divider()
+    st.subheader("🟡 Binance - Via Proxy"); ak=os.environ.get("BINANCE_API_KEY",""); ask=os.environ.get("BINANCE_API_SECRET","")
     if not ak or not ask: st.error("❌ Clés non configurées dans Secrets")
     else:
         st.success("🔐 Identifiants détectés."); c1,c2=st.columns(2)
