@@ -7,8 +7,11 @@ PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
 def load_users():
-    try: return json.load(open("users.json"))
-    except: return {}
+    try:
+        with open("users.json", "r") as f:
+            return json.load(f)
+    except:
+        return {}
 def save_users(users): json.dump(users, open("users.json","w"))
 def trial_active():
     t=st.session_state.get("trial_until")
@@ -76,14 +79,14 @@ def login_page():
             r=requests.get("https://www.googleapis.com/oauth2/v1/userinfo",headers={"Authorization":f"Bearer {access}"},timeout=10)
             if r.ok:
                 email=r.json().get("email"); users=load_users()
-                if email not in users: users[email]={"password":"","premium":False}; save_users(users)
+                if email not in users: users[email]={"password":"","premium":False,"trial_used":False}; save_users(users)
                 st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=users[email].get("premium",False); st.session_state.show_login=False; st.rerun()
     st.divider(); tab1,tab2=st.tabs(["🔐 Connexion","📝 Inscription"])
     with tab1:
         email=st.text_input("Email",key="login_email"); password=st.text_input("Mot de passe",type="password",key="login_password")
         if st.button("Se connecter",type="primary",use_container_width=True):
             users=load_users()
-            if email in users and users[email]["password"]==hash_password(password): st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=users[email].get("premium",False); st.session_state.show_login=False; st.rerun()
+            if email in users and users[email]["password"]==hash_password(password): user=users[email]; st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.trial_used=user.get("trial_used",False); st.session_state.trial_until=datetime.fromisoformat(user["trial_until"]) if user.get("trial_until") else None; st.session_state.is_premium=user.get("premium",False); st.session_state.show_login=False; st.rerun()
             else: st.error("❌ Email ou mot de passe incorrect.")
     with tab2:
     email=st.text_input("Email",key="register_email")
@@ -110,12 +113,7 @@ def login_page():
             st.error("❌ Cet email existe déjà. Connectez-vous avec votre compte.")
 
         else:
-            users[email]={
-                "password":hash_password(password),
-                "premium":False
-            }
-
-            save_users(users)
+            trial_until=datetime.now()+timedelta(days=3); users[email]={"password":hash_password(password),"premium":True,"trial_used":True,"trial_until":trial_until.isoformat()}; save_users(users); st.session_state.trial_until=trial_until; st.session_state.trial_used=True; st.session_state.is_premium=True
 
             st.session_state.logged_in=True
             st.session_state.user_email=email
@@ -125,20 +123,6 @@ def login_page():
 
             st.success("✅ Compte créé avec succès.")
             time.sleep(1)
-            st.rerun()
-        if st.button(
-            "🚀 Essai gratuit 3 jours Premium",
-            use_container_width=True
-        ):
-            if st.session_state.get("trial_used",False):
-            st.warning("⚠️ Votre essai gratuit a déjà été utilisé.")
-        else:
-            st.session_state.logged_in=True
-            st.session_state.is_premium=True
-            st.session_state.user_email="essai@preditrade.ai"
-            st.session_state.trial_until=datetime.now()+timedelta(days=3)
-            st.session_state.trial_used=True
-            st.session_state.show_login=False
             st.rerun()
 @st.cache_data(ttl=300,show_spinner=False)
 def charger_donnees(symbol,asset_type):
