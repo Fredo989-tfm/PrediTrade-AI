@@ -12,7 +12,35 @@ def load_users():
 def save_users(users): json.dump(users, open("users.json","w"))
 def trial_active():
     t=st.session_state.get("trial_until")
-    return datetime.now()<t if t else False
+
+    if not t:
+        return False
+
+    if isinstance(t,str):
+        try:
+            t=datetime.fromisoformat(t)
+            st.session_state.trial_until=t
+        except:
+            return False
+
+    return datetime.now()<t
+def actualiser_statut_premium():
+    actualiser_statut_premium()
+    # Si l'utilisateur possède un abonnement Premium permanent,
+    # on conserve son statut.
+    email=st.session_state.get("user_email","")
+
+    if email:
+        users=load_users()
+        user=users.get(email)
+
+        if user and user.get("premium",False):
+            st.session_state.is_premium=True
+            return True
+
+    # Essai terminé et aucun abonnement actif
+    st.session_state.is_premium=False
+    return False
 def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
     if "notification_preferences" not in st.session_state: st.session_state.notification_preferences={"enabled":True,"threshold":75,"assets":["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"],"buy_strong":True,"buy":True,"sell":False}
@@ -97,6 +125,19 @@ def login_page():
 
             st.success("✅ Compte créé avec succès.")
             time.sleep(1)
+            st.rerun()
+        "🚀 Essai gratuit 3 jours Premium",
+        use_container_width=True
+    ):
+        if st.session_state.get("trial_used",False):
+            st.warning("⚠️ Votre essai gratuit a déjà été utilisé.")
+        else:
+            st.session_state.logged_in=True
+            st.session_state.is_premium=True
+            st.session_state.user_email="essai@preditrade.ai"
+            st.session_state.trial_until=datetime.now()+timedelta(days=3)
+            st.session_state.trial_used=True
+            st.session_state.show_login=False
             st.rerun()
 @st.cache_data(ttl=300,show_spinner=False)
 def charger_donnees(symbol,asset_type):
@@ -393,9 +434,31 @@ with st.sidebar:
     with c2:
         if st.session_state.is_premium: st.markdown('<span style="background:#00E5FF;color:#000;padding:3px 8px;border-radius:5px;font-size:10px">PREMIUM</span>',unsafe_allow_html=True)
     st.divider()
-    if st.session_state.is_premium: st.success("⭐ Premium Actif")
-    elif trial_active(): st.info(f"🚀 Essai: {(st.session_state.trial_until-datetime.now()).days+1}j")
-    else: st.warning("🆓 Gratuit")
+    actualiser_statut_premium()
+
+if trial_active():
+    secondes_restantes=max(
+        0,
+        int(
+            (
+                st.session_state.trial_until-datetime.now()
+            ).total_seconds()
+        )
+    )
+
+    heures_restantes=secondes_restantes//3600
+    jours_restants=secondes_restantes//86400
+
+    st.info(
+        f"🚀 Essai Premium : {jours_restants} jour(s) "
+        f"— {heures_restantes%24} h restantes"
+    )
+
+elif st.session_state.is_premium:
+    st.success("⭐ Premium Actif")
+
+else:
+    st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
     if st.button("🚪 Déconnexion",use_container_width=True):
