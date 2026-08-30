@@ -311,6 +311,22 @@ def scanner_notifications_complet():
             if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
         except: continue
     return al
+# ============================================================
+# 🔐 CONTRÔLE D'AUTHENTIFICATION
+# ============================================================
+
+if not st.session_state.get("logged_in", False):
+
+    # Si l'utilisateur doit voir la connexion
+    if st.session_state.get("show_login", False):
+        login_page()
+
+    # Sinon afficher la page d'accueil
+    else:
+        landing_page()
+
+    # ⛔ Empêche l'affichage du dashboard et de la sidebar
+    st.stop()
 
 # SIDEBAR - CORRIGÉ: menu toujours défini
 with st.sidebar:
@@ -329,12 +345,20 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
-    if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
-        st.session_state.clear()
-        st.session_state["logged_in"] = False
-        st.session_state["show_landing"] = True
-        st.session_state["show_login"] = False
-        st.rerun()
+    if st.button("🚪 Déconnexion", use_container_width=True):
+
+    # Supprimer toutes les données de session
+    st.session_state.clear()
+
+    # Réinitialiser uniquement l'état nécessaire
+    st.session_state["logged_in"] = False
+    st.session_state["is_premium"] = False
+    st.session_state["user_email"] = ""
+    st.session_state["show_landing"] = True
+    st.session_state["show_login"] = False
+
+    # Retour immédiat à l'accueil
+    st.rerun()
 
 # PAGES
 if menu=="📊 Tableau de bord":
