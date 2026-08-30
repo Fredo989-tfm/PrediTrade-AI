@@ -346,11 +346,9 @@ with st.sidebar:
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
     if st.button("🚪 Déconnexion", use_container_width=True):
-
-# Supprimer toutes les données de session
-st.session_state.clear()
-
-# Réinitialiser uniquement l'état nécessaire
+        # Supprimer toutes les données de session
+        st.session_state.clear()
+        # Réinitialiser uniquement l'état nécessaire
 st.session_state["logged_in"] = False
 st.session_state["is_premium"] = False
 st.session_state["user_email"] = ""
