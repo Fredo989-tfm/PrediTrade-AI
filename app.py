@@ -594,10 +594,66 @@ elif menu=="⚙️ Paiement":
             except Exception as e: st.error(f"❌ {e}")
 elif menu=="🔗 Connexions aux plateformes":
     st.title("🔗 Connexions aux plateformes")
+
+st.success("🟢 Infrastructure Binance active")
+
+st.divider()
+st.subheader("🟡 Binance — Connexion sécurisée")
+
+# Récupération sécurisée des clés depuis les variables d'environnement
+ak=os.environ.get("BINANCE_API_KEY","").strip()
+ask=os.environ.get("BINANCE_API_SECRET","").strip()
+
+if not ak or not ask:
+    st.error("❌ Les identifiants Binance ne sont pas configurés.")
     st.info(
-    f"🌐 Proxy Binance actif\n\n"
-    f"`{PROXY}`"
+        "Ajoute BINANCE_API_KEY et BINANCE_API_SECRET "
+        "dans les variables d'environnement de ton hébergeur."
     )
+else:
+    st.success("🔐 Identifiants Binance détectés.")
+
+    c1,c2=st.columns(2)
+
+    with c1:
+        if st.button(
+            "🔄 Tester la connexion",
+            type="primary",
+            use_container_width=True
+        ):
+            with st.spinner("🔐 Vérification sécurisée..."):
+                ok,msg=tester_connexion_binance(ak,ask)
+
+            if ok:
+                st.success(msg)
+            else:
+                st.error(f"❌ {msg}")
+
+    with c2:
+        if st.button(
+            "💰 Voir mes soldes",
+            use_container_width=True
+        ):
+            with st.spinner("🔄 Récupération des soldes..."):
+                compte,err=recuperer_compte_binance(ak,ask)
+
+            if compte:
+                bals=[
+                    b for b in compte.get("balances",[])
+                    if float(b.get("free",0))>0
+                    or float(b.get("locked",0))>0
+                ]
+
+                if bals:
+                    st.dataframe(
+                        pd.DataFrame(bals),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                else:
+                    st.info("💰 Aucun solde disponible.")
+            else:
+                st.error(f"❌ Erreur Binance : {err}")
     st.divider()
     st.subheader("🟡 Binance - Via Proxy"); ak=os.environ.get("BINANCE_API_KEY",""); ask=os.environ.get("BINANCE_API_SECRET","")
     if not ak or not ask: st.error("❌ Clés non configurées dans Secrets")
