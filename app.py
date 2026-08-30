@@ -242,9 +242,30 @@ def assistant_gemini(q,c):
 
 try:
     from campay.sdk import Client as CamPayClient
-    campay=CamPayClient({"app_username":st.secrets["CAMPAY_USERNAME"],"app_password":st.secrets["CAMPAY_PASSWORD"],"environment":"DEV"}); CAMPAY_OK=True
-except: campay=None; CAMPAY_OK=False
 
+    CAMPAY_USERNAME=st.secrets.get("CAMPAY_USERNAME","").strip()
+    CAMPAY_PASSWORD=st.secrets.get("CAMPAY_PASSWORD","").strip()
+    CAMPAY_ENV=st.secrets.get("CAMPAY_ENV","DEV").strip().upper()
+
+    if CAMPAY_ENV not in ["DEV","PROD"]:
+        CAMPAY_ENV="DEV"
+
+    if CAMPAY_USERNAME and CAMPAY_PASSWORD:
+        campay=CamPayClient({
+            "app_username":CAMPAY_USERNAME,
+            "app_password":CAMPAY_PASSWORD,
+            "environment":CAMPAY_ENV
+        })
+
+        CAMPAY_OK=True
+    else:
+        campay=None
+        CAMPAY_OK=False
+
+except Exception:
+    campay=None
+    CAMPAY_OK=False
+    CAMPAY_ENV="DEV"
 # =========================
 # BINANCE — CONNEXION VIA PROXY
 # =========================
