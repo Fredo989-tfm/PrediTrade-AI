@@ -126,10 +126,11 @@ def login_page():
             st.success("✅ Compte créé avec succès.")
             time.sleep(1)
             st.rerun()
-        "🚀 Essai gratuit 3 jours Premium",
-        use_container_width=True
-    ):
-        if st.session_state.get("trial_used",False):
+        if st.button(
+            "🚀 Essai gratuit 3 jours Premium",
+            use_container_width=True
+        ):
+            if st.session_state.get("trial_used",False):
             st.warning("⚠️ Votre essai gratuit a déjà été utilisé.")
         else:
             st.session_state.logged_in=True
