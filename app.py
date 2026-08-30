@@ -7,13 +7,14 @@ APP_VERSION="5.0.0"
 PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 
-def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
-def load_users():
+FIREBASE_FUNCTIONS="https://europe-west1-preditrade-ai-3edb0.cloudfunctions.net"
+def firebase_request(function_name,data):
     try:
-        with open("users.json", "r") as f: return json.load(f)
-    except: return {}
-def save_users(users):
-    with open("users.json","w") as f: json.dump(users,f)
+        r=requests.post(f"{FIREBASE_FUNCTIONS}/{function_name}",json=data,timeout=15)
+        return r.json()
+    except Exception as e:
+        return {"success":False,"error":str(e)}
+def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
 
 def trial_active():
     t=st.session_state.get("trial_until")
