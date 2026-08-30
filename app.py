@@ -58,18 +58,46 @@ def login_page():
             if email in users and users[email]["password"]==hash_password(password): st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=users[email].get("premium",False); st.session_state.show_login=False; st.rerun()
             else: st.error("❌ Email ou mot de passe incorrect.")
     with tab2:
-        email=st.text_input("Email",key="register_email"); password=st.text_input("Créer un mot de passe",type="password",key="register_password")
-        if st.button("Créer compte gratuit"):
-            users=load_users()
-            if email in users: st.error("❌ Cet email existe déjà.")
-            else: users[email]={"password":hash_password(password),"premium":False}; save_users(users); st.success("✅ Compte créé.")
-            st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=False; st.session_state.show_landing=False; st.session_state.show_login=False; st.rerun()
-    if st.button("🚀 Essai gratuit 3 jours Premium",use_container_width=True): st.session_state.logged_in=True; st.session_state.is_premium=True; st.session_state.user_email="essai@preditrade.ai"; st.session_state.trial_until=datetime.now()+timedelta(days=3); st.session_state.show_login=False; st.rerun()
-if not st.session_state.get("logged_in",False):
-    if st.session_state.get("show_landing",True): landing_page()
-    else: login_page()
-    st.stop()
+    email=st.text_input("Email",key="register_email")
+    password=st.text_input(
+        "Créer un mot de passe",
+        type="password",
+        key="register_password"
+    )
 
+    if st.button("Créer compte gratuit",type="primary",use_container_width=True):
+        email=email.strip().lower()
+        users=load_users()
+
+        if not email:
+            st.error("❌ Veuillez entrer votre email.")
+
+        elif "@" not in email or "." not in email:
+            st.error("❌ Adresse email invalide.")
+
+        elif len(password)<6:
+            st.error("❌ Le mot de passe doit contenir au moins 6 caractères.")
+
+        elif email in users:
+            st.error("❌ Cet email existe déjà. Connectez-vous avec votre compte.")
+
+        else:
+            users[email]={
+                "password":hash_password(password),
+                "premium":False
+            }
+
+            save_users(users)
+
+            st.session_state.logged_in=True
+            st.session_state.user_email=email
+            st.session_state.is_premium=False
+            st.session_state.show_landing=False
+            st.session_state.show_login=False
+
+            st.success("✅ Compte créé avec succès.")
+            time.sleep(1)
+            st.rerun()
 @st.cache_data(ttl=300,show_spinner=False)
 def charger_donnees(symbol,asset_type):
     try:
@@ -474,11 +502,35 @@ elif menu=="📚 Historique":
     else: df_hist=pd.DataFrame(st.session_state.history); st.dataframe(df_hist,use_container_width=True); st.download_button("Télécharger CSV",df_hist.to_csv(index=False),"historique.csv")
 elif menu=="🤖 Assistant IA":
     st.title("🤖 Assistant IA Premium")
-    if not st.session_state.is_premium: st.warning("⚠️ Premium")
-    else: q=st.text_area("Ta question");
-    if st.button("Envoyer à l'IA",type="primary"):
-        ctx=str(st.session_state.history[-3:]);
-        with st.spinner("IA réfléchit..."): rep=assistant_gemini(q,ctx); st.markdown(f"**PrediTrade AI:** {rep}")
+
+    if not st.session_state.is_premium:
+        st.warning("🔒 L'Assistant IA est réservé aux membres Premium.")
+        st.info("⭐ Active Premium pour poser des questions à PrediTrade AI.")
+    else:
+        st.success("⭐ Assistant IA Premium actif")
+
+        q=st.text_area(
+            "💬 Pose ta question",
+            placeholder="Exemple : Pourquoi le PrediScore de Bitcoin est-il élevé ?",
+            height=120
+        )
+
+        if st.button(
+            "🚀 Envoyer à l'IA",
+            type="primary",
+            use_container_width=True
+        ):
+            if not q.strip():
+                st.warning("⚠️ Écris d'abord une question.")
+            else:
+                ctx=str(st.session_state.history[-3:])
+
+                with st.spinner("🤖 PrediTrade AI analyse ta question..."):
+                    rep=assistant_gemini(q.strip(),ctx)
+
+                st.divider()
+                st.subheader("🤖 Réponse de PrediTrade AI")
+                st.markdown(rep)
 elif menu=="📄 Rapports":
     st.title("📄 Rapports")
     if len(st.session_state.history)>0: df_rep=pd.DataFrame(st.session_state.history); st.dataframe(df_rep); st.download_button("📥 CSV",df_rep.to_csv(index=False),"rapport.csv")
