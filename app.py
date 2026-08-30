@@ -23,23 +23,49 @@ def trial_active():
         try: t=datetime.fromisoformat(t); st.session_state.trial_until=t
         except: return False
     return datetime.now()<t
+def load_users():
+    res = firebase_request("getUsers", {})
+    if res.get("success") and "users" in res:
+        return res["users"]
+    # fallback si ta function s'appelle getAllUsers
+    if isinstance(res, dict):
+        return res
+    return {}
+
+def save_user(email, data):
+    # Sauve 1 user dans Firebase via ta Cloud Function
+    res = firebase_request("saveUser", {"email": email, "user": data})
+    return res.get("success", False)
+
+def save_users(users):
+    # Pour compatibilité avec ton ancien code
+    for email, data in users.items():
+        save_user(email, data)
 
 def actualiser_statut_premium():
-    # FIX: ne plus s'appeler soi-même
-    email=st.session_state.get("user_email","")
-    if email:
-        users=load_users(); user=users.get(email)
-        if user and user.get("premium",False):
-            st.session_state.is_premium=True; return True
-        # Vérif trial dans users.json
-        if user and user.get("trial_until"):
+    email=st.session_state.get("user_email","").strip().lower()
+    if not email:
+        st.session_state.is_premium=False
+        return False
+    # Vérifie dans Firebase
+    res = firebase_request("getUser", {"email": email})
+    if res.get("success") and res.get("user"):
+        user = res["user"]
+        if user.get("premium"):
+            st.session_state.is_premium=True
+            return True
+        if user.get("trial_until"):
             try:
                 trial=datetime.fromisoformat(user["trial_until"])
-                if datetime.now()<trial:
-                    st.session_state.is_premium=True; st.session_state.trial_until=trial; return True
+                if datetime.now() < trial:
+                    st.session_state.is_premium=True
+                    st.session_state.trial_until=trial
+                    return True
             except: pass
-    if trial_active(): return True
-    st.session_state.is_premium=False; return False
+    if trial_active():
+        return True
+    st.session_state.is_premium=False
+    return False
 
 def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
@@ -85,30 +111,44 @@ def login_page():
                 if email not in users: users[email]={"password":"","premium":False,"trial_used":False}; save_users(users)
                 st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=users[email].get("premium",False); st.session_state.show_login=False; st.rerun()
     st.divider(); tab1,tab2=st.tabs(["🔐 Connexion","📝 Inscription"])
-    with tab1:
-        email=st.text_input("Email",key="login_email"); password=st.text_input("Mot de passe",type="password",key="login_password")
+        with tab1:
+        email=st.text_input("Email",key="login_email").strip().lower()
+        password=st.text_input("Mot de passe",type="password",key="login_password")
         if st.button("Se connecter",type="primary",use_container_width=True):
-            users=load_users()
-            if email in users and users[email]["password"]==hash_password(password):
-                user=users[email]; st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.trial_used=user.get("trial_used",False)
+            res = firebase_request("loginUser", {"email": email, "password": hash_password(password)})
+            if not res.get("success"):
+                # fallback ancienne méthode
+                users = load_users()
+                if email in users and users[email].get("password")==hash_password(password):
+                    res = {"success": True, "user": users[email]}
+            if res.get("success"):
+                user=res.get("user", {})
+                st.session_state.logged_in=True
+                st.session_state.user_email=email
                 st.session_state.trial_until=datetime.fromisoformat(user["trial_until"]) if user.get("trial_until") else None
-                st.session_state.is_premium=user.get("premium",False); st.session_state.show_login=False; st.rerun()
-            else: st.error("❌ Email ou mot de passe incorrect.")
-    with tab2:
-        email_reg=st.text_input("Email",key="register_email")
+                st.session_state.is_premium=user.get("premium",False)
+                st.session_state.show_login=False
+                st.rerun()
+            else:
+                st.error(f"❌ {res.get('error','Email ou mot de passe incorrect.')}")
+        with tab2:
+        email_reg=st.text_input("Email",key="register_email").strip().lower()
         password_reg=st.text_input("Créer un mot de passe",type="password",key="register_password")
         if st.button("Créer compte gratuit",type="primary",use_container_width=True):
-            email_reg=email_reg.strip().lower(); users=load_users()
-            if not email_reg: st.error("❌ Veuillez entrer votre email.")
-            elif "@" not in email_reg or "." not in email_reg: st.error("❌ Adresse email invalide.")
-            elif len(password_reg)<6: st.error("❌ Le mot de passe doit contenir au moins 6 caractères.")
-            elif email_reg in users: st.error("❌ Cet email existe déjà.")
+            if len(password_reg)<6: st.error("❌ 6 caractères minimum")
             else:
                 trial_until=datetime.now()+timedelta(days=3)
-                users[email_reg]={"password":hash_password(password_reg),"premium":True,"trial_used":True,"trial_until":trial_until.isoformat()}
-                save_users(users); st.session_state.trial_until=trial_until; st.session_state.trial_used=True; st.session_state.is_premium=True
-                st.session_state.logged_in=True; st.session_state.user_email=email_reg; st.session_state.show_landing=False; st.session_state.show_login=False
-                st.success("✅ Compte créé avec succès."); time.sleep(1); st.rerun()
+                new_user={"password":hash_password(password_reg),"premium":True,"trial_used":True,"trial_until":trial_until.isoformat()}
+                res = firebase_request("createUser", {"email": email_reg, "user": new_user})
+                if res.get("success") or "already" in str(res).lower():
+                    # Si déjà existe, on le considère ok
+                    save_user(email_reg, new_user)
+                    st.session_state.logged_in=True; st.session_state.user_email=email_reg
+                    st.session_state.trial_until=trial_until; st.session_state.is_premium=True
+                    st.session_state.show_landing=False; st.session_state.show_login=False
+                    st.success("✅ Compte créé"); time.sleep(1); st.rerun()
+                else:
+                    st.error(f"❌ {res.get('error','Cet email existe déjà')}")
 
 if not st.session_state.get("logged_in",False):
     if st.session_state.get("show_landing",True): landing_page()
