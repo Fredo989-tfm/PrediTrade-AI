@@ -330,12 +330,11 @@ with st.sidebar:
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
     if st.sidebar.button("🚪 Déconnexion", use_container_width=True):
-        for key in ["logged_in", "user_email", "is_premium", "trial_until", "trial_used", "show_landing", "show_login"]:
-            st.session_state.pop(key, None)
-            st.session_state["logged_in"] = False
-            st.session_state["show_landing"] = True
-            st.session_state["show_login"] = False
-            st.rerun()
+        st.session_state.clear()
+        st.session_state["logged_in"] = False
+        st.session_state["show_landing"] = True
+        st.session_state["show_login"] = False
+        st.rerun()
 
 # PAGES
 if menu=="📊 Tableau de bord":
