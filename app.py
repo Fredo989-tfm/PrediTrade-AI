@@ -329,8 +329,13 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
-    if st.button("🚪 Déconnexion",use_container_width=True):
-        for k in list(st.session_state.keys()): del st.session_state[k]
+        if st.button("🚪 Déconnexion",use_container_width=True, key="logout_btn"):
+        st.session_state.clear()
+        st.session_state.logged_in = False
+        st.session_state.show_landing = True
+        st.session_state.show_login = False
+        st.session_state.is_premium = False
+        st.session_state.user_email = ""
         st.rerun()
 
 # PAGES
