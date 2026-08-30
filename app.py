@@ -8,13 +8,17 @@ PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 
 FIREBASE_FUNCTIONS="https://europe-west1-preditrade-ai-3edb0.cloudfunctions.net"
-def firebase_request(function_name,data):
+
+def firebase_request(function_name, data):
     try:
-        r=requests.post(f"{FIREBASE_FUNCTIONS}/{function_name}",json=data,timeout=15)
-        return r.json()
+        r=requests.post(f"{FIREBASE_FUNCTIONS}/{function_name}", json=data, timeout=15)
+        try: return r.json()
+        except: return {"success": False, "error": r.text[:200]}
     except Exception as e:
-        return {"success":False,"error":str(e)}
-def hash_password(pw): return hashlib.sha256(pw.encode()).hexdigest()
+        return {"success": False, "error": str(e)}
+
+def hash_password(pw): 
+    return hashlib.sha256(str(pw).encode()).hexdigest()
 
 def trial_active():
     t=st.session_state.get("trial_until")
@@ -23,46 +27,23 @@ def trial_active():
         try: t=datetime.fromisoformat(t); st.session_state.trial_until=t
         except: return False
     return datetime.now()<t
-def load_users():
-    res = firebase_request("getUsers", {})
-    if res.get("success") and "users" in res:
-        return res["users"]
-    # fallback si ta function s'appelle getAllUsers
-    if isinstance(res, dict):
-        return res
-    return {}
-
-def save_user(email, data):
-    # Sauve 1 user dans Firebase via ta Cloud Function
-    res = firebase_request("saveUser", {"email": email, "user": data})
-    return res.get("success", False)
-
-def save_users(users):
-    # Pour compatibilité avec ton ancien code
-    for email, data in users.items():
-        save_user(email, data)
 
 def actualiser_statut_premium():
     email=st.session_state.get("user_email","").strip().lower()
     if not email:
         st.session_state.is_premium=False
         return False
-    # Vérifie dans Firebase
+    # Si on a déjà premium en session, on garde
+    if st.session_state.get("is_premium"): 
+        return True
+    # Vérifie Firebase
     res = firebase_request("getUser", {"email": email})
-    if res.get("success") and res.get("user"):
-        user = res["user"]
-        if user.get("premium"):
+    if res.get("success"):
+        if res.get("premium"):
             st.session_state.is_premium=True
             return True
-        if user.get("trial_until"):
-            try:
-                trial=datetime.fromisoformat(user["trial_until"])
-                if datetime.now() < trial:
-                    st.session_state.is_premium=True
-                    st.session_state.trial_until=trial
-                    return True
-            except: pass
     if trial_active():
+        st.session_state.is_premium=True
         return True
     st.session_state.is_premium=False
     return False
@@ -101,59 +82,77 @@ REDIRECT_URI="https://preditradeai.streamlit.app/component/streamlit_oauth.autho
 def login_page():
     st.image("IMG-20260810-WA1501.jpg",width=80)
     st.markdown(f"""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B)"><h1 style="color:#00E5FF">🚀 Connexion à PrediTrade AI</h1></div>""",unsafe_allow_html=True)
+    
     result=oauth.authorize_button(name="🔒 Se connecter avec Google",redirect_uri=REDIRECT_URI,scope="openid email profile",key="google_login_v51",use_container_width=True,pkce="S256")
     if result and "token" in result:
         access=result["token"].get("access_token")
         if access:
             r=requests.get("https://www.googleapis.com/oauth2/v1/userinfo",headers={"Authorization":f"Bearer {access}"},timeout=10)
             if r.ok:
-                email=r.json().get("email"); users=load_users()
-                if email not in users: users[email]={"password":"","premium":False,"trial_used":False}; save_users(users)
-                st.session_state.logged_in=True; st.session_state.user_email=email; st.session_state.is_premium=users[email].get("premium",False); st.session_state.show_login=False; st.rerun()
-    st.divider(); tab1,tab2=st.tabs(["🔐 Connexion","📝 Inscription"])
-        with tab1:
+                email=r.json().get("email","").strip().lower()
+                st.session_state.logged_in=True
+                st.session_state.user_email=email
+                # Récupère premium depuis Firebase
+                fres = firebase_request("getUser", {"email": email})
+                st.session_state.is_premium = fres.get("premium", False) if fres.get("success") else False
+                st.session_state.show_login=False
+                st.rerun()
+
+    st.divider()
+    tab1,tab2=st.tabs(["🔐 Connexion","📝 Inscription"])
+    
+    with tab1:
         email=st.text_input("Email",key="login_email").strip().lower()
         password=st.text_input("Mot de passe",type="password",key="login_password")
         if st.button("Se connecter",type="primary",use_container_width=True):
-            res = firebase_request("loginUser", {"email": email, "password": hash_password(password)})
-            if not res.get("success"):
-                # fallback ancienne méthode
-                users = load_users()
-                if email in users and users[email].get("password")==hash_password(password):
-                    res = {"success": True, "user": users[email]}
-            if res.get("success"):
-                user=res.get("user", {})
-                st.session_state.logged_in=True
-                st.session_state.user_email=email
-                st.session_state.trial_until=datetime.fromisoformat(user["trial_until"]) if user.get("trial_until") else None
-                st.session_state.is_premium=user.get("premium",False)
-                st.session_state.show_login=False
-                st.rerun()
+            if not email or not password:
+                st.error("❌ Remplis email et mot de passe")
             else:
-                st.error(f"❌ {res.get('error','Email ou mot de passe incorrect.')}")
-        with tab2:
+                with st.spinner("Connexion..."):
+                    res = firebase_request("loginUser", {"email": email, "password": password})
+                if res.get("success"):
+                    st.session_state.logged_in=True
+                    st.session_state.user_email=email
+                    st.session_state.is_premium=res.get("premium", False)
+                    st.session_state.trial_until=datetime.now()+timedelta(days=3) if not res.get("premium") else None
+                    st.session_state.show_login=False
+                    st.success("✅ Connecté")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.error(f"❌ {res.get('error','Email ou mot de passe incorrect.')}")
+    
+    with tab2:
         email_reg=st.text_input("Email",key="register_email").strip().lower()
         password_reg=st.text_input("Créer un mot de passe",type="password",key="register_password")
         if st.button("Créer compte gratuit",type="primary",use_container_width=True):
-            if len(password_reg)<6: st.error("❌ 6 caractères minimum")
+            if not email_reg or "@" not in email_reg:
+                st.error("❌ Email invalide")
+            elif len(password_reg)<6:
+                st.error("❌ 6 caractères minimum")
             else:
-                trial_until=datetime.now()+timedelta(days=3)
-                new_user={"password":hash_password(password_reg),"premium":True,"trial_used":True,"trial_until":trial_until.isoformat()}
-                res = firebase_request("createUser", {"email": email_reg, "user": new_user})
-                if res.get("success") or "already" in str(res).lower():
-                    # Si déjà existe, on le considère ok
-                    save_user(email_reg, new_user)
-                    st.session_state.logged_in=True; st.session_state.user_email=email_reg
-                    st.session_state.trial_until=trial_until; st.session_state.is_premium=True
-                    st.session_state.show_landing=False; st.session_state.show_login=False
-                    st.success("✅ Compte créé"); time.sleep(1); st.rerun()
+                with st.spinner("Création..."):
+                    res = firebase_request("registerUser", {"email": email_reg, "password": password_reg})
+                if res.get("success"):
+                    st.session_state.logged_in=True
+                    st.session_state.user_email=email_reg
+                    st.session_state.is_premium=False
+                    st.session_state.trial_until=datetime.now()+timedelta(days=3)
+                    st.session_state.show_landing=False
+                    st.session_state.show_login=False
+                    st.success("✅ Compte créé avec succès")
+                    time.sleep(1)
+                    st.rerun()
                 else:
-                    st.error(f"❌ {res.get('error','Cet email existe déjà')}")
-
-if not st.session_state.get("logged_in",False):
-    if st.session_state.get("show_landing",True): landing_page()
-    else: login_page()
-    st.stop()
+                    st.error(f"❌ {res.get('error','Erreur création')}")
+    
+    if st.button("🚀 Essai gratuit 3 jours Premium",use_container_width=True):
+        st.session_state.logged_in=True
+        st.session_state.is_premium=True
+        st.session_state.user_email="essai@preditrade.ai"
+        st.session_state.trial_until=datetime.now()+timedelta(days=3)
+        st.session_state.show_login=False
+        st.rerun() 
 
 @st.cache_data(ttl=300,show_spinner=False)
 def charger_donnees(symbol,asset_type):
