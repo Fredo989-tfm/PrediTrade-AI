@@ -1,8 +1,6 @@
 import streamlit as st, base64, pandas as pd, numpy as np, os, requests, time, hashlib, json, re, io, urllib.parse
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
-from streamlit_oauth import OAuth2Component
-
 APP_VERSION="5.0.0"
 PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
@@ -47,7 +45,6 @@ def actualiser_statut_premium():
         return True
     st.session_state.is_premium=False
     return False
-
 def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
     if "notification_preferences" not in st.session_state: st.session_state.notification_preferences={"enabled":True,"threshold":75,"assets":["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"],"buy_strong":True,"buy":True,"sell":False}
@@ -60,99 +57,6 @@ def ajouter_notification(actif,score,signal,confiance):
     st.session_state.notifications.append(n)
     if len(st.session_state.notifications)>50: st.session_state.notifications=st.session_state.notifications[-50:]
     return True
-
-def landing_page():
-    st.title("🚀 PrediTrade AI Pro"); st.markdown("### L'IA qui prédit le marché pour toi")
-    c1,c2=st.columns(2)
-    with c1: st.markdown("**Prédictions IA** sur Forex, Crypto, Actions\n**Signaux ACHAT/VENTE** avec PrediScore")
-    with c2:
-        if st.button("🔐 J'ai déjà un compte",use_container_width=True): st.session_state.show_landing=False; st.session_state.show_login=True; st.rerun()
-    if st.button("🚀 Créer mon compte gratuit",type="primary",use_container_width=True): st.session_state.show_landing=False; st.session_state.show_login=True; st.rerun()
-
-for k,v in [("logged_in",False),("is_premium",False),("user_email",""),("cash",10000.0),("history",[]),("operations",[]),("show_landing",False),("show_login",False),("trial_until",None),("portfolio",{})]:
-    if k not in st.session_state: st.session_state[k]=v
-initialiser_notifications()
-
-ASSETS={"Crypto":{"Bitcoin (BTC)":"BTC","Ethereum (ETH)":"ETH","Solana (SOL)":"SOL","BNB":"BNB","XRP":"XRP","Cardano (ADA)":"ADA","Dogecoin (DOGE)":"DOGE"},"Forex":{"EUR/USD":"EURUSD","GBP/USD":"GBPUSD","USD/JPY":"USDJPY","USD/CHF":"USDCHF","AUD/USD":"AUDUSD","USD/CAD":"USDCAD"},"Matières Premières":{"Or (XAU)":"XAU","Pétrole WTI":"WTI","Pétrole Brent":"BRENT","Argent (XAG)":"XAG"},"Actions":{"Apple (AAPL)":"AAPL","Microsoft (MSFT)":"MSFT","NVIDIA (NVDA)":"NVDA","Amazon (AMZN)":"AMZN","Tesla (TSLA)":"TSLA","Meta (META)":"META","Alphabet (GOOGL)":"GOOGL"},"Indices":{"S&P 500":"SPY","NASDAQ 100":"QQQ","Dow Jones":"DIA"},"ETF":{"SPDR S&P 500 ETF":"SPY","Invesco QQQ":"QQQ","iShares Core S&P 500":"IVV"}}
-
-CLIENT_ID=os.environ["CLIENT_ID"]; CLIENT_SECRET=os.environ["CLIENT_SECRET"]
-oauth=OAuth2Component(CLIENT_ID,CLIENT_SECRET,"https://accounts.google.com/o/oauth2/auth","https://oauth2.googleapis.com/token","https://oauth2.googleapis.com/token","https://oauth2.googleapis.com/revoke")
-REDIRECT_URI="https://preditradeai.streamlit.app/component/streamlit_oauth.authorize_button"
-
-def login_page():
-    st.image("IMG-20260810-WA1501.jpg",width=80)
-    st.markdown(f"""<div style="text-align:center;padding:25px;border-radius:15px;background:linear-gradient(90deg,#0E1117,#1B263B)"><h1 style="color:#00E5FF">🚀 Connexion à PrediTrade AI</h1></div>""",unsafe_allow_html=True)
-    
-    result=oauth.authorize_button(name="🔒 Se connecter avec Google",redirect_uri=REDIRECT_URI,scope="openid email profile",key="google_login_v51",use_container_width=True,pkce="S256")
-    if result and "token" in result:
-        access=result["token"].get("access_token")
-        if access:
-            r=requests.get("https://www.googleapis.com/oauth2/v1/userinfo",headers={"Authorization":f"Bearer {access}"},timeout=10)
-            if r.ok:
-                email=r.json().get("email","").strip().lower()
-                st.session_state.logged_in=True
-                st.session_state.user_email=email
-                # Récupère premium depuis Firebase
-                fres = firebase_request("getUser", {"email": email})
-                st.session_state.is_premium = fres.get("premium", False) if fres.get("success") else False
-                st.session_state.show_login=False
-                st.rerun()
-
-    st.divider()
-    tab1,tab2=st.tabs(["🔐 Connexion","📝 Inscription"])
-    
-    with tab1:
-        email=st.text_input("Email",key="login_email").strip().lower()
-        password=st.text_input("Mot de passe",type="password",key="login_password")
-        if st.button("Se connecter",type="primary",use_container_width=True):
-            if not email or not password:
-                st.error("❌ Remplis email et mot de passe")
-            else:
-                with st.spinner("Connexion..."):
-                    res = firebase_request("loginUser", {"email": email, "password": password})
-                if res.get("success"):
-                    st.session_state.logged_in=True
-                    st.session_state.user_email=email
-                    st.session_state.is_premium=res.get("premium", False)
-                    st.session_state.trial_until=datetime.now()+timedelta(days=3) if not res.get("premium") else None
-                    st.session_state.show_login=False
-                    st.success("✅ Connecté")
-                    time.sleep(0.5)
-                    st.rerun()
-                else:
-                    st.error(f"❌ {res.get('error','Email ou mot de passe incorrect.')}")
-    
-    with tab2:
-        email_reg=st.text_input("Email",key="register_email").strip().lower()
-        password_reg=st.text_input("Créer un mot de passe",type="password",key="register_password")
-        if st.button("Créer compte gratuit",type="primary",use_container_width=True):
-            if not email_reg or "@" not in email_reg:
-                st.error("❌ Email invalide")
-            elif len(password_reg)<6:
-                st.error("❌ 6 caractères minimum")
-            else:
-                with st.spinner("Création..."):
-                    res = firebase_request("registerUser", {"email": email_reg, "password": password_reg})
-                if res.get("success"):
-                    st.session_state.logged_in=True
-                    st.session_state.user_email=email_reg
-                    st.session_state.is_premium=False
-                    st.session_state.trial_until=datetime.now()+timedelta(days=3)
-                    st.session_state.show_landing=False
-                    st.session_state.show_login=False
-                    st.success("✅ Compte créé avec succès")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error(f"❌ {res.get('error','Erreur création')}")
-    
-    if st.button("🚀 Essai gratuit 3 jours Premium",use_container_width=True):
-        st.session_state.logged_in=True
-        st.session_state.is_premium=True
-        st.session_state.user_email="essai@preditrade.ai"
-        st.session_state.trial_until=datetime.now()+timedelta(days=3)
-        st.session_state.show_login=False
-        st.rerun() 
 
 @st.cache_data(ttl=300,show_spinner=False)
 def charger_donnees(symbol,asset_type):
