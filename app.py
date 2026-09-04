@@ -214,6 +214,26 @@ def scanner_notifications_complet():
             if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
         except: continue
     return al
+# Initialisation de la session sans connexion
+for k,v in [
+    ("logged_in", True),
+    ("is_premium", False),
+    ("user_email", "demo@preditrade.ai"),
+    ("cash", 10000.0),
+    ("history", []),
+    ("operations", []),
+    ("show_landing", False),
+    ("show_login", False),
+    ("trial_until", None),
+    ("portfolio", {})
+]:
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+initialiser_notifications()
+
+# Connexion temporairement désactivée
+st.session_state["logged_in"] = True
 
 # ============================================================
 # 🚀 ACCÈS DIRECT — CONNEXION TEMPORAIREMENT DÉSACTIVÉE
