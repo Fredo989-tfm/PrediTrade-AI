@@ -15,7 +15,7 @@ def firebase_request(function_name, data):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def hash_password(pw): 
+def hash_password(pw):
     return hashlib.sha256(str(pw).encode()).hexdigest()
 
 def trial_active():
@@ -31,10 +31,8 @@ def actualiser_statut_premium():
     if not email:
         st.session_state.is_premium=False
         return False
-    # Si on a déjà premium en session, on garde
-    if st.session_state.get("is_premium"): 
+    if st.session_state.get("is_premium"):
         return True
-    # Vérifie Firebase
     res = firebase_request("getUser", {"email": email})
     if res.get("success"):
         if res.get("premium"):
@@ -45,6 +43,7 @@ def actualiser_statut_premium():
         return True
     st.session_state.is_premium=False
     return False
+
 def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
     if "notification_preferences" not in st.session_state: st.session_state.notification_preferences={"enabled":True,"threshold":75,"assets":["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"],"buy_strong":True,"buy":True,"sell":False}
@@ -215,24 +214,17 @@ def scanner_notifications_complet():
             if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
         except: continue
     return al
+
 # ============================================================
-# 🔐 CONTRÔLE D'AUTHENTIFICATION
+# 🚀 ACCÈS DIRECT — CONNEXION TEMPORAIREMENT DÉSACTIVÉE
 # ============================================================
 
-if not st.session_state.get("logged_in", False):
+st.session_state["logged_in"] = True
 
-    # Si l'utilisateur doit voir la connexion
-    if st.session_state.get("show_login", False):
-        login_page()
+if "user_email" not in st.session_state:
+    st.session_state["user_email"] = "demo@preditrade.ai"
 
-    # Sinon afficher la page d'accueil
-    else:
-        landing_page()
-
-    # ⛔ Empêche l'affichage du dashboard et de la sidebar
-    st.stop()
-
-# SIDEBAR - CORRIGÉ: menu toujours défini
+# SIDEBAR - CORRIGÉ
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg",width=80); st.title("PrediTrade AI"); st.caption(f"V{APP_VERSION}")
     c1,c2=st.columns([3,1])
@@ -249,18 +241,7 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
-    if st.button("🚪 Déconnexion", use_container_width=True):
-        # Supprimer toutes les données de session
-        st.session_state.clear()
-        # Réinitialiser uniquement l'état nécessaire
-st.session_state["logged_in"] = False
-st.session_state["is_premium"] = False
-st.session_state["user_email"] = ""
-st.session_state["show_landing"] = True
-st.session_state["show_login"] = False
-
-# Retour immédiat à l'accueil
-st.rerun()
+    # BLOC DECONNEXION SUPPRIMÉ
 
 # PAGES
 if menu=="📊 Tableau de bord":
@@ -271,167 +252,42 @@ if menu=="📊 Tableau de bord":
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     st.caption("Analyse technique multi-indicateurs — PrediTrade AI")
-
     cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
     name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
-
     if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
         with st.spinner("🤖 PrediTrade AI analyse le marché..."):
             df=charger_donnees(ASSETS[cat][name],cat)
-
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données de {name}.")
         else:
-            ind=indicateurs(df)
-            score,signal,conf=prediscore(ind)
-
-            prix=float(ind["close"].iloc[-1])
-            rsi=float(ind["rsi"].iloc[-1])
-            momentum=float(ind["momentum"].iloc[-1])
-            macd=float(ind["macd"].iloc[-1])
-            macd_signal=float(ind["signal"].iloc[-1])
-            ema20=float(ind["ema20"].iloc[-1])
-            ema50=float(ind["ema50"].iloc[-1])
-            ema200=float(ind["ema200"].iloc[-1])
-
+            ind=indicateurs(df); score,signal,conf=prediscore(ind)
+            prix=float(ind["close"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); macd_signal=float(ind["signal"].iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1])
             st.success(f"✅ Analyse terminée — {name}")
-
-            c1,c2,c3=st.columns(3)
-            c1.metric("🎯 PrediScore",f"{score}/100")
-            c2.metric("📡 Signal",signal)
-            c3.metric("🧠 Confiance",conf)
-
-            c1,c2,c3=st.columns(3)
-            c1.metric("💰 Prix",f"{prix:,.4f}")
-            c2.metric("📊 RSI",f"{rsi:.1f}")
-            c3.metric("📈 Momentum",f"{momentum:.2f}%")
-
-            st.divider()
-            st.subheader("📊 Graphique du marché")
-
-            chart=df.tail(150).copy()
-            fig=go.Figure()
-
-            fig.add_trace(go.Candlestick(
-                x=chart.index,
-                open=chart["Open"],
-                high=chart["High"],
-                low=chart["Low"],
-                close=chart["Close"],
-                name="Prix"
-            ))
-
-            fig.add_trace(go.Scatter(
-                x=chart.index,
-                y=ind["ema20"].tail(150),
-                name="EMA20",
-                mode="lines"
-            ))
-
-            fig.add_trace(go.Scatter(
-                x=chart.index,
-                y=ind["ema50"].tail(150),
-                name="EMA50",
-                mode="lines"
-            ))
-
-            fig.add_trace(go.Scatter(
-                x=chart.index,
-                y=ind["ema200"].tail(150),
-                name="EMA200",
-                mode="lines"
-            ))
-
-            fig.update_layout(
-                height=500,
-                template="plotly_dark",
-                xaxis_rangeslider_visible=False,
-                margin=dict(l=5,r=5,t=30,b=5),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="left",
-                    x=0
-                )
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={"displaylogo":False,"responsive":True}
-            )
-
-            st.divider()
-            st.subheader("🔎 Pourquoi ce score ?")
-
+            c1,c2,c3=st.columns(3); c1.metric("🎯 PrediScore",f"{score}/100"); c2.metric("📡 Signal",signal); c3.metric("🧠 Confiance",conf)
+            c1,c2,c3=st.columns(3); c1.metric("💰 Prix",f"{prix:,.4f}"); c2.metric("📊 RSI",f"{rsi:.1f}"); c3.metric("📈 Momentum",f"{momentum:.2f}%")
+            st.divider(); st.subheader("📊 Graphique du marché")
+            chart=df.tail(150).copy(); fig=go.Figure()
+            fig.add_trace(go.Candlestick(x=chart.index,open=chart["Open"],high=chart["High"],low=chart["Low"],close=chart["Close"],name="Prix"))
+            fig.add_trace(go.Scatter(x=chart.index,y=ind["ema20"].tail(150),name="EMA20",mode="lines"))
+            fig.add_trace(go.Scatter(x=chart.index,y=ind["ema50"].tail(150),name="EMA50",mode="lines"))
+            fig.add_trace(go.Scatter(x=chart.index,y=ind["ema200"].tail(150),name="EMA200",mode="lines"))
+            fig.update_layout(height=500,template="plotly_dark",xaxis_rangeslider_visible=False,margin=dict(l=5,r=5,t=30,b=5),legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0))
+            st.plotly_chart(fig,use_container_width=True,config={"displaylogo":False,"responsive":True})
+            st.divider(); st.subheader("🔎 Pourquoi ce score?")
             for icone,indicateur,detail,interp in expliquer_score(ind):
-                c1,c2,c3=st.columns([1,2,3])
-                c1.write(icone)
-                c2.write(f"**{indicateur}**")
-                c3.write(f"{detail} — **{interp}**")
-
-            st.divider()
-            st.subheader("🤖 Conclusion PrediTrade AI")
-
+                c1,c2,c3=st.columns([1,2,3]); c1.write(icone); c2.write(f"**{indicateur}**"); c3.write(f"{detail} — **{interp}**")
+            st.divider(); st.subheader("🤖 Conclusion PrediTrade AI")
             if score>=80:
-                if rsi>70:
-                    st.warning(
-                        f"🟢 Signal fortement haussier ({score}/100), "
-                        f"mais le RSI à {rsi:.1f} indique une zone de surachat. "
-                        "La tendance reste favorable, mais une entrée immédiate demande de la prudence."
-                    )
-                else:
-                    st.success(
-                        f"🟢 Configuration haussière forte : {score}/100. "
-                        "Les principaux indicateurs techniques sont favorables."
-                    )
-            elif score>=70:
-                st.success(
-                    f"🟢 Configuration haussière : {score}/100. "
-                    "Le marché présente plusieurs éléments favorables."
-                )
-            elif score>=55:
-                st.info(
-                    f"🟡 Configuration neutre à légèrement haussière : {score}/100. "
-                    "Il est préférable d'attendre une confirmation."
-                )
-            elif score>=40:
-                st.warning(
-                    f"🟠 Configuration prudente : {score}/100. "
-                    "Les signaux sont mitigés."
-                )
-            else:
-                st.error(
-                    f"🔴 Configuration baissière : {score}/100. "
-                    "Les indicateurs techniques sont défavorables."
-                )
-
+                if rsi>70: st.warning(f"🟢 Signal fortement haussier ({score}/100), mais le RSI à {rsi:.1f} indique une zone de surachat.")
+                else: st.success(f"🟢 Configuration haussière forte : {score}/100.")
+            elif score>=70: st.success(f"🟢 Configuration haussière : {score}/100.")
+            elif score>=55: st.info(f"🟡 Configuration neutre : {score}/100.")
+            elif score>=40: st.warning(f"🟠 Configuration prudente : {score}/100.")
+            else: st.error(f"🔴 Configuration baissière : {score}/100.")
             st.subheader("📋 Résumé technique")
-
-            resume=pd.DataFrame([
-                {"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},
-                {"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},
-                {"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},
-                {"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},
-                {"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},
-                {"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}
-            ])
-
-            st.dataframe(
-                resume,
-                use_container_width=True,
-                hide_index=True
-            )
-
-            st.session_state.history.append({
-                "date":datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "actif":name,
-                "score":score,
-                "signal":signal,
-                "confiance":conf,
-                "prix":prix
-            })
+            resume=pd.DataFrame([{"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},{"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},{"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},{"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},{"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},{"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}])
+            st.dataframe(resume,use_container_width=True,hide_index=True)
+            st.session_state.history.append({"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"actif":name,"score":score,"signal":signal,"confiance":conf,"prix":prix})
 elif menu=="🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     if st.button("🚀 Lancer le scan",type="primary",use_container_width=True):
