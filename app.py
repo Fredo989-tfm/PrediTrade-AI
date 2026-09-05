@@ -418,6 +418,54 @@ for k, v in [
 
 initialiser_notifications()
 # ============================================================
+# 📊 ACTIFS DISPONIBLES
+# ============================================================
+
+ASSETS = {
+    "Crypto": {
+        "Bitcoin (BTC)": "BTC",
+        "Ethereum (ETH)": "ETH",
+        "Solana (SOL)": "SOL",
+        "BNB": "BNB",
+        "XRP": "XRP",
+        "Cardano (ADA)": "ADA",
+        "Dogecoin (DOGE)": "DOGE"
+    },
+    "Forex": {
+        "EUR/USD": "EURUSD",
+        "GBP/USD": "GBPUSD",
+        "USD/JPY": "USDJPY",
+        "USD/CHF": "USDCHF",
+        "AUD/USD": "AUDUSD",
+        "USD/CAD": "USDCAD"
+    },
+    "Matières Premières": {
+        "Or (XAU)": "XAU",
+        "Pétrole WTI": "WTI",
+        "Pétrole Brent": "BRENT",
+        "Argent (XAG)": "XAG"
+    },
+    "Actions": {
+        "Apple (AAPL)": "AAPL",
+        "Microsoft (MSFT)": "MSFT",
+        "NVIDIA (NVDA)": "NVDA",
+        "Amazon (AMZN)": "AMZN",
+        "Tesla (TSLA)": "TSLA",
+        "Meta (META)": "META",
+        "Alphabet (GOOGL)": "GOOGL"
+    },
+    "Indices": {
+        "S&P 500": "SPY",
+        "NASDAQ 100": "QQQ",
+        "Dow Jones": "DIA"
+    },
+    "ETF": {
+        "SPDR S&P 500 ETF": "SPY",
+        "Invesco QQQ": "QQQ",
+        "iShares Core S&P 500": "IVV"
+    }
+}
+# ============================================================
 # 🔐 INSCRIPTION / CONNEXION
 # ============================================================
 
@@ -498,6 +546,7 @@ if not st.session_state.get("logged_in", False):
 
                 else:
                     st.error("❌ Email ou mot de passe incorrect.")
+                    
 
     # ========================================================
     # 📝 INSCRIPTION
