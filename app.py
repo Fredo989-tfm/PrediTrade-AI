@@ -417,6 +417,164 @@ for k, v in [
         st.session_state[k] = v
 
 initialiser_notifications()
+# ============================================================
+# 🔐 INSCRIPTION / CONNEXION
+# ============================================================
+
+if not st.session_state.get("logged_in", False):
+
+    st.set_page_config(
+        page_title="PrediTrade AI",
+        page_icon="📈",
+        layout="centered"
+    )
+
+    st.image("IMG-20260810-WA1501.jpg", width=120)
+    st.title("📈 PrediTrade AI")
+    st.caption("Ton assistant intelligent pour étudier les marchés.")
+
+    mode_auth = st.radio(
+        "Accès",
+        ["🔑 Connexion", "📝 Créer un compte"],
+        horizontal=True
+    )
+
+    st.divider()
+
+    # ========================================================
+    # 🔑 CONNEXION
+    # ========================================================
+
+    if mode_auth == "🔑 Connexion":
+
+        st.subheader("🔑 Se connecter")
+
+        email = st.text_input(
+            "📧 Email",
+            placeholder="exemple@email.com",
+            key="login_email"
+        )
+
+        password = st.text_input(
+            "🔒 Mot de passe",
+            type="password",
+            key="login_password"
+        )
+
+        if st.button(
+            "🚀 Se connecter",
+            type="primary",
+            use_container_width=True
+        ):
+
+            email = email.strip().lower()
+
+            if not email or not password:
+                st.error("❌ Remplis tous les champs.")
+
+            else:
+                user = authenticate_user(email, password)
+
+                if user:
+
+                    st.session_state.logged_in = True
+                    st.session_state.user_email = user["email"]
+                    st.session_state.is_premium = user["premium"]
+
+                    if user.get("trial_until"):
+                        try:
+                            st.session_state.trial_until = datetime.fromisoformat(
+                                user["trial_until"]
+                            )
+                        except:
+                            st.session_state.trial_until = None
+
+                    st.session_state.show_landing = False
+                    st.session_state.show_login = False
+
+                    st.success("✅ Connexion réussie !")
+                    time.sleep(0.5)
+                    st.rerun()
+
+                else:
+                    st.error("❌ Email ou mot de passe incorrect.")
+
+    # ========================================================
+    # 📝 INSCRIPTION
+    # ========================================================
+
+    else:
+
+        st.subheader("📝 Créer ton compte")
+
+        email = st.text_input(
+            "📧 Email",
+            placeholder="exemple@email.com",
+            key="register_email"
+        )
+
+        password = st.text_input(
+            "🔒 Mot de passe",
+            type="password",
+            key="register_password"
+        )
+
+        password_confirm = st.text_input(
+            "🔒 Confirmer le mot de passe",
+            type="password",
+            key="register_password_confirm"
+        )
+
+        st.caption(
+            "Le mot de passe doit contenir au minimum 6 caractères."
+        )
+
+        if st.button(
+            "✨ Créer mon compte",
+            type="primary",
+            use_container_width=True
+        ):
+
+            email = email.strip().lower()
+
+            if not email or not password or not password_confirm:
+                st.error("❌ Remplis tous les champs.")
+
+            elif "@" not in email or "." not in email:
+                st.error("❌ Adresse email invalide.")
+
+            elif len(password) < 6:
+                st.error(
+                    "❌ Le mot de passe doit contenir au moins 6 caractères."
+                )
+
+            elif password != password_confirm:
+                st.error("❌ Les deux mots de passe ne correspondent pas.")
+
+            else:
+
+                success, message = create_user(
+                    email,
+                    password
+                )
+
+                if success:
+
+                    st.success(
+                        "🎉 Compte créé avec succès ! "
+                        "Tu peux maintenant te connecter."
+                    )
+
+                else:
+                    st.error(f"❌ {message}")
+
+    st.divider()
+
+    st.caption(
+        "🔐 Tes identifiants sont gérés directement par PrediTrade AI."
+    )
+
+    st.stop()
 
 # Connexion temporairement désactivée
 st.session_state["logged_in"] = True
