@@ -635,6 +635,20 @@ with st.sidebar:
         if st.session_state.get("user_email"): st.caption(f"👋 {st.session_state.user_email.split('@')[0]}")
     with c2:
         if st.session_state.is_premium: st.markdown('<span style="background:#00E5FF;color:#000;padding:3px 8px;border-radius:5px;font-size:10px">PREMIUM</span>',unsafe_allow_html=True)
+        # ========================================================
+    # 🚪 DÉCONNEXION
+    # ========================================================
+
+    st.divider()
+
+    if st.button("🚪 Se déconnecter", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_email = ""
+        st.session_state.is_premium = False
+        st.session_state.trial_until = None
+        st.session_state.show_landing = True
+        st.session_state.show_login = True
+        st.rerun() 
     st.divider()
     actualiser_statut_premium()
     if trial_active():
