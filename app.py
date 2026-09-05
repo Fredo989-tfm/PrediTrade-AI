@@ -626,6 +626,8 @@ if not st.session_state.get("logged_in", False):
                         "🔐 Tes identifiants sont gérés directement par PrediTrade AI."
                     )
                     st.stop()
+if not st.session_state.get("logged_in", False):
+    st.stop()
 
 # SIDEBAR - CORRIGÉ
 with st.sidebar:
