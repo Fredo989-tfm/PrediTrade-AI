@@ -2,6 +2,189 @@ import streamlit as st, base64, pandas as pd, numpy as np, os, requests, time, h
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 APP_VERSION="5.0.0"
+# ============================================================
+# 👤 COMPTES UTILISATEURS — SQLITE
+# ============================================================
+import sqlite3
+
+DB_FILE = "users.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            premium INTEGER DEFAULT 0,
+            trial_until TEXT,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def create_user(email, password):
+    email = email.strip().lower()
+
+    if not email or not password:
+        return False, "Email et mot de passe obligatoires."
+
+    password_hash = hash_password(password)
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cur = conn.cursor()
+
+        cur.execute(
+            """
+            INSERT INTO users
+            (email, password_hash, premium, trial_until, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                email,
+                password_hash,
+                0,
+                None,
+                datetime.now().isoformat()
+            )
+        )
+
+        conn.commit()
+        conn.close()
+
+        return True, "Compte créé avec succès."
+
+    except sqlite3.IntegrityError:
+        return False, "Un compte existe déjà avec cet email."
+
+    except Exception as e:
+        return False, f"Erreur : {e}"
+
+
+def authenticate_user(email, password):
+    email = email.strip().lower()
+    password_hash = hash_password(password)
+
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT email, password_hash, premium, trial_until
+        FROM users
+        WHERE email = ?
+        """,
+        (email,)
+    )
+
+    user = cur.fetchone()
+    conn.close()
+
+    if not user:
+        return None
+
+    if not hmac.compare_digest(user[1], password_hash):
+        return None
+
+    return {
+        "email": user[0],
+        "premium": bool(user[2]),
+        "trial_until": user[3]
+    }
+
+
+def get_user(email):
+    email = email.strip().lower()
+
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT email, premium, trial_until
+        FROM users
+        WHERE email = ?
+        """,
+        (email,)
+    )
+
+    user = cur.fetchone()
+    conn.close()
+
+    if not user:
+        return None
+
+    return {
+        "email": user[0],
+        "premium": bool(user[1]),
+        "trial_until": user[2]
+    }
+
+
+def set_user_premium(email, premium=True):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute(
+        "UPDATE users SET premium = ? WHERE email = ?",
+        (1 if premium else 0, email.strip().lower())
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def load_users():
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT email, premium, trial_until FROM users"
+    )
+
+    rows = cur.fetchall()
+    conn.close()
+
+    users = {}
+
+    for email, premium, trial_until in rows:
+        users[email] = {
+            "premium": bool(premium),
+            "trial_until": trial_until
+        }
+
+    return users
+
+
+def save_users(users):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    for email, data in users.items():
+        cur.execute(
+            """
+            UPDATE users
+            SET premium = ?, trial_until = ?
+            WHERE email = ?
+            """,
+            (
+                1 if data.get("premium", False) else 0,
+                data.get("trial_until"),
+                email.strip().lower()
+            )
+        )
+
+    conn.commit()
+    conn.close()
+
+
+init_db()
 PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 
@@ -214,16 +397,19 @@ def scanner_notifications_complet():
             if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
         except: continue
     return al
-# Initialisation de la session sans connexion
-for k,v in [
-    ("logged_in", True),
+# ============================================================
+# 👤 INITIALISATION DE LA SESSION
+# ============================================================
+
+for k, v in [
+    ("logged_in", False),
     ("is_premium", False),
-    ("user_email", "demo@preditrade.ai"),
+    ("user_email", ""),
     ("cash", 10000.0),
     ("history", []),
     ("operations", []),
-    ("show_landing", False),
-    ("show_login", False),
+    ("show_landing", True),
+    ("show_login", True),
     ("trial_until", None),
     ("portfolio", {})
 ]:
@@ -278,16 +464,6 @@ ASSETS={
         "iShares Core S&P 500":"IVV"
     }
             }
-
-# ============================================================
-# 🚀 ACCÈS DIRECT — CONNEXION TEMPORAIREMENT DÉSACTIVÉE
-# ============================================================
-
-st.session_state["logged_in"] = True
-
-if "user_email" not in st.session_state:
-    st.session_state["user_email"] = "demo@preditrade.ai"
-
 # SIDEBAR - CORRIGÉ
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg",width=80); st.title("PrediTrade AI"); st.caption(f"V{APP_VERSION}")
