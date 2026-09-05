@@ -559,69 +559,25 @@ if not st.session_state.get("logged_in", False):
                 )
 
                 if success:
-
-                    st.success(
-                        "🎉 Compte créé avec succès ! "
-                        "Tu peux maintenant te connecter."
-                    )
-
+                    st.session_state.logged_in = True
+                    st.session_state.user_email = email
+                    st.session_state.is_premium = False
+                    st.session_state.trial_until = None
+                    st.session_state.show_landing = False
+                    st.session_state.show_login = False
+                    st.success("🎉 Compte créé ! Bienvenue sur PrediTrade AI.")
+                    
+                    time.sleep(0.5)
+                    st.rerun()
+                
                 else:
                     st.error(f"❌ {message}")
+                    st.divider()
+                    st.caption(
+                        "🔐 Tes identifiants sont gérés directement par PrediTrade AI."
+                    )
+                    st.stop()
 
-    st.divider()
-
-    st.caption(
-        "🔐 Tes identifiants sont gérés directement par PrediTrade AI."
-    )
-
-    st.stop()
-
-# Connexion temporairement désactivée
-st.session_state["logged_in"] = True
-ASSETS={
-    "Crypto":{
-        "Bitcoin (BTC)":"BTC",
-        "Ethereum (ETH)":"ETH",
-        "Solana (SOL)":"SOL",
-        "BNB":"BNB",
-        "XRP":"XRP",
-        "Cardano (ADA)":"ADA",
-        "Dogecoin (DOGE)":"DOGE"
-    },
-    "Forex":{
-        "EUR/USD":"EURUSD",
-        "GBP/USD":"GBPUSD",
-        "USD/JPY":"USDJPY",
-        "USD/CHF":"USDCHF",
-        "AUD/USD":"AUDUSD",
-        "USD/CAD":"USDCAD"
-    },
-    "Matières Premières":{
-        "Or (XAU)":"XAU",
-        "Pétrole WTI":"WTI",
-        "Pétrole Brent":"BRENT",
-        "Argent (XAG)":"XAG"
-    },
-    "Actions":{
-        "Apple (AAPL)":"AAPL",
-        "Microsoft (MSFT)":"MSFT",
-        "NVIDIA (NVDA)":"NVDA",
-        "Amazon (AMZN)":"AMZN",
-        "Tesla (TSLA)":"TSLA",
-        "Meta (META)":"META",
-        "Alphabet (GOOGL)":"GOOGL"
-    },
-    "Indices":{
-        "S&P 500":"SPY",
-        "NASDAQ 100":"QQQ",
-        "Dow Jones":"DIA"
-    },
-    "ETF":{
-        "SPDR S&P 500 ETF":"SPY",
-        "Invesco QQQ":"QQQ",
-        "iShares Core S&P 500":"IVV"
-    }
-            }
 # SIDEBAR - CORRIGÉ
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg",width=80); st.title("PrediTrade AI"); st.caption(f"V{APP_VERSION}")
