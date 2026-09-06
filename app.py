@@ -1,18 +1,13 @@
-import streamlit as st, base64, pandas as pd, numpy as np, os, requests, time, hashlib, json, re, io, urllib.parse
+import streamlit as st, base64, pandas as pd, numpy as np, os, requests, time, hashlib, json, io, urllib.parse
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 APP_VERSION="5.0.0"
-# ============================================================
-# 👤 COMPTES UTILISATEURS — SQLITE
-# ============================================================
 import sqlite3
-
 DB_FILE = "users.db"
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,171 +18,77 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
-
     conn.commit()
     conn.close()
 
-
 def create_user(email, password):
     email = email.strip().lower()
-
     if not email or not password:
         return False, "Email et mot de passe obligatoires."
-
     password_hash = hash_password(password)
-
     try:
         conn = sqlite3.connect(DB_FILE)
         cur = conn.cursor()
-
-        cur.execute(
-            """
-            INSERT INTO users
-            (email, password_hash, premium, trial_until, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                email,
-                password_hash,
-                0,
-                None,
-                datetime.now().isoformat()
-            )
-        )
-
+        cur.execute("INSERT INTO users (email, password_hash, premium, trial_until, created_at) VALUES (?,?,?,?,?)", (email, password_hash, 0, None, datetime.now().isoformat()))
         conn.commit()
         conn.close()
-
         return True, "Compte créé avec succès."
-
     except sqlite3.IntegrityError:
         return False, "Un compte existe déjà avec cet email."
-
     except Exception as e:
         return False, f"Erreur : {e}"
-
 
 def authenticate_user(email, password):
     email = email.strip().lower()
     password_hash = hash_password(password)
-
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT email, password_hash, premium, trial_until
-        FROM users
-        WHERE email = ?
-        """,
-        (email,)
-    )
-
+    cur.execute("SELECT email, password_hash, premium, trial_until FROM users WHERE email =?", (email,))
     user = cur.fetchone()
     conn.close()
-
-    if not user:
-        return None
-
-    if not hmac.compare_digest(user[1], password_hash):
-        return None
-
-    return {
-        "email": user[0],
-        "premium": bool(user[2]),
-        "trial_until": user[3]
-    }
-
+    if not user: return None
+    if not hmac.compare_digest(user[1], password_hash): return None
+    return {"email": user[0], "premium": bool(user[2]), "trial_until": user[3]}
 
 def get_user(email):
     email = email.strip().lower()
-
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT email, premium, trial_until
-        FROM users
-        WHERE email = ?
-        """,
-        (email,)
-    )
-
+    cur.execute("SELECT email, premium, trial_until FROM users WHERE email =?", (email,))
     user = cur.fetchone()
     conn.close()
-
-    if not user:
-        return None
-
-    return {
-        "email": user[0],
-        "premium": bool(user[1]),
-        "trial_until": user[2]
-    }
-
+    if not user: return None
+    return {"email": user[0], "premium": bool(user[1]), "trial_until": user[2]}
 
 def set_user_premium(email, premium=True):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
-    cur.execute(
-        "UPDATE users SET premium = ? WHERE email = ?",
-        (1 if premium else 0, email.strip().lower())
-    )
-
+    cur.execute("UPDATE users SET premium =? WHERE email =?", (1 if premium else 0, email.strip().lower()))
     conn.commit()
     conn.close()
-
 
 def load_users():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
-    cur.execute(
-        "SELECT email, premium, trial_until FROM users"
-    )
-
+    cur.execute("SELECT email, premium, trial_until FROM users")
     rows = cur.fetchall()
     conn.close()
-
     users = {}
-
     for email, premium, trial_until in rows:
-        users[email] = {
-            "premium": bool(premium),
-            "trial_until": trial_until
-        }
-
+        users[email] = {"premium": bool(premium), "trial_until": trial_until}
     return users
-
 
 def save_users(users):
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
-
     for email, data in users.items():
-        cur.execute(
-            """
-            UPDATE users
-            SET premium = ?, trial_until = ?
-            WHERE email = ?
-            """,
-            (
-                1 if data.get("premium", False) else 0,
-                data.get("trial_until"),
-                email.strip().lower()
-            )
-        )
-
+        cur.execute("UPDATE users SET premium =?, trial_until =? WHERE email =?", (1 if data.get("premium", False) else 0, data.get("trial_until"), email.strip().lower()))
     conn.commit()
     conn.close()
-
 
 init_db()
 PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
-
 FIREBASE_FUNCTIONS="https://europe-west1-preditrade-ai-3edb0.cloudfunctions.net"
 
 def firebase_request(function_name, data):
@@ -329,15 +230,8 @@ def expliquer_score(ind):
     ex.append(("✅","MACD","MACD > signal","Haussier") if macd>signal else ("🔴","MACD","MACD < signal","Baissier"))
     ex.append(("✅","Momentum",f"{momentum:.2f}%","Fort") if momentum>3 else ("🟢","Momentum",f"{momentum:.2f}%","Positif") if momentum>0 else ("🔴","Momentum",f"{momentum:.2f}%","Faible") if momentum<-3 else ("⚠️","Momentum",f"{momentum:.2f}%","Neutre"))
     return ex
-# ============================================================
-# 🧠 MOTEUR STRATÉGIQUE PREDITRADE AI — V1
-# ============================================================
 
 def detecter_regime_marche(ind):
-    """
-    Détermine le contexte général du marché.
-    """
-
     prix = float(ind["close"].iloc[-1])
     ema20 = float(ind["ema20"].iloc[-1])
     ema50 = float(ind["ema50"].iloc[-1])
@@ -345,325 +239,90 @@ def detecter_regime_marche(ind):
     rsi = float(ind["rsi"].iloc[-1])
     momentum = float(ind["momentum"].iloc[-1])
     volatilite = float(ind["volatility"].iloc[-1])
-
-    if np.isnan(rsi):
-        rsi = 50.0
-
-    if np.isnan(momentum):
-        momentum = 0.0
-
-    if np.isnan(volatilite):
-        volatilite = 0.0
-
-    # Tendance haussière forte
+    if np.isnan(rsi): rsi = 50.0
+    if np.isnan(momentum): momentum = 0.0
+    if np.isnan(volatilite): volatilite = 0.0
     if ema20 > ema50 > ema200 and prix > ema200:
-        if momentum > 2:
-            regime = "📈 Tendance haussière forte"
-        else:
-            regime = "📈 Tendance haussière"
-
-    # Tendance baissière forte
+        regime = "📈 Tendance haussière forte" if momentum > 2 else "📈 Tendance haussière"
     elif ema20 < ema50 < ema200 and prix < ema200:
-        if momentum < -2:
-            regime = "📉 Tendance baissière forte"
-        else:
-            regime = "📉 Tendance baissière"
-
-    # Marché très volatil
-    elif volatilite > 4:
-        regime = "⚡ Forte volatilité"
-
-    # Marché relativement neutre
-    elif abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.005:
-        regime = "↔️ Marché en consolidation"
-
-    else:
-        regime = "🟡 Marché mixte"
-
-    return {
-        "regime": regime,
-        "prix": prix,
-        "ema20": ema20,
-        "ema50": ema50,
-        "ema200": ema200,
-        "rsi": rsi,
-        "momentum": momentum,
-        "volatilite": volatilite
-    }
-
+        regime = "📉 Tendance baissière forte" if momentum < -2 else "📉 Tendance baissière"
+    elif volatilite > 4: regime = "⚡ Forte volatilité"
+    elif abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.005: regime = "↔️ Marché en consolidation"
+    else: regime = "🟡 Marché mixte"
+    return {"regime": regime, "prix": prix, "ema20": ema20, "ema50": ema50, "ema200": ema200, "rsi": rsi, "momentum": momentum, "volatilite": volatilite}
 
 def selectionner_technique(ind, score, signal):
-    """
-    Sélectionne automatiquement la technique la plus adaptée
-    aux conditions actuelles du marché.
-    """
-
     ctx = detecter_regime_marche(ind)
-
-    prix = ctx["prix"]
-    ema20 = ctx["ema20"]
-    ema50 = ctx["ema50"]
-    ema200 = ctx["ema200"]
-    rsi = ctx["rsi"]
-    momentum = ctx["momentum"]
-    volatilite = ctx["volatilite"]
-
-    # --------------------------------------------------------
-    # 1️⃣ Protection : conditions trop risquées
-    # --------------------------------------------------------
-
+    prix = ctx["prix"]; ema20 = ctx["ema20"]; ema50 = ctx["ema50"]; ema200 = ctx["ema200"]; rsi = ctx["rsi"]; momentum = ctx["momentum"]; volatilite = ctx["volatilite"]
     if volatilite > 6:
-        return {
-            "technique": "🚫 Aucune technique",
-            "nom": "Pas de trade",
-            "raison": "Volatilité extrêmement élevée.",
-            "biais": "Neutre",
-            "qualite": 30,
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 2️⃣ Breakout / Momentum
-    # --------------------------------------------------------
-
+        return {"technique": "🚫 Aucune technique", "nom": "Pas de trade", "raison": "Volatilité extrêmement élevée.", "biais": "Neutre", "qualite": 30, "regime": ctx["regime"]}
     if score >= 75 and momentum > 3 and rsi < 70:
-        return {
-            "technique": "🚀 Breakout + Retest",
-            "nom": "Breakout + Retest",
-            "raison": (
-                "Momentum fort et configuration haussière. "
-                "Une cassure suivie d'un retest peut offrir "
-                "une entrée plus propre."
-            ),
-            "biais": "Haussier",
-            "qualite": min(95, score),
-            "regime": ctx["regime"]
-        }
-
+        return {"technique": "🚀 Breakout + Retest", "nom": "Breakout + Retest", "raison": "Momentum fort et configuration haussière. Une cassure suivie d'un retest peut offrir une entrée plus propre.", "biais": "Haussier", "qualite": min(95, score), "regime": ctx["regime"]}
     if score <= 25 and momentum < -3 and rsi > 30:
-        return {
-            "technique": "🚀 Breakout + Retest",
-            "nom": "Breakout + Retest",
-            "raison": (
-                "Momentum fortement baissier. "
-                "Une cassure suivie d'un retest peut confirmer "
-                "la poursuite du mouvement."
-            ),
-            "biais": "Baissier",
-            "qualite": min(95, 100 - score),
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 3️⃣ EMA Pullback
-    # --------------------------------------------------------
-
+        return {"technique": "🚀 Breakout + Retest", "nom": "Breakout + Retest", "raison": "Momentum fortement baissier. Une cassure suivie d'un retest peut confirmer la poursuite du mouvement.", "biais": "Baissier", "qualite": min(95, 100 - score), "regime": ctx["regime"]}
     distance_ema20 = abs(prix - ema20) / max(abs(ema20), 1e-9) * 100
-
-    if (
-        ema20 > ema50 > ema200
-        and prix >= ema50
-        and distance_ema20 < 3
-        and 45 <= rsi <= 68
-        and momentum > 0
-    ):
-        return {
-            "technique": "🔄 EMA Pullback",
-            "nom": "EMA Pullback",
-            "raison": (
-                "Tendance haussière confirmée avec un prix proche "
-                "des moyennes mobiles. Attendre un rebond confirmé."
-            ),
-            "biais": "Haussier",
-            "qualite": min(95, score + 5),
-            "regime": ctx["regime"]
-        }
-
-    if (
-        ema20 < ema50 < ema200
-        and prix <= ema50
-        and distance_ema20 < 3
-        and 32 <= rsi <= 55
-        and momentum < 0
-    ):
-        return {
-            "technique": "🔄 EMA Pullback",
-            "nom": "EMA Pullback",
-            "raison": (
-                "Tendance baissière confirmée avec un prix proche "
-                "des moyennes mobiles. Attendre un rejet confirmé."
-            ),
-            "biais": "Baissier",
-            "qualite": min(95, 100 - score + 5),
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 4️⃣ Momentum Trading
-    # --------------------------------------------------------
-
+    if ema20 > ema50 > ema200 and prix >= ema50 and distance_ema20 < 3 and 45 <= rsi <= 68 and momentum > 0:
+        return {"technique": "🔄 EMA Pullback", "nom": "EMA Pullback", "raison": "Tendance haussière confirmée avec un prix proche des moyennes mobiles. Attendre un rebond confirmé.", "biais": "Haussier", "qualite": min(95, score + 5), "regime": ctx["regime"]}
+    if ema20 < ema50 < ema200 and prix <= ema50 and distance_ema20 < 3 and 32 <= rsi <= 55 and momentum < 0:
+        return {"technique": "🔄 EMA Pullback", "nom": "EMA Pullback", "raison": "Tendance baissière confirmée avec un prix proche des moyennes mobiles. Attendre un rejet confirmé.", "biais": "Baissier", "qualite": min(95, 100 - score + 5), "regime": ctx["regime"]}
     if abs(momentum) > 4 and volatilite < 5:
         biais = "Haussier" if momentum > 0 else "Baissier"
-
-        return {
-            "technique": "⚡ Momentum Trading",
-            "nom": "Momentum Trading",
-            "raison": (
-                "Le momentum est suffisamment fort pour privilégier "
-                "une stratégie basée sur la poursuite du mouvement."
-            ),
-            "biais": biais,
-            "qualite": min(90, max(score, 100 - score)),
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 5️⃣ Range Trading
-    # --------------------------------------------------------
-
-    if (
-        abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
-        and 35 <= rsi <= 65
-        and abs(momentum) < 3
-    ):
-        return {
-            "technique": "↔️ Range Trading",
-            "nom": "Range Trading",
-            "raison": (
-                "Le marché montre peu de tendance et le momentum "
-                "reste modéré. Une approche entre support et résistance "
-                "peut être envisagée."
-            ),
-            "biais": "Neutre",
-            "qualite": 70,
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 6️⃣ Support / Resistance Bounce
-    # --------------------------------------------------------
-
-    if (
-        (rsi < 40 or rsi > 60)
-        and abs(momentum) < 3
-        and volatilite < 5
-    ):
+        return {"technique": "⚡ Momentum Trading", "nom": "Momentum Trading", "raison": "Le momentum est suffisamment fort pour privilégier une stratégie basée sur la poursuite du mouvement.", "biais": biais, "qualite": min(90, max(score, 100 - score)), "regime": ctx["regime"]}
+    if abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01 and 35 <= rsi <= 65 and abs(momentum) < 3:
+        return {"technique": "↔️ Range Trading", "nom": "Range Trading", "raison": "Le marché montre peu de tendance et le momentum reste modéré. Une approche entre support et résistance peut être envisagée.", "biais": "Neutre", "qualite": 70, "regime": ctx["regime"]}
+    if (rsi < 40 or rsi > 60) and abs(momentum) < 3 and volatilite < 5:
         biais = "Haussier" if rsi < 40 else "Baissier"
-
-        return {
-            "technique": "🧱 Support / Resistance Bounce",
-            "nom": "Support / Resistance Bounce",
-            "raison": (
-                "Le momentum ralentit et le RSI suggère une zone "
-                "où un rejet du prix peut apparaître."
-            ),
-            "biais": biais,
-            "qualite": 65,
-            "regime": ctx["regime"]
-        }
-
-    # --------------------------------------------------------
-    # 7️⃣ Aucune configuration suffisamment claire
-    # --------------------------------------------------------
-
-    return {
-        "technique": "🚫 Aucune technique",
-        "nom": "Attendre",
-        "raison": (
-            "Les conditions actuelles ne permettent pas de sélectionner "
-            "une stratégie avec suffisamment de confiance."
-        ),
-        "biais": "Neutre",
-        "qualite": 45,
-        "regime": ctx["regime"]
-            }
-# ============================================================
-# 🎯 GÉNÉRATEUR DE PLAN DE TRADE — PREDITRADE AI V1
-# ============================================================
+        return {"technique": "🧱 Support / Resistance Bounce", "nom": "Support / Resistance Bounce", "raison": "Le momentum ralentit et le RSI suggère une zone où un rejet du prix peut apparaître.", "biais": biais, "qualite": 65, "regime": ctx["regime"]}
+    return {"technique": "🚫 Aucune technique", "nom": "Attendre", "raison": "Les conditions actuelles ne permettent pas de sélectionner une stratégie avec suffisamment de confiance.", "biais": "Neutre", "qualite": 45, "regime": ctx["regime"]}
 
 def generer_plan_trade(ind, strategie):
-    """
-    Génère un plan de trade à partir de la technique sélectionnée.
-    Entrée, Stop Loss et objectifs sont basés sur la volatilité.
-    """
-
     prix = float(ind["close"].iloc[-1])
-    atr = float(ind["atr"].iloc[-1]) if "atr" in ind.columns else np.nan
-
-    # Sécurité si ATR indisponible
+    atr = float(ind["volatility"].iloc[-1]) if "volatility" in ind else float("nan")
     if np.isnan(atr) or atr <= 0:
         atr = prix * 0.01
-
     technique = strategie["nom"]
     biais = strategie["biais"]
     qualite = strategie["qualite"]
-
-    # Aucun trade
     if technique == "Attendre" or biais == "Neutre":
-        return {
-            "statut": "NO_TRADE",
-            "entree": prix,
-            "stop_loss": None,
-            "tp1": None,
-            "tp2": None,
-            "tp3": None,
-            "rr1": None,
-            "rr2": None,
-            "rr3": None
-        }
-
-    # --------------------------------------------------------
-    # 📈 SCÉNARIO HAUSSIER
-    # --------------------------------------------------------
-
+        return {"statut": "NO_TRADE", "entree": prix, "stop_loss": None, "tp1": None, "tp2": None, "tp3": None, "rr1": None, "rr2": None, "rr3": None}
     if biais == "Haussier":
-
         entree = prix
-
-        # Stop sous la zone actuelle
         stop_loss = entree - (atr * 1.5)
-
         risque = entree - stop_loss
-
         tp1 = entree + (risque * 1.5)
         tp2 = entree + (risque * 2.5)
         tp3 = entree + (risque * 3.5)
-
-    # --------------------------------------------------------
-    # 📉 SCÉNARIO BAISSIER
-    # --------------------------------------------------------
-
     else:
-
         entree = prix
-
-        # Stop au-dessus de la zone actuelle
         stop_loss = entree + (atr * 1.5)
-
         risque = stop_loss - entree
-
         tp1 = entree - (risque * 1.5)
         tp2 = entree - (risque * 2.5)
         tp3 = entree - (risque * 3.5)
+    return {"statut": "TRADE", "entree": entree, "stop_loss": stop_loss, "tp1": tp1, "tp2": tp2, "tp3": tp3, "rr1": 1.5, "rr2": 2.5, "rr3": 3.5, "qualite": qualite, "biais": biais}
 
-    return {
-        "statut": "TRADE",
-        "entree": entree,
-        "stop_loss": stop_loss,
-        "tp1": tp1,
-        "tp2": tp2,
-        "tp3": tp3,
-        "rr1": 1.5,
-        "rr2": 2.5,
-        "rr3": 3.5,
-        "qualite": qualite,
-        "biais": biais
-    }
+# ============================================================
+# 🛡️ GESTIONNAIRE DE RISQUE — PREDITRADE AI V1
+# ============================================================
+def calculer_risque_trade(plan, capital=10000, risque_pct=1.0):
+    if plan["statut"]!= "TRADE":
+        return {"statut": "NO_TRADE", "capital": capital, "risque_pct": risque_pct, "risque_montant": 0, "distance_sl": 0, "taille_position": 0}
+    entree = float(plan["entree"])
+    stop_loss = float(plan["stop_loss"])
+    distance_sl = abs(entree - stop_loss)
+    if distance_sl <= 0:
+        return {"statut": "NO_TRADE", "capital": capital, "risque_pct": risque_pct, "risque_montant": 0, "distance_sl": 0, "taille_position": 0}
+    risque_montant = capital * (risque_pct / 100)
+    taille_position = risque_montant / distance_sl
+    return {"statut": "TRADE", "capital": capital, "risque_pct": risque_pct, "risque_montant": risque_montant, "distance_sl": distance_sl, "taille_position": taille_position}
 
 @st.cache_resource
 def gemini_client():
-    try: from google import genai; return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    try:
+        from google import genai
+        return genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
     except: return None
+
 def assistant_gemini(q,c):
     if not st.session_state.is_premium: return "⚠️ Premium."
     cl=gemini_client()
@@ -690,14 +349,17 @@ def binance_request(endpoint,api_key,api_secret):
         try: return r.json(),None
         except: return None,"Réponse Binance invalide."
     except Exception as e: return None,f"Erreur Binance: {e}"
+
 def tester_connexion_binance(k,s):
     c,e=binance_request("/api/v3/account",k,s)
     if c is not None: return True,"Connexion Binance réussie via Proxy ✅"
     return False,e
+
 def recuperer_compte_binance(k,s):
     c,e=binance_request("/api/v3/account",k,s)
     if c is not None: return c,None
     return None,e
+
 def diagnostiquer_binance():
     try:
         ip_r=requests.get("https://api.ipify.org?format=json",timeout=10)
@@ -727,239 +389,70 @@ def scanner_notifications_complet():
             if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
         except: continue
     return al
-# ============================================================
-# 👤 INITIALISATION DE LA SESSION
-# ============================================================
 
-for k, v in [
-    ("logged_in", False),
-    ("is_premium", False),
-    ("user_email", ""),
-    ("cash", 10000.0),
-    ("history", []),
-    ("operations", []),
-    ("show_landing", True),
-    ("show_login", True),
-    ("trial_until", None),
-    ("portfolio", {})
-]:
-    if k not in st.session_state:
-        st.session_state[k] = v
+for k, v in [("logged_in", False),("is_premium", False),("user_email", ""),("cash", 10000.0),("history", []),("operations", []),("show_landing", True),("show_login", True),("trial_until", None),("portfolio", {})]:
+    if k not in st.session_state: st.session_state[k] = v
 
 initialiser_notifications()
-# ============================================================
-# 📊 ACTIFS DISPONIBLES
-# ============================================================
 
 ASSETS = {
-    "Crypto": {
-        "Bitcoin (BTC)": "BTC",
-        "Ethereum (ETH)": "ETH",
-        "Solana (SOL)": "SOL",
-        "BNB": "BNB",
-        "XRP": "XRP",
-        "Cardano (ADA)": "ADA",
-        "Dogecoin (DOGE)": "DOGE"
-    },
-    "Forex": {
-        "EUR/USD": "EURUSD",
-        "GBP/USD": "GBPUSD",
-        "USD/JPY": "USDJPY",
-        "USD/CHF": "USDCHF",
-        "AUD/USD": "AUDUSD",
-        "USD/CAD": "USDCAD"
-    },
-    "Matières Premières": {
-        "Or (XAU)": "XAU",
-        "Pétrole WTI": "WTI",
-        "Pétrole Brent": "BRENT",
-        "Argent (XAG)": "XAG"
-    },
-    "Actions": {
-        "Apple (AAPL)": "AAPL",
-        "Microsoft (MSFT)": "MSFT",
-        "NVIDIA (NVDA)": "NVDA",
-        "Amazon (AMZN)": "AMZN",
-        "Tesla (TSLA)": "TSLA",
-        "Meta (META)": "META",
-        "Alphabet (GOOGL)": "GOOGL"
-    },
-    "Indices": {
-        "S&P 500": "SPY",
-        "NASDAQ 100": "QQQ",
-        "Dow Jones": "DIA"
-    },
-    "ETF": {
-        "SPDR S&P 500 ETF": "SPY",
-        "Invesco QQQ": "QQQ",
-        "iShares Core S&P 500": "IVV"
-    }
+    "Crypto": {"Bitcoin (BTC)": "BTC","Ethereum (ETH)": "ETH","Solana (SOL)": "SOL","BNB": "BNB","XRP": "XRP","Cardano (ADA)": "ADA","Dogecoin (DOGE)": "DOGE"},
+    "Forex": {"EUR/USD": "EURUSD","GBP/USD": "GBPUSD","USD/JPY": "USDJPY","USD/CHF": "USDCHF","AUD/USD": "AUDUSD","USD/CAD": "USDCAD"},
+    "Matières Premières": {"Or (XAU)": "XAU","Pétrole WTI": "WTI","Pétrole Brent": "BRENT","Argent (XAG)": "XAG"},
+    "Actions": {"Apple (AAPL)": "AAPL","Microsoft (MSFT)": "MSFT","NVIDIA (NVDA)": "NVDA","Amazon (AMZN)": "AMZN","Tesla (TSLA)": "TSLA","Meta (META)": "META","Alphabet (GOOGL)": "GOOGL"},
+    "Indices": {"S&P 500": "SPY","NASDAQ 100": "QQQ","Dow Jones": "DIA"},
+    "ETF": {"SPDR S&P 500 ETF": "SPY","Invesco QQQ": "QQQ","iShares Core S&P 500": "IVV"}
 }
-# ============================================================
-# 🔐 INSCRIPTION / CONNEXION
-# ============================================================
 
 if not st.session_state.get("logged_in", False):
-
-    st.set_page_config(
-        page_title="PrediTrade AI",
-        page_icon="📈",
-        layout="centered"
-    )
-
+    st.set_page_config(page_title="PrediTrade AI", page_icon="📈", layout="centered")
     st.image("IMG-20260810-WA1501.jpg", width=120)
     st.title("📈 PrediTrade AI")
     st.caption("Ton assistant intelligent pour étudier les marchés.")
-
-    mode_auth = st.radio(
-        "Accès",
-        ["🔑 Connexion", "📝 Créer un compte"],
-        horizontal=True
-    )
-
+    mode_auth = st.radio("Accès", ["🔑 Connexion", "📝 Créer un compte"], horizontal=True)
     st.divider()
-
-    # ========================================================
-    # 🔑 CONNEXION
-    # ========================================================
-
     if mode_auth == "🔑 Connexion":
-
         st.subheader("🔑 Se connecter")
-
-        email = st.text_input(
-            "📧 Email",
-            placeholder="exemple@email.com",
-            key="login_email"
-        )
-
-        password = st.text_input(
-            "🔒 Mot de passe",
-            type="password",
-            key="login_password"
-        )
-
-        if st.button(
-            "🚀 Se connecter",
-            type="primary",
-            use_container_width=True
-        ):
-
+        email = st.text_input("📧 Email", placeholder="exemple@email.com", key="login_email")
+        password = st.text_input("🔒 Mot de passe", type="password", key="login_password")
+        if st.button("🚀 Se connecter", type="primary", use_container_width=True):
             email = email.strip().lower()
-
-            if not email or not password:
-                st.error("❌ Remplis tous les champs.")
-
+            if not email or not password: st.error("❌ Remplis tous les champs.")
             else:
                 user = authenticate_user(email, password)
-
                 if user:
-
-                    st.session_state.logged_in = True
-                    st.session_state.user_email = user["email"]
-                    st.session_state.is_premium = user["premium"]
-
+                    st.session_state.logged_in = True; st.session_state.user_email = user["email"]; st.session_state.is_premium = user["premium"]
                     if user.get("trial_until"):
-                        try:
-                            st.session_state.trial_until = datetime.fromisoformat(
-                                user["trial_until"]
-                            )
-                        except:
-                            st.session_state.trial_until = None
-
-                    st.session_state.show_landing = False
-                    st.session_state.show_login = False
-
-                    st.success("✅ Connexion réussie !")
-                    time.sleep(0.5)
-                    st.rerun()
-
-                else:
-                    st.error("❌ Email ou mot de passe incorrect.")
-                    
-
-    # ========================================================
-    # 📝 INSCRIPTION
-    # ========================================================
-
+                        try: st.session_state.trial_until = datetime.fromisoformat(user["trial_until"])
+                        except: st.session_state.trial_until = None
+                    st.session_state.show_landing = False; st.session_state.show_login = False
+                    st.success("✅ Connexion réussie!"); time.sleep(0.5); st.rerun()
+                else: st.error("❌ Email ou mot de passe incorrect.")
     else:
-
         st.subheader("📝 Créer ton compte")
-
-        email = st.text_input(
-            "📧 Email",
-            placeholder="exemple@email.com",
-            key="register_email"
-        )
-
-        password = st.text_input(
-            "🔒 Mot de passe",
-            type="password",
-            key="register_password"
-        )
-
-        password_confirm = st.text_input(
-            "🔒 Confirmer le mot de passe",
-            type="password",
-            key="register_password_confirm"
-        )
-
-        st.caption(
-            "Le mot de passe doit contenir au minimum 6 caractères."
-        )
-
-        if st.button(
-            "✨ Créer mon compte",
-            type="primary",
-            use_container_width=True
-        ):
-
+        email = st.text_input("📧 Email", placeholder="exemple@email.com", key="register_email")
+        password = st.text_input("🔒 Mot de passe", type="password", key="register_password")
+        password_confirm = st.text_input("🔒 Confirmer le mot de passe", type="password", key="register_password_confirm")
+        st.caption("Le mot de passe doit contenir au minimum 6 caractères.")
+        if st.button("✨ Créer mon compte", type="primary", use_container_width=True):
             email = email.strip().lower()
-
-            if not email or not password or not password_confirm:
-                st.error("❌ Remplis tous les champs.")
-
-            elif "@" not in email or "." not in email:
-                st.error("❌ Adresse email invalide.")
-
-            elif len(password) < 6:
-                st.error(
-                    "❌ Le mot de passe doit contenir au moins 6 caractères."
-                )
-
-            elif password != password_confirm:
-                st.error("❌ Les deux mots de passe ne correspondent pas.")
-
+            if not email or not password or not password_confirm: st.error("❌ Remplis tous les champs.")
+            elif "@" not in email or "." not in email: st.error("❌ Adresse email invalide.")
+            elif len(password) < 6: st.error("❌ Le mot de passe doit contenir au moins 6 caractères.")
+            elif password!= password_confirm: st.error("❌ Les deux mots de passe ne correspondent pas.")
             else:
-
-                success, message = create_user(
-                    email,
-                    password
-                )
-
+                success, message = create_user(email, password)
                 if success:
-                    st.session_state.logged_in = True
-                    st.session_state.user_email = email
-                    st.session_state.is_premium = False
-                    st.session_state.trial_until = None
-                    st.session_state.show_landing = False
-                    st.session_state.show_login = False
-                    st.success("🎉 Compte créé ! Bienvenue sur PrediTrade AI.")
-                    
-                    time.sleep(0.5)
-                    st.rerun()
-                
-                else:
-                    st.error(f"❌ {message}")
-                    st.divider()
-                    st.caption(
-                        "🔐 Tes identifiants sont gérés directement par PrediTrade AI."
-                    )
-                    st.stop()
-if not st.session_state.get("logged_in", False):
+                    st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = False; st.session_state.trial_until = None
+                    st.session_state.show_landing = False; st.session_state.show_login = False
+                    st.success("🎉 Compte créé! Bienvenue sur PrediTrade AI."); time.sleep(0.5); st.rerun()
+                else: st.error(f"❌ {message}")
+    st.divider()
+    st.caption("🔐 Tes identifiants sont gérés directement par PrediTrade AI.")
     st.stop()
 
-# SIDEBAR - CORRIGÉ
+if not st.session_state.get("logged_in", False): st.stop()
+
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg",width=80); st.title("PrediTrade AI"); st.caption(f"V{APP_VERSION}")
     c1,c2=st.columns([3,1])
@@ -967,20 +460,10 @@ with st.sidebar:
         if st.session_state.get("user_email"): st.caption(f"👋 {st.session_state.user_email.split('@')[0]}")
     with c2:
         if st.session_state.is_premium: st.markdown('<span style="background:#00E5FF;color:#000;padding:3px 8px;border-radius:5px;font-size:10px">PREMIUM</span>',unsafe_allow_html=True)
-        # ========================================================
-    # 🚪 DÉCONNEXION
-    # ========================================================
-
     st.divider()
-
     if st.button("🚪 Se déconnecter", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.user_email = ""
-        st.session_state.is_premium = False
-        st.session_state.trial_until = None
-        st.session_state.show_landing = True
-        st.session_state.show_login = True
-        st.rerun() 
+        st.session_state.logged_in = False; st.session_state.user_email = ""; st.session_state.is_premium = False; st.session_state.trial_until = None
+        st.session_state.show_landing = True; st.session_state.show_login = True; st.rerun()
     st.divider()
     actualiser_statut_premium()
     if trial_active():
@@ -990,17 +473,15 @@ with st.sidebar:
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
-    # BLOC DECONNEXION SUPPRIMÉ
 
-# PAGES
 if menu=="📊 Tableau de bord":
     st.title("📊 Tableau de bord"); st.image("IMG-20260810-WA1501.jpg",width=100)
     c1,c2,c3=st.columns(3); c1.metric("Actifs",sum(len(v) for v in ASSETS.values())); c2.metric("Version",APP_VERSION); c3.metric("Statut","Premium" if st.session_state.is_premium else "Gratuit")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history[-5:]),use_container_width=True)
     else: st.info("Lance une analyse dans IA Pro")
+
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
-    st.caption("Analyse technique multi-indicateurs — PrediTrade AI")
     cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
     name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
     if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
@@ -1009,8 +490,9 @@ elif menu=="🧠 Analyse IA Pro":
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données de {name}.")
         else:
-            ind=indicateurs(df); score,signal,conf=prediscore(ind); strategie=selectionner_technique(ind,score,signal); plan=generer_plan_trade(ind,strategie) 
+            ind=indicateurs(df); score,signal,conf=prediscore(ind); strategie=selectionner_technique(ind,score,signal); plan=generer_plan_trade(ind,strategie)
             prix=float(ind["close"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); macd_signal=float(ind["signal"].iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1])
+            risque_info = calculer_risque_trade(plan, capital=float(st.session_state.cash), risque_pct=1.0)
             st.success(f"✅ Analyse terminée — {name}")
             st.subheader("🎯 Plan de trade PrediTrade AI")
             if plan["statut"] == "NO_TRADE":
@@ -1024,19 +506,18 @@ elif menu=="🧠 Analyse IA Pro":
                 c1.metric("🎯 TP2", f"{plan['tp2']:,.4f}")
                 c2.metric("🎯 TP3", f"{plan['tp3']:,.4f}")
                 c3.metric("📐 R/R TP2", f"1:{plan['rr2']:.1f}")
-                st.caption(
-                    f"⚠️ Plan basé sur la technique **{strategie['nom']}** "
-                    f"avec un biais **{strategie['biais']}**."
-                )
+                st.caption(f"⚠️ Plan basé sur la technique **{strategie['nom']}** avec un biais **{strategie['biais']}**.")
+                st.subheader("🛡️ Gestion du risque")
+                c1,c2,c3=st.columns(3)
+                c1.metric("💰 Risque $", f"${risque_info['risque_montant']:.2f}")
+                c2.metric("📏 Distance SL", f"{risque_info['distance_sl']:.4f}")
+                c3.metric("📦 Taille position", f"{risque_info['taille_position']:.4f}")
             st.subheader("🧠 Stratégie sélectionnée par PrediTrade AI")
-            c1,c2,c3=st.columns(3) 
+            c1,c2,c3=st.columns(3)
             c1.metric("📈 Régime",strategie["regime"])
             c2.metric("🎯 Technique",strategie["nom"])
             c3.metric("⭐ Qualité",f'{strategie["qualite"]}/100')
-            st.info(
-                f'💡 **Pourquoi cette technique ?** {strategie["raison"]}\n\n'
-                f'**Biais du marché :** {strategie["biais"]}'
-            )
+            st.info(f'💡 **Pourquoi cette technique?** {strategie["raison"]}\n\n**Biais du marché :** {strategie["biais"]}')
             c1,c2,c3=st.columns(3); c1.metric("🎯 PrediScore",f"{score}/100"); c2.metric("📡 Signal",signal); c3.metric("🧠 Confiance",conf)
             c1,c2,c3=st.columns(3); c1.metric("💰 Prix",f"{prix:,.4f}"); c2.metric("📊 RSI",f"{rsi:.1f}"); c3.metric("📈 Momentum",f"{momentum:.2f}%")
             st.divider(); st.subheader("📊 Graphique du marché")
@@ -1045,55 +526,30 @@ elif menu=="🧠 Analyse IA Pro":
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema20"].tail(150),name="EMA20",mode="lines"))
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema50"].tail(150),name="EMA50",mode="lines"))
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema200"].tail(150),name="EMA200",mode="lines"))
-            # 🎯 Niveaux du plan de trade
-    if plan["statut"] == "TRADE":
-        fig.add_hline(
-            y=plan["entree"],
-            line_dash="dash",
-            annotation_text="📍 Entrée",
-            annotation_position="top left"
-        )
-        fig.add_hline(
-        y=plan["stop_loss"],
-        line_dash="dash",
-        annotation_text="🛑 Stop Loss",
-        annotation_position="bottom left"
-        )
-        fig.add_hline(
-        y=plan["tp1"],
-        line_dash="dot",
-        annotation_text="🎯 TP1",
-        annotation_position="top left"
-        )
-        fig.add_hline(
-        y=plan["tp2"],
-        line_dash="dot",
-        annotation_text="🎯 TP2",
-        annotation_position="top left"
-        )
-        fig.add_hline(
-        y=plan["tp3"],
-        line_dash="dot",
-        annotation_text="🎯 TP3",
-        annotation_position="top left"
-        )
-        fig.update_layout(height=500,template="plotly_dark",xaxis_rangeslider_visible=False,margin=dict(l=5,r=5,t=30,b=5),legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0))
-        st.plotly_chart(fig,use_container_width=True,config={"displaylogo":False,"responsive":True})
-        st.divider(); st.subheader("🔎 Pourquoi ce score?")
-        for icone,indicateur,detail,interp in expliquer_score(ind):
-            c1,c2,c3=st.columns([1,2,3]); c1.write(icone); c2.write(f"**{indicateur}**"); c3.write(f"{detail} — **{interp}**")
-        st.divider(); st.subheader("🤖 Conclusion PrediTrade AI")
-        if score>=80:
-            if rsi>70: st.warning(f"🟢 Signal fortement haussier ({score}/100), mais le RSI à {rsi:.1f} indique une zone de surachat.")
-            else: st.success(f"🟢 Configuration haussière forte : {score}/100.")
-        elif score>=70: st.success(f"🟢 Configuration haussière : {score}/100.")
-        elif score>=55: st.info(f"🟡 Configuration neutre : {score}/100.")
-        elif score>=40: st.warning(f"🟠 Configuration prudente : {score}/100.")
-        else: st.error(f"🔴 Configuration baissière : {score}/100.")
-        st.subheader("📋 Résumé technique")
-        resume=pd.DataFrame([{"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},{"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},{"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},{"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},{"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},{"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}])
-        st.dataframe(resume,use_container_width=True,hide_index=True)
-        st.session_state.history.append({"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"actif":name,"score":score,"signal":signal,"confiance":conf,"prix":prix})
+            if plan["statut"] == "TRADE":
+                fig.add_hline(y=plan["entree"], line_dash="dash", annotation_text="📍 Entrée", annotation_position="top left")
+                fig.add_hline(y=plan["stop_loss"], line_dash="dash", annotation_text="🛑 Stop Loss", annotation_position="bottom left")
+                fig.add_hline(y=plan["tp1"], line_dash="dot", annotation_text="🎯 TP1", annotation_position="top left")
+                fig.add_hline(y=plan["tp2"], line_dash="dot", annotation_text="🎯 TP2", annotation_position="top left")
+                fig.add_hline(y=plan["tp3"], line_dash="dot", annotation_text="🎯 TP3", annotation_position="top left")
+            fig.update_layout(height=500,template="plotly_dark",xaxis_rangeslider_visible=False,margin=dict(l=5,r=5,t=30,b=5),legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0))
+            st.plotly_chart(fig,use_container_width=True,config={"displaylogo":False,"responsive":True})
+            st.divider(); st.subheader("🔎 Pourquoi ce score?")
+            for icone,indicateur,detail,interp in expliquer_score(ind):
+                c1,c2,c3=st.columns([1,2,3]); c1.write(icone); c2.write(f"**{indicateur}**"); c3.write(f"{detail} — **{interp}**")
+            st.divider(); st.subheader("🤖 Conclusion PrediTrade AI")
+            if score>=80:
+                if rsi>70: st.warning(f"🟢 Signal fortement haussier ({score}/100), mais le RSI à {rsi:.1f} indique une zone de surachat.")
+                else: st.success(f"🟢 Configuration haussière forte : {score}/100.")
+            elif score>=70: st.success(f"🟢 Configuration haussière : {score}/100.")
+            elif score>=55: st.info(f"🟡 Configuration neutre : {score}/100.")
+            elif score>=40: st.warning(f"🟠 Configuration prudente : {score}/100.")
+            else: st.error(f"🔴 Configuration baissière : {score}/100.")
+            st.subheader("📋 Résumé technique")
+            resume=pd.DataFrame([{"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},{"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},{"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},{"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},{"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},{"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}])
+            st.dataframe(resume,use_container_width=True,hide_index=True)
+            st.session_state.history.append({"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"actif":name,"score":score,"signal":signal,"confiance":conf,"prix":prix})
+
 elif menu=="🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     if st.button("🚀 Lancer le scan",type="primary",use_container_width=True):
@@ -1108,6 +564,7 @@ elif menu=="🔍 Scanner intelligent":
                 except: continue
         if results: st.success(f"🔥 {len(results)} opportunités"); st.dataframe(pd.DataFrame(sorted(results,key=lambda x:x["Score"],reverse=True)),use_container_width=True)
         else: st.info("Aucune opportunité ≥75")
+
 elif menu=="⚖️ Comparaison":
     st.title("⚖️ Comparaison"); c1,c2=st.columns(2)
     with c1: cat1=st.selectbox("Cat 1",list(ASSETS.keys()),key="c1"); a1=st.selectbox("Actif 1",list(ASSETS[cat1].keys()),key="a1")
@@ -1116,6 +573,7 @@ elif menu=="⚖️ Comparaison":
         df1=charger_donnees(ASSETS[cat1][a1],cat1); df2=charger_donnees(ASSETS[cat2][a2],cat2)
         s1,sig1,_=prediscore(indicateurs(df1)); s2,sig2,_=prediscore(indicateurs(df2))
         st.metric(a1,f"{s1}/100",sig1); st.metric(a2,f"{s2}/100",sig2)
+
 elif menu=="💼 Portefeuille":
     st.title("💼 Portefeuille"); st.metric("Cash",f"${st.session_state.cash:,.2f}")
     cat=st.selectbox("Cat",list(ASSETS.keys()),key="port_cat"); name=st.selectbox("Actif",list(ASSETS.get(cat,{}).keys()),key="port_asset"); qty=st.number_input("Qty",0.001,1000.0,1.0)
@@ -1127,10 +585,12 @@ elif menu=="💼 Portefeuille":
         if name in st.session_state.portfolio and st.session_state.portfolio[name]>=qty:
             df=charger_donnees(ASSETS[cat][name],cat); st.session_state.cash+=df["Close"].iloc[-1]*qty; st.session_state.portfolio[name]-=qty; st.success("Vente OK")
     st.json(st.session_state.portfolio)
+
 elif menu=="🛡️ Gestion du risque":
     st.title("🛡️ Gestion du risque"); st.info("Protège ton capital")
     capital=st.number_input("Capital",value=float(st.session_state.cash)); risque=st.slider("Risque %",0.5,5.0,1.0)
     st.metric("Risque $",f"${capital*risque/100:,.2f}")
+
 elif menu=="📊 Backtest":
     st.title("📊 Backtest"); cat=st.selectbox("Cat",list(ASSETS.keys()),key="bt_cat"); name=st.selectbox("Actif",list(ASSETS.get(cat,{}).keys()),key="bt_name")
     if st.button("Lancer Backtest"):
@@ -1143,10 +603,12 @@ elif menu=="📊 Backtest":
                 elif "VENTE" in sig and pos>0: cash=pos*prix; pos=0
                 eq.append(cash+pos*prix)
             st.line_chart(pd.Series(eq,index=df.index[50:])); st.metric("P&L",f"${eq[-1]-10000:,.2f}")
+
 elif menu=="📚 Historique":
     st.title("📚 Historique")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history),use_container_width=True)
     else: st.info("Aucune analyse")
+
 elif menu=="🤖 Assistant IA":
     st.title("🤖 Assistant IA")
     if not st.session_state.is_premium: st.warning("🔒 Premium requis")
@@ -1155,10 +617,12 @@ elif menu=="🤖 Assistant IA":
         if st.button("Envoyer"):
             ctx=str(st.session_state.history[-3:])
             with st.spinner("IA..."): rep=assistant_gemini(q,ctx); st.markdown(rep)
+
 elif menu=="📄 Rapports":
     st.title("📄 Rapports")
     if st.session_state.history: df=pd.DataFrame(st.session_state.history); st.dataframe(df); st.download_button("CSV",df.to_csv(index=False),"rapport.csv")
     else: st.info("Aucune donnée")
+
 elif menu=="🔔 Alertes":
     st.title("🔔 Radar"); dispo=[]
     for c,a in ASSETS.items(): dispo.extend(list(a.keys()))
@@ -1174,6 +638,7 @@ elif menu=="🔔 Alertes":
                     if sc>=seuil: res.append({"Actif":nom,"Score":sc,"Signal":sig})
         if res: st.dataframe(pd.DataFrame(res),use_container_width=True)
         else: st.info("Aucune")
+
 elif menu=="🔔 Notifications":
     st.title("🔔 Notifications"); initialiser_notifications(); pref=st.session_state.notification_preferences
     pref["enabled"]=st.toggle("Activer",value=pref.get("enabled",True)); pref["threshold"]=st.slider("Seuil",50,95,pref.get("threshold",75))
@@ -1186,10 +651,12 @@ elif menu=="🔔 Notifications":
         if al: st.success(f"{len(al)} alertes")
         else: st.info("Aucune")
     for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
+
 elif menu=="🔔 Alertes Pro":
     st.title("🔔 Alertes Pro 24/24")
     if not st.session_state.is_premium: st.error("🔒 Premium")
     else: st.success("✅ Premium Actif"); st.info("Cloud scanne H24")
+
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
     if st.button(f"Payer {montant} XAF",type="primary",use_container_width=True):
@@ -1203,6 +670,7 @@ elif menu=="⚙️ Paiement":
                 if stat in ["SUCCESS","SUCCESSFUL","COMPLETED"]: st.success("✅ Paiement confirmé!"); st.session_state.is_premium=True; u=load_users(); u[st.session_state.user_email]["premium"]=True; save_users(u); st.balloons()
                 else: st.warning(f"Statut: {stat}")
             except Exception as e: st.error(f"{e}")
+
 elif menu=="🔗 Connexions aux plateformes":
     st.title("🔗 Connexions aux plateformes"); st.success(f"🟢 Proxy Actif: `{PROXY}`")
     st.divider(); st.subheader("🟡 Binance — Connexion sécurisée")
