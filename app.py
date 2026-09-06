@@ -1024,37 +1024,11 @@ def generer_scenarios(ind, score, strategie, plan, setup):
     # 10. Décision globale
     # ---------------------------------------------------------
     if probabilite_principale >= 70 and qualite >= 75:
-    decision = "SCENARIO_PRINCIPAL_FORT"
-elif probabilite_principale >= 60:
-    decision = "SCENARIO_PRINCIPAL"
-else:
-    decision = "ATTENDRE_CONFIRMATION"
-def generer_plan_trade(ind, strategie):
-    prix = float(ind["close"].iloc[-1])
-    atr = float(ind["atr"].iloc[-1]) if "atr" in ind else float("nan")
-    if np.isnan(atr) or atr <= 0:
-        atr = prix * 0.01
-    technique = strategie["nom"]
-    biais = strategie["biais"]
-    qualite = strategie["qualite"]
-    if technique == "Attendre" or biais == "Neutre":
-        return {"statut": "NO_TRADE", "entree": prix, "stop_loss": None, "tp1": None, "tp2": None, "tp3": None, "rr1": None, "rr2": None, "rr3": None}
-    if biais == "Haussier":
-        entree = prix
-        stop_loss = entree - (atr * 1.5)
-        risque = entree - stop_loss
-        tp1 = entree + (risque * 1.5)
-        tp2 = entree + (risque * 2.5)
-        tp3 = entree + (risque * 3.5)
+        decision = "SCENARIO_PRINCIPAL_FORT"
+    elif probabilite_principale >= 60:
+        decision = "SCENARIO_PRINCIPAL"
     else:
-        entree = prix
-        stop_loss = entree + (atr * 1.5)
-        risque = stop_loss - entree
-        tp1 = entree - (risque * 1.5)
-        tp2 = entree - (risque * 2.5)
-        tp3 = entree - (risque * 3.5)
-    return {"statut": "TRADE", "entree": entree, "stop_loss": stop_loss, "tp1": tp1, "tp2": tp2, "tp3": tp3, "rr1": 1.5, "rr2": 2.5, "rr3": 3.5, "qualite": qualite, "biais": biais}
-
+        decision = "ATTENDRE_CONFIRMATION"
 # ============================================================
 # 🛡️ GESTIONNAIRE DE RISQUE — PREDITRADE AI V1
 # ============================================================
