@@ -903,9 +903,11 @@ def generer_scenarios(ind, score, strategie, plan, setup):
     # 10. Décision globale
     # ---------------------------------------------------------
     if probabilite_principale >= 70 and qualite >= 75:
-        decision = "SCENARIO_PRINCIPAL_FORT"
-    elif probabilite_principale >= 60:
-        decision = "SCENARIO_PRINCIPAL
+    decision = "SCENARIO_PRINCIPAL_FORT"
+elif probabilite_principale >= 60:
+    decision = "SCENARIO_PRINCIPAL"
+else:
+    decision = "ATTENDRE_CONFIRMATION"
 def generer_plan_trade(ind, strategie):
     prix = float(ind["close"].iloc[-1])
     atr = float(ind["atr"].iloc[-1]) if "atr" in ind else float("nan")
