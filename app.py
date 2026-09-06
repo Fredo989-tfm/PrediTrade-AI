@@ -577,6 +577,88 @@ def selectionner_technique(ind, score, signal):
         "qualite": 45,
         "regime": ctx["regime"]
             }
+# ============================================================
+# 🎯 GÉNÉRATEUR DE PLAN DE TRADE — PREDITRADE AI V1
+# ============================================================
+
+def generer_plan_trade(ind, strategie):
+    """
+    Génère un plan de trade à partir de la technique sélectionnée.
+    Entrée, Stop Loss et objectifs sont basés sur la volatilité.
+    """
+
+    prix = float(ind["close"].iloc[-1])
+    atr = float(ind["atr"].iloc[-1]) if "atr" in ind.columns else np.nan
+
+    # Sécurité si ATR indisponible
+    if np.isnan(atr) or atr <= 0:
+        atr = prix * 0.01
+
+    technique = strategie["nom"]
+    biais = strategie["biais"]
+    qualite = strategie["qualite"]
+
+    # Aucun trade
+    if technique == "Attendre" or biais == "Neutre":
+        return {
+            "statut": "NO_TRADE",
+            "entree": prix,
+            "stop_loss": None,
+            "tp1": None,
+            "tp2": None,
+            "tp3": None,
+            "rr1": None,
+            "rr2": None,
+            "rr3": None
+        }
+
+    # --------------------------------------------------------
+    # 📈 SCÉNARIO HAUSSIER
+    # --------------------------------------------------------
+
+    if biais == "Haussier":
+
+        entree = prix
+
+        # Stop sous la zone actuelle
+        stop_loss = entree - (atr * 1.5)
+
+        risque = entree - stop_loss
+
+        tp1 = entree + (risque * 1.5)
+        tp2 = entree + (risque * 2.5)
+        tp3 = entree + (risque * 3.5)
+
+    # --------------------------------------------------------
+    # 📉 SCÉNARIO BAISSIER
+    # --------------------------------------------------------
+
+    else:
+
+        entree = prix
+
+        # Stop au-dessus de la zone actuelle
+        stop_loss = entree + (atr * 1.5)
+
+        risque = stop_loss - entree
+
+        tp1 = entree - (risque * 1.5)
+        tp2 = entree - (risque * 2.5)
+        tp3 = entree - (risque * 3.5)
+
+    return {
+        "statut": "TRADE",
+        "entree": entree,
+        "stop_loss": stop_loss,
+        "tp1": tp1,
+        "tp2": tp2,
+        "tp3": tp3,
+        "rr1": 1.5,
+        "rr2": 2.5,
+        "rr3": 3.5,
+        "qualite": qualite,
+        "biais": biais
+    }
 
 @st.cache_resource
 def gemini_client():
@@ -927,9 +1009,25 @@ elif menu=="🧠 Analyse IA Pro":
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données de {name}.")
         else:
-            ind=indicateurs(df); score,signal,conf=prediscore(ind); strategie=selectionner_technique(ind,score,signal)
+            ind=indicateurs(df); score,signal,conf=prediscore(ind); strategie=selectionner_technique(ind,score,signal); plan=generer_plan_trade(ind,strategie) 
             prix=float(ind["close"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); macd_signal=float(ind["signal"].iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1])
             st.success(f"✅ Analyse terminée — {name}")
+            st.subheader("🎯 Plan de trade PrediTrade AI")
+            if plan["statut"] == "NO_TRADE":
+                st.info("🟡 Aucun trade recommandé : les conditions actuelles ne sont pas suffisamment claires.")
+            else:
+                c1, c2, c3 = st.columns(3)
+                c1.metric("📍 Point d'entrée", f"{plan['entree']:,.4f}")
+                c2.metric("🛑 Stop Loss", f"{plan['stop_loss']:,.4f}")
+                c3.metric("🎯 TP1", f"{plan['tp1']:,.4f}")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("🎯 TP2", f"{plan['tp2']:,.4f}")
+                c2.metric("🎯 TP3", f"{plan['tp3']:,.4f}")
+                c3.metric("📐 R/R TP2", f"1:{plan['rr2']:.1f}")
+                st.caption(
+                    f"⚠️ Plan basé sur la technique **{strategie['nom']}** "
+                    f"avec un biais **{strategie['biais']}**."
+                )
             st.subheader("🧠 Stratégie sélectionnée par PrediTrade AI")
             c1,c2,c3=st.columns(3) 
             c1.metric("📈 Régime",strategie["regime"])
@@ -947,23 +1045,55 @@ elif menu=="🧠 Analyse IA Pro":
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema20"].tail(150),name="EMA20",mode="lines"))
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema50"].tail(150),name="EMA50",mode="lines"))
             fig.add_trace(go.Scatter(x=chart.index,y=ind["ema200"].tail(150),name="EMA200",mode="lines"))
-            fig.update_layout(height=500,template="plotly_dark",xaxis_rangeslider_visible=False,margin=dict(l=5,r=5,t=30,b=5),legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0))
-            st.plotly_chart(fig,use_container_width=True,config={"displaylogo":False,"responsive":True})
-            st.divider(); st.subheader("🔎 Pourquoi ce score?")
-            for icone,indicateur,detail,interp in expliquer_score(ind):
-                c1,c2,c3=st.columns([1,2,3]); c1.write(icone); c2.write(f"**{indicateur}**"); c3.write(f"{detail} — **{interp}**")
-            st.divider(); st.subheader("🤖 Conclusion PrediTrade AI")
-            if score>=80:
-                if rsi>70: st.warning(f"🟢 Signal fortement haussier ({score}/100), mais le RSI à {rsi:.1f} indique une zone de surachat.")
-                else: st.success(f"🟢 Configuration haussière forte : {score}/100.")
-            elif score>=70: st.success(f"🟢 Configuration haussière : {score}/100.")
-            elif score>=55: st.info(f"🟡 Configuration neutre : {score}/100.")
-            elif score>=40: st.warning(f"🟠 Configuration prudente : {score}/100.")
-            else: st.error(f"🔴 Configuration baissière : {score}/100.")
-            st.subheader("📋 Résumé technique")
-            resume=pd.DataFrame([{"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},{"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},{"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},{"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},{"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},{"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}])
-            st.dataframe(resume,use_container_width=True,hide_index=True)
-            st.session_state.history.append({"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"actif":name,"score":score,"signal":signal,"confiance":conf,"prix":prix})
+            # 🎯 Niveaux du plan de trade
+    if plan["statut"] == "TRADE":
+        fig.add_hline(
+            y=plan["entree"],
+            line_dash="dash",
+            annotation_text="📍 Entrée",
+            annotation_position="top left"
+        )
+        fig.add_hline(
+        y=plan["stop_loss"],
+        line_dash="dash",
+        annotation_text="🛑 Stop Loss",
+        annotation_position="bottom left"
+        )
+        fig.add_hline(
+        y=plan["tp1"],
+        line_dash="dot",
+        annotation_text="🎯 TP1",
+        annotation_position="top left"
+        )
+        fig.add_hline(
+        y=plan["tp2"],
+        line_dash="dot",
+        annotation_text="🎯 TP2",
+        annotation_position="top left"
+        )
+        fig.add_hline(
+        y=plan["tp3"],
+        line_dash="dot",
+        annotation_text="🎯 TP3",
+        annotation_position="top left"
+        )
+        fig.update_layout(height=500,template="plotly_dark",xaxis_rangeslider_visible=False,margin=dict(l=5,r=5,t=30,b=5),legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="left",x=0))
+        st.plotly_chart(fig,use_container_width=True,config={"displaylogo":False,"responsive":True})
+        st.divider(); st.subheader("🔎 Pourquoi ce score?")
+        for icone,indicateur,detail,interp in expliquer_score(ind):
+            c1,c2,c3=st.columns([1,2,3]); c1.write(icone); c2.write(f"**{indicateur}**"); c3.write(f"{detail} — **{interp}**")
+        st.divider(); st.subheader("🤖 Conclusion PrediTrade AI")
+        if score>=80:
+            if rsi>70: st.warning(f"🟢 Signal fortement haussier ({score}/100), mais le RSI à {rsi:.1f} indique une zone de surachat.")
+            else: st.success(f"🟢 Configuration haussière forte : {score}/100.")
+        elif score>=70: st.success(f"🟢 Configuration haussière : {score}/100.")
+        elif score>=55: st.info(f"🟡 Configuration neutre : {score}/100.")
+        elif score>=40: st.warning(f"🟠 Configuration prudente : {score}/100.")
+        else: st.error(f"🔴 Configuration baissière : {score}/100.")
+        st.subheader("📋 Résumé technique")
+        resume=pd.DataFrame([{"Indicateur":"EMA20","Valeur":f"{ema20:,.4f}","Lecture":"Haussière" if ema20>ema50 else "Baissière"},{"Indicateur":"EMA50","Valeur":f"{ema50:,.4f}","Lecture":"Haussière" if ema50>ema200 else "Baissière"},{"Indicateur":"EMA200","Valeur":f"{ema200:,.4f}","Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"},{"Indicateur":"RSI","Valeur":f"{rsi:.1f}","Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"},{"Indicateur":"MACD","Valeur":f"{macd:.4f}","Lecture":"Haussier" if macd>macd_signal else "Baissier"},{"Indicateur":"Momentum","Valeur":f"{momentum:.2f}%","Lecture":"Positif" if momentum>0 else "Négatif"}])
+        st.dataframe(resume,use_container_width=True,hide_index=True)
+        st.session_state.history.append({"date":datetime.now().strftime("%Y-%m-%d %H:%M"),"actif":name,"score":score,"signal":signal,"confiance":conf,"prix":prix})
 elif menu=="🔍 Scanner intelligent":
     st.title("🔍 Scanner intelligent")
     if st.button("🚀 Lancer le scan",type="primary",use_container_width=True):
