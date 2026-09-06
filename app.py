@@ -927,9 +927,18 @@ elif menu=="🧠 Analyse IA Pro":
         if df.empty:
             st.error(f"❌ Impossible de récupérer les données de {name}.")
         else:
-            ind=indicateurs(df); score,signal,conf=prediscore(ind)
+            ind=indicateurs(df); score,signal,conf=prediscore(ind); strategie=selectionner_technique(ind,score,signal)
             prix=float(ind["close"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); macd_signal=float(ind["signal"].iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1])
             st.success(f"✅ Analyse terminée — {name}")
+            st.subheader("🧠 Stratégie sélectionnée par PrediTrade AI")
+            c1,c2,c3=st.columns(3) 
+            c1.metric("📈 Régime",strategie["regime"])
+            c2.metric("🎯 Technique",strategie["nom"])
+            c3.metric("⭐ Qualité",f'{strategie["qualite"]}/100')
+            st.info(
+                f'💡 **Pourquoi cette technique ?** {strategie["raison"]}\n\n'
+                f'**Biais du marché :** {strategie["biais"]}'
+            )
             c1,c2,c3=st.columns(3); c1.metric("🎯 PrediScore",f"{score}/100"); c2.metric("📡 Signal",signal); c3.metric("🧠 Confiance",conf)
             c1,c2,c3=st.columns(3); c1.metric("💰 Prix",f"{prix:,.4f}"); c2.metric("📊 RSI",f"{rsi:.1f}"); c3.metric("📈 Momentum",f"{momentum:.2f}%")
             st.divider(); st.subheader("📊 Graphique du marché")
