@@ -329,6 +329,254 @@ def expliquer_score(ind):
     ex.append(("✅","MACD","MACD > signal","Haussier") if macd>signal else ("🔴","MACD","MACD < signal","Baissier"))
     ex.append(("✅","Momentum",f"{momentum:.2f}%","Fort") if momentum>3 else ("🟢","Momentum",f"{momentum:.2f}%","Positif") if momentum>0 else ("🔴","Momentum",f"{momentum:.2f}%","Faible") if momentum<-3 else ("⚠️","Momentum",f"{momentum:.2f}%","Neutre"))
     return ex
+# ============================================================
+# 🧠 MOTEUR STRATÉGIQUE PREDITRADE AI — V1
+# ============================================================
+
+def detecter_regime_marche(ind):
+    """
+    Détermine le contexte général du marché.
+    """
+
+    prix = float(ind["close"].iloc[-1])
+    ema20 = float(ind["ema20"].iloc[-1])
+    ema50 = float(ind["ema50"].iloc[-1])
+    ema200 = float(ind["ema200"].iloc[-1])
+    rsi = float(ind["rsi"].iloc[-1])
+    momentum = float(ind["momentum"].iloc[-1])
+    volatilite = float(ind["volatility"].iloc[-1])
+
+    if np.isnan(rsi):
+        rsi = 50.0
+
+    if np.isnan(momentum):
+        momentum = 0.0
+
+    if np.isnan(volatilite):
+        volatilite = 0.0
+
+    # Tendance haussière forte
+    if ema20 > ema50 > ema200 and prix > ema200:
+        if momentum > 2:
+            regime = "📈 Tendance haussière forte"
+        else:
+            regime = "📈 Tendance haussière"
+
+    # Tendance baissière forte
+    elif ema20 < ema50 < ema200 and prix < ema200:
+        if momentum < -2:
+            regime = "📉 Tendance baissière forte"
+        else:
+            regime = "📉 Tendance baissière"
+
+    # Marché très volatil
+    elif volatilite > 4:
+        regime = "⚡ Forte volatilité"
+
+    # Marché relativement neutre
+    elif abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.005:
+        regime = "↔️ Marché en consolidation"
+
+    else:
+        regime = "🟡 Marché mixte"
+
+    return {
+        "regime": regime,
+        "prix": prix,
+        "ema20": ema20,
+        "ema50": ema50,
+        "ema200": ema200,
+        "rsi": rsi,
+        "momentum": momentum,
+        "volatilite": volatilite
+    }
+
+
+def selectionner_technique(ind, score, signal):
+    """
+    Sélectionne automatiquement la technique la plus adaptée
+    aux conditions actuelles du marché.
+    """
+
+    ctx = detecter_regime_marche(ind)
+
+    prix = ctx["prix"]
+    ema20 = ctx["ema20"]
+    ema50 = ctx["ema50"]
+    ema200 = ctx["ema200"]
+    rsi = ctx["rsi"]
+    momentum = ctx["momentum"]
+    volatilite = ctx["volatilite"]
+
+    # --------------------------------------------------------
+    # 1️⃣ Protection : conditions trop risquées
+    # --------------------------------------------------------
+
+    if volatilite > 6:
+        return {
+            "technique": "🚫 Aucune technique",
+            "nom": "Pas de trade",
+            "raison": "Volatilité extrêmement élevée.",
+            "biais": "Neutre",
+            "qualite": 30,
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 2️⃣ Breakout / Momentum
+    # --------------------------------------------------------
+
+    if score >= 75 and momentum > 3 and rsi < 70:
+        return {
+            "technique": "🚀 Breakout + Retest",
+            "nom": "Breakout + Retest",
+            "raison": (
+                "Momentum fort et configuration haussière. "
+                "Une cassure suivie d'un retest peut offrir "
+                "une entrée plus propre."
+            ),
+            "biais": "Haussier",
+            "qualite": min(95, score),
+            "regime": ctx["regime"]
+        }
+
+    if score <= 25 and momentum < -3 and rsi > 30:
+        return {
+            "technique": "🚀 Breakout + Retest",
+            "nom": "Breakout + Retest",
+            "raison": (
+                "Momentum fortement baissier. "
+                "Une cassure suivie d'un retest peut confirmer "
+                "la poursuite du mouvement."
+            ),
+            "biais": "Baissier",
+            "qualite": min(95, 100 - score),
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 3️⃣ EMA Pullback
+    # --------------------------------------------------------
+
+    distance_ema20 = abs(prix - ema20) / max(abs(ema20), 1e-9) * 100
+
+    if (
+        ema20 > ema50 > ema200
+        and prix >= ema50
+        and distance_ema20 < 3
+        and 45 <= rsi <= 68
+        and momentum > 0
+    ):
+        return {
+            "technique": "🔄 EMA Pullback",
+            "nom": "EMA Pullback",
+            "raison": (
+                "Tendance haussière confirmée avec un prix proche "
+                "des moyennes mobiles. Attendre un rebond confirmé."
+            ),
+            "biais": "Haussier",
+            "qualite": min(95, score + 5),
+            "regime": ctx["regime"]
+        }
+
+    if (
+        ema20 < ema50 < ema200
+        and prix <= ema50
+        and distance_ema20 < 3
+        and 32 <= rsi <= 55
+        and momentum < 0
+    ):
+        return {
+            "technique": "🔄 EMA Pullback",
+            "nom": "EMA Pullback",
+            "raison": (
+                "Tendance baissière confirmée avec un prix proche "
+                "des moyennes mobiles. Attendre un rejet confirmé."
+            ),
+            "biais": "Baissier",
+            "qualite": min(95, 100 - score + 5),
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 4️⃣ Momentum Trading
+    # --------------------------------------------------------
+
+    if abs(momentum) > 4 and volatilite < 5:
+        biais = "Haussier" if momentum > 0 else "Baissier"
+
+        return {
+            "technique": "⚡ Momentum Trading",
+            "nom": "Momentum Trading",
+            "raison": (
+                "Le momentum est suffisamment fort pour privilégier "
+                "une stratégie basée sur la poursuite du mouvement."
+            ),
+            "biais": biais,
+            "qualite": min(90, max(score, 100 - score)),
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 5️⃣ Range Trading
+    # --------------------------------------------------------
+
+    if (
+        abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
+        and 35 <= rsi <= 65
+        and abs(momentum) < 3
+    ):
+        return {
+            "technique": "↔️ Range Trading",
+            "nom": "Range Trading",
+            "raison": (
+                "Le marché montre peu de tendance et le momentum "
+                "reste modéré. Une approche entre support et résistance "
+                "peut être envisagée."
+            ),
+            "biais": "Neutre",
+            "qualite": 70,
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 6️⃣ Support / Resistance Bounce
+    # --------------------------------------------------------
+
+    if (
+        (rsi < 40 or rsi > 60)
+        and abs(momentum) < 3
+        and volatilite < 5
+    ):
+        biais = "Haussier" if rsi < 40 else "Baissier"
+
+        return {
+            "technique": "🧱 Support / Resistance Bounce",
+            "nom": "Support / Resistance Bounce",
+            "raison": (
+                "Le momentum ralentit et le RSI suggère une zone "
+                "où un rejet du prix peut apparaître."
+            ),
+            "biais": biais,
+            "qualite": 65,
+            "regime": ctx["regime"]
+        }
+
+    # --------------------------------------------------------
+    # 7️⃣ Aucune configuration suffisamment claire
+    # --------------------------------------------------------
+
+    return {
+        "technique": "🚫 Aucune technique",
+        "nom": "Attendre",
+        "raison": (
+            "Les conditions actuelles ne permettent pas de sélectionner "
+            "une stratégie avec suffisamment de confiance."
+        ),
+        "biais": "Neutre",
+        "qualite": 45,
+        "regime": ctx["regime"]
+            }
 
 @st.cache_resource
 def gemini_client():
