@@ -440,6 +440,86 @@ def selectionner_technique(ind, score, signal):
         "qualite": 45,
         "regime": ctx["regime"]
     }
+def generer_plan_trade(ind, strategie):
+    prix = float(ind["close"].iloc[-1])
+
+    try:
+        atr = float(ind["atr"].iloc[-1])
+    except (KeyError, TypeError, ValueError):
+        atr = float("nan")
+
+    if not np.isfinite(atr) or atr <= 0:
+        atr = prix * 0.01
+
+    technique = strategie.get("nom", "Attendre")
+    biais = strategie.get("biais", "Neutre")
+    qualite = strategie.get("qualite", 0)
+
+    # Aucun trade
+    if technique in ("Attendre", "Pas de trade") or biais == "Neutre":
+        return {
+            "statut": "NO_TRADE",
+            "entree": prix,
+            "stop_loss": None,
+            "tp1": None,
+            "tp2": None,
+            "tp3": None,
+            "rr1": None,
+            "rr2": None,
+            "rr3": None,
+            "qualite": qualite,
+            "biais": biais
+        }
+
+    entree = prix
+
+    # Scénario haussier
+    if biais == "Haussier":
+        stop_loss = entree - (atr * 1.5)
+        risque = entree - stop_loss
+
+        tp1 = entree + (risque * 1.5)
+        tp2 = entree + (risque * 2.5)
+        tp3 = entree + (risque * 3.5)
+
+    # Scénario baissier
+    elif biais == "Baissier":
+        stop_loss = entree + (atr * 1.5)
+        risque = stop_loss - entree
+
+        tp1 = entree - (risque * 1.5)
+        tp2 = entree - (risque * 2.5)
+        tp3 = entree - (risque * 3.5)
+
+    # Sécurité
+    else:
+        return {
+            "statut": "NO_TRADE",
+            "entree": prix,
+            "stop_loss": None,
+            "tp1": None,
+            "tp2": None,
+            "tp3": None,
+            "rr1": None,
+            "rr2": None,
+            "rr3": None,
+            "qualite": qualite,
+            "biais": biais
+        }
+
+    return {
+        "statut": "TRADE",
+        "entree": entree,
+        "stop_loss": stop_loss,
+        "tp1": tp1,
+        "tp2": tp2,
+        "tp3": tp3,
+        "rr1": 1.5,
+        "rr2": 2.5,
+        "rr3": 3.5,
+        "qualite": qualite,
+        "biais": biais
+        }
 def selectionner_approche(ind, score, strategie, plan):
     """
     Détermine l'approche d'exécution la plus adaptée
