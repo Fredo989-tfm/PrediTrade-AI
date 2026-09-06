@@ -270,25 +270,114 @@ def detecter_regime_marche(ind):
 
 def selectionner_technique(ind, score, signal):
     ctx = detecter_regime_marche(ind)
-    prix = ctx["prix"]; ema20 = ctx["ema20"]; ema50 = ctx["ema50"]; ema200 = ctx["ema200"]; rsi = ctx["rsi"]; momentum = ctx["momentum"]; volatilite = ctx["volatilite"]
+
+    prix = ctx["prix"]
+    ema20 = ctx["ema20"]
+    ema50 = ctx["ema50"]
+    ema200 = ctx["ema200"]
+    rsi = ctx["rsi"]
+    momentum = ctx["momentum"]
+    volatilite = ctx["volatilite"]
+
     if volatilite > 6:
-        return {"technique": "🚫 Aucune technique", "nom": "Pas de trade", "raison": "Volatilité extrêmement élevée.", "biais": "Neutre", "qualite": 30, "regime": ctx["regime"]}
+        return {
+            "technique": "🚫 Aucune technique",
+            "nom": "Pas de trade",
+            "raison": "Volatilité extrêmement élevée.",
+            "biais": "Neutre",
+            "qualite": 30,
+            "regime": ctx["regime"]
+        }
+
     if score >= 75 and momentum > 3 and rsi < 70:
-        return {"technique": "🚀 Breakout + Retest", "nom": "Breakout + Retest", "raison": "Momentum fort et configuration haussière. Une cassure suivie d'un retest peut offrir une entrée plus propre.", "biais": "Haussier", "qualite": min(95, score), "regime": ctx["regime"]}
+        return {
+            "technique": "🚀 Breakout + Retest",
+            "nom": "Breakout + Retest",
+            "raison": (
+                "Momentum fort et configuration haussière. "
+                "Une cassure suivie d'un retest peut offrir "
+                "une entrée plus propre."
+            ),
+            "biais": "Haussier",
+            "qualite": min(95, score),
+            "regime": ctx["regime"]
+        }
+
     if score <= 25 and momentum < -3 and rsi > 30:
-        return {"technique": "🚀 Breakout + Retest", "nom": "Breakout + Retest", "raison": "Momentum fortement baissier. Une cassure suivie d'un retest peut confirmer la poursuite du mouvement.", "biais": "Baissier", "qualite": min(95, 100 - score), "regime": ctx["regime"]}
-    distance_ema20 = abs(prix - ema20) / max(abs(ema20), 1e-9) * 100
-    if ema20 > ema50 > ema200 and prix >= ema50 and distance_ema20 < 3 and 45 <= rsi <= 68 and momentum > 0:
-        return {"technique": "🔄 EMA Pullback", "nom": "EMA Pullback", "raison": "Tendance haussière confirmée avec un prix proche des moyennes mobiles. Attendre un rebond confirmé.", "biais": "Haussier", "qualite": min(95, score + 5), "regime": ctx["regime"]}
-    if ema20 < ema50 < ema200 and prix <= ema50 and distance_ema20 < 3 and 32 <= rsi <= 55 and momentum < 0:
-        return {"technique": "🔄 EMA Pullback", "nom": "EMA Pullback", "raison": "Tendance baissière confirmée avec un prix proche des moyennes mobiles. Attendre un rejet confirmé.", "biais": "Baissier", "qualite": min(95, 100 - score + 5), "regime": ctx["regime"]}
+        return {
+            "technique": "🚀 Breakout + Retest",
+            "nom": "Breakout + Retest",
+            "raison": (
+                "Momentum fortement baissier. "
+                "Une cassure suivie d'un retest peut confirmer "
+                "la poursuite du mouvement."
+            ),
+            "biais": "Baissier",
+            "qualite": min(95, 100 - score),
+            "regime": ctx["regime"]
+        }
+
+    distance_ema20 = (
+        abs(prix - ema20) / max(abs(ema20), 1e-9) * 100
+    )
+
+    if (
+        ema20 > ema50 > ema200
+        and prix >= ema50
+        and distance_ema20 < 3
+        and 45 <= rsi <= 68
+        and momentum > 0
+    ):
+        return {
+            "technique": "🔄 EMA Pullback",
+            "nom": "EMA Pullback",
+            "raison": (
+                "Tendance haussière confirmée avec un prix proche "
+                "des moyennes mobiles. Attendre un rebond confirmé."
+            ),
+            "biais": "Haussier",
+            "qualite": min(95, score + 5),
+            "regime": ctx["regime"]
+        }
+
+    if (
+        ema20 < ema50 < ema200
+        and prix <= ema50
+        and distance_ema20 < 3
+        and 32 <= rsi <= 55
+        and momentum < 0
+    ):
+        return {
+            "technique": "🔄 EMA Pullback",
+            "nom": "EMA Pullback",
+            "raison": (
+                "Tendance baissière confirmée avec un prix proche "
+                "des moyennes mobiles. Attendre un rejet confirmé."
+            ),
+            "biais": "Baissier",
+            "qualite": min(95, 100 - score + 5),
+            "regime": ctx["regime"]
+        }
+
     if abs(momentum) > 4 and volatilite < 5:
         biais = "Haussier" if momentum > 0 else "Baissier"
-        return {"technique": "⚡ Momentum Trading", "nom": "Momentum Trading", "raison": "Le momentum est suffisamment fort pour privilégier une stratégie basée sur la poursuite du mouvement.", "biais": biais, "qualite": min(90, max(score, 100 - score)), "regime": ctx["regime"]}
+
+        return {
+            "technique": "⚡ Momentum Trading",
+            "nom": "Momentum Trading",
+            "raison": (
+                "Le momentum est suffisamment fort pour privilégier "
+                "une stratégie basée sur la poursuite du mouvement."
+            ),
+            "biais": biais,
+            "qualite": min(90, max(score, 100 - score)),
+            "regime": ctx["regime"]
+        }
+
     if (
-    abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
-    and 35 <= rsi <= 45
-    and momentum < 0
+        abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
+        and 35 <= rsi <= 45
+        and momentum < 0
     ):
         return {
             "technique": "↔️ Range Trading",
@@ -302,21 +391,53 @@ def selectionner_technique(ind, score, signal):
             "qualite": 70,
             "regime": ctx["regime"]
         }
+
     if (
         abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
         and 55 <= rsi <= 65
         and momentum > 0
     ):
+        return {
+            "technique": "↔️ Range Trading",
+            "nom": "Range Trading",
+            "raison": (
+                "Le marché est en consolidation et le prix montre "
+                "un biais haussier modéré. Une entrée proche du support "
+                "peut être envisagée après confirmation."
+            ),
+            "biais": "Haussier",
+            "qualite": 70,
+            "regime": ctx["regime"]
+        }
+
+    if (
+        (rsi < 40 or rsi > 60)
+        and abs(momentum) < 3
+        and volatilite < 5
+    ):
+        biais = "Haussier" if rsi < 40 else "Baissier"
+
+        return {
+            "technique": "🧱 Support / Resistance Bounce",
+            "nom": "Support / Resistance Bounce",
+            "raison": (
+                "Le momentum ralentit et le RSI suggère une zone "
+                "où un rejet du prix peut apparaître."
+            ),
+            "biais": biais,
+            "qualite": 65,
+            "regime": ctx["regime"]
+        }
+
     return {
-        "technique": "↔️ Range Trading",
-        "nom": "Range Trading",
+        "technique": "🚫 Aucune technique",
+        "nom": "Attendre",
         "raison": (
-            "Le marché est en consolidation et le prix montre "
-            "un biais haussier modéré. Une entrée proche du support "
-            "peut être envisagée après confirmation."
+            "Les conditions actuelles ne permettent pas de sélectionner "
+            "une stratégie avec suffisamment de confiance."
         ),
-        "biais": "Haussier",
-        "qualite": 70,
+        "biais": "Neutre",
+        "qualite": 45,
         "regime": ctx["regime"]
     }
 def selectionner_approche(ind, score, strategie, plan):
