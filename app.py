@@ -268,13 +268,40 @@ def selectionner_technique(ind, score, signal):
     if abs(momentum) > 4 and volatilite < 5:
         biais = "Haussier" if momentum > 0 else "Baissier"
         return {"technique": "⚡ Momentum Trading", "nom": "Momentum Trading", "raison": "Le momentum est suffisamment fort pour privilégier une stratégie basée sur la poursuite du mouvement.", "biais": biais, "qualite": min(90, max(score, 100 - score)), "regime": ctx["regime"]}
-    if abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01 and 35 <= rsi <= 65 and abs(momentum) < 3:
-        return {"technique": "↔️ Range Trading", "nom": "Range Trading", "raison": "Le marché montre peu de tendance et le momentum reste modéré. Une approche entre support et résistance peut être envisagée.", "biais": "Neutre", "qualite": 70, "regime": ctx["regime"]}
-    if (rsi < 40 or rsi > 60) and abs(momentum) < 3 and volatilite < 5:
-        biais = "Haussier" if rsi < 40 else "Baissier"
-        return {"technique": "🧱 Support / Resistance Bounce", "nom": "Support / Resistance Bounce", "raison": "Le momentum ralentit et le RSI suggère une zone où un rejet du prix peut apparaître.", "biais": biais, "qualite": 65, "regime": ctx["regime"]}
-    return {"technique": "🚫 Aucune technique", "nom": "Attendre", "raison": "Les conditions actuelles ne permettent pas de sélectionner une stratégie avec suffisamment de confiance.", "biais": "Neutre", "qualite": 45, "regime": ctx["regime"]}
-
+    if (
+    abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
+    and 35 <= rsi <= 45
+    and momentum < 0
+    ):
+        return {
+            "technique": "↔️ Range Trading",
+            "nom": "Range Trading",
+            "raison": (
+                "Le marché est en consolidation et le prix montre "
+                "un biais baissier modéré. Une entrée proche du support "
+                "peut être envisagée après confirmation."
+            ),
+            "biais": "Baissier",
+            "qualite": 70,
+            "regime": ctx["regime"]
+        }
+    if (
+        abs(ema20 - ema50) / max(abs(ema50), 1e-9) < 0.01
+        and 55 <= rsi <= 65
+        and momentum > 0
+    ):
+    return {
+        "technique": "↔️ Range Trading",
+        "nom": "Range Trading",
+        "raison": (
+            "Le marché est en consolidation et le prix montre "
+            "un biais haussier modéré. Une entrée proche du support "
+            "peut être envisagée après confirmation."
+        ),
+        "biais": "Haussier",
+        "qualite": 70,
+        "regime": ctx["regime"]
+    }
 def generer_plan_trade(ind, strategie):
     prix = float(ind["close"].iloc[-1])
     atr = float(ind["volatility"].iloc[-1]) if "volatility" in ind else float("nan")
