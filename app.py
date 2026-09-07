@@ -1109,6 +1109,30 @@ def generer_scenarios(ind, score, strategie, plan, setup):
         decision = "SCENARIO_PRINCIPAL"
     else:
         decision = "ATTENDRE_CONFIRMATION"
+    # ---------------------------------------------------------
+    # 11. Retour des scénarios
+    # ---------------------------------------------------------
+    probabilite_adverse = max(0, 100 - probabilite_principale)
+    probabilite_neutre = 0
+
+    return {
+        "principal": {
+            "direction": direction_principale,
+            "probabilite": round(probabilite_principale, 1),
+            "condition": condition_principale
+        },
+        "adverse": {
+            "direction": direction_adverse,
+            "probabilite": round(probabilite_adverse, 1),
+            "condition": condition_adverse
+        },
+        "neutre": {
+            "direction": "↔️ Neutre",
+            "probabilite": probabilite_neutre,
+            "condition": condition_neutre
+        },
+        "decision": decision
+    } 
 # ============================================================
 # 🛡️ GESTIONNAIRE DE RISQUE — PREDITRADE AI V1
 # ============================================================
