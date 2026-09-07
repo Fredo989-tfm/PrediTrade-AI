@@ -1314,13 +1314,11 @@ if menu=="📊 Tableau de bord":
 
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
-cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
-name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
-
-if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
-    with st.spinner("🤖 PrediTrade AI analyse le marché..."):
-        df=charger_donnees(ASSETS[cat][name],cat)
-
+    cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
+    name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
+    if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
+        with st.spinner("🤖 PrediTrade AI analyse le marché..."):
+            df=charger_donnees(ASSETS[cat][name],cat)
     if df.empty:
         st.error(f"❌ Impossible de récupérer les données de {name}.")
     else:
