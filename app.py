@@ -1181,25 +1181,6 @@ def binance_request(endpoint,api_key,api_secret):
         try: return r.json(),None
         except: return None,"Réponse Binance invalide."
     except Exception as e: return None,f"Erreur Binance: {e}"
-
-def tester_connexion_binance(k,s):
-    c,e=binance_request("/api/v3/account",k,s)
-    if c is not None: return True,"Connexion Binance réussie via Proxy ✅"
-    return False,e
-
-def recuperer_compte_binance(k,s):
-    c,e=binance_request("/api/v3/account",k,s)
-    if c is not None: return c,None
-    return None,e
-
-def diagnostiquer_binance():
-    try:
-        ip_r=requests.get("https://api.ipify.org?format=json",timeout=10)
-        ip=ip_r.json().get("ip","Inconnue") if ip_r.ok else "Inconnue"
-        r=requests.get(proxy_url("https://api.binance.com/api/v3/ping"),timeout=15)
-        return ip,r.status_code,"OK via Proxy" if r.status_code==200 else f"HTTP {r.status_code}"
-    except Exception as e: return None,None,str(e)
-
 def scanner_notifications_complet():
     initialiser_notifications(); pref=st.session_state.notification_preferences
     if not pref.get("enabled",True): return []
