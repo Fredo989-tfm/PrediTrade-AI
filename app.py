@@ -1756,25 +1756,68 @@ elif menu=="⚙️ Paiement":
                 if stat in ["SUCCESS","SUCCESSFUL","COMPLETED"]: st.success("✅ Paiement confirmé!"); st.session_state.is_premium=True; u=load_users(); u[st.session_state.user_email]["premium"]=True; save_users(u); st.balloons()
                 else: st.warning(f"Statut: {stat}")
             except Exception as e: st.error(f"{e}")
-
 elif menu=="🔗 Connexions aux plateformes":
-    st.title("🔗 Connexions aux plateformes"); st.success(f"🟢 Proxy Actif: `{PROXY}`")
-    st.divider(); st.subheader("🟡 Binance — Connexion sécurisée")
-    ak=os.environ.get("BINANCE_API_KEY","").strip(); ask=os.environ.get("BINANCE_API_SECRET","").strip()
-    if not ak or not ask: st.error("❌ Clés non configurées dans Secrets")
-    else:
-        st.success("🔐 Identifiants détectés."); c1,c2=st.columns(2)
-        with c1:
-            if st.button("🔄 Tester la connexion",type="primary",use_container_width=True):
-                with st.spinner("Vérif..."): ok,msg=tester_connexion_binance(ak,ask); ip,code,det=diagnostiquer_binance()
-                st.write(f"IP: {ip} | HTTP: {code}")
-                if ok: st.balloons(); st.success(msg)
-                else: st.error(msg)
-        with c2:
-            if st.button("💰 Voir mes soldes",use_container_width=True):
-                with st.spinner("Récup..."): compte,err=recuperer_compte_binance(ak,ask)
-                if compte:
-                    bals=[b for b in compte.get("balances",[]) if float(b.get("free",0))>0 or float(b.get("locked",0))>0]
-                    if bals: st.dataframe(pd.DataFrame(bals),use_container_width=True)
-                    else: st.info("Solde vide")
-                else: st.error(f"Erreur: {err}")
+    st.title("🔗 Connexions aux plateformes")
+    st.caption("Connectez votre compte de trading à PrediTrade AI en toute sécurité.")
+
+    st.divider()
+
+    # ==============================
+    # BINANCE
+    # ==============================
+    st.subheader("🟡 Binance")
+
+    st.write("Connectez votre compte Binance à PrediTrade AI.")
+
+    c1, c2 = st.columns([3, 1])
+
+    with c1:
+        st.info(
+            "🔐 Connexion sécurisée\n\n"
+            "PrediTrade demandera uniquement les autorisations nécessaires.\n"
+            "🚫 Aucun retrait\n"
+            "🚫 Aucun transfert"
+        )
+
+    with c2:
+        st.write("")
+        st.write("")
+        if st.button(
+            "🟡 Connecter Binance",
+            type="primary",
+            use_container_width=True
+        ):
+            st.session_state["binance_connection_started"] = True
+            st.info("🔄 Préparation de la connexion Binance...")
+
+    # ==============================
+    # ÉTAT DE LA CONNEXION
+    # ==============================
+    if st.session_state.get("binance_connection_started", False):
+        st.divider()
+        st.subheader("🔐 Connexion Binance")
+
+        st.warning(
+            "La connexion sécurisée Binance OAuth sera activée "
+            "dès que PrediTrade AI aura obtenu les accès nécessaires auprès de Binance."
+        )
+
+        st.caption(
+            "Vous serez ensuite redirigé vers Binance pour autoriser "
+            "PrediTrade AI, puis automatiquement renvoyé vers l'application."
+        )
+
+    st.divider()
+
+    # ==============================
+    # AUTRES PLATEFORMES
+    # ==============================
+    st.subheader("🌐 Autres plateformes")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.info("🔵 Bybit\n\nBientôt disponible")
+
+    with c2:
+        st.info("⚫ OKX\n\nBientôt disponible")
