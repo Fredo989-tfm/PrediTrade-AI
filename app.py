@@ -1,4 +1,4 @@
-import streamlit as st, base64, pandas as pd, numpy as np, os, requests, time, hashlib, json, io, urllib.parse
+import streamlit as st,requests,hashlib,urllib.parse
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 APP_VERSION="5.0.0"
@@ -1168,19 +1168,6 @@ try:
     if CAMPAY_USERNAME and CAMPAY_PASSWORD: campay=CamPayClient({"app_username":CAMPAY_USERNAME,"app_password":CAMPAY_PASSWORD,"environment":CAMPAY_ENV}); CAMPAY_OK=True
     else: campay=None; CAMPAY_OK=False
 except: campay=None; CAMPAY_OK=False; CAMPAY_ENV="DEV"
-
-def binance_signature(qs,sec): return hmac.new(sec.encode("utf-8"),qs.encode("utf-8"),hashlib.sha256).hexdigest()
-def binance_request(endpoint,api_key,api_secret):
-    try:
-        ts=int(time.time()*1000); qs=f"timestamp={ts}&recvWindow=5000"; sig=binance_signature(qs,api_secret)
-        target_url=f"https://api.binance.com{endpoint}?{qs}&signature={sig}"
-        r=requests.get(proxy_url(target_url),headers={"X-MBX-APIKEY":api_key,"Accept":"application/json"},timeout=20)
-        if r.status_code!=200:
-            try: ed=r.json(); msg=ed.get("msg",r.text); code=ed.get("code",r.status_code); return None,f"Binance {code}: {msg}"
-            except: return None,f"HTTP {r.status_code}: {r.text[:300]}"
-        try: return r.json(),None
-        except: return None,"Réponse Binance invalide."
-    except Exception as e: return None,f"Erreur Binance: {e}"
 def scanner_notifications_complet():
     initialiser_notifications(); pref=st.session_state.notification_preferences
     if not pref.get("enabled",True): return []
