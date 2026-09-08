@@ -3,6 +3,17 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 APP_VERSION="5.0.0"
 import sqlite3
+# --- PWA PrediTrade IA - Activation Installation ---
+st.markdown("""
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-512.png">
+<meta name="theme-color" content="#00E5FF">
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+""", unsafe_allow_html=True)
 DB_FILE = "users.db"
 
 def init_db():
