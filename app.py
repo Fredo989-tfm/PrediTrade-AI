@@ -1,4 +1,4 @@
-import streamlit as st, requests, hashlib, urllib.parse, pandas as pd
+import streamlit as st, requests, hashlib, urllib.parse, pandas as pd, numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 import time
@@ -1298,7 +1298,7 @@ elif menu=="🧠 Analyse IA Pro":
     name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
     if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
       with st.spinner("🤖 PrediTrade AI analyse..."):
-        df=charger_donnees(ASSETS[cat],name)
+        df=charger_donnees(ASSETS[cat][name], cat)
         if df.empty:
           st.error(f"❌ Impossible de récupérer les données pour {name}")
           st.stop()
