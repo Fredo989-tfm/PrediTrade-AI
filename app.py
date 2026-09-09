@@ -1,6 +1,7 @@
 import streamlit as st,requests,hashlib,urllib.parse
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
+import time
 APP_VERSION="5.0.0"
 import sqlite3
 # --- PWA PrediTrade IA - Activation Installation ---
