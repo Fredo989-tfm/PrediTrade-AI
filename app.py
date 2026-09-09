@@ -2207,18 +2207,160 @@ elif menu=="🛡️ Gestion du risque":
                 "du risque choisi et de la volatilité récente de l'actif."
   )
 elif menu=="📊 Backtest":
-    st.title("📊 Backtest"); cat=st.selectbox("Cat",list(ASSETS.keys()),key="bt_cat"); name=st.selectbox("Actif",list(ASSETS.get(cat,{}).keys()),key="bt_name")
-    if st.button("Lancer Backtest"):
-        df=charger_donnees(ASSETS[cat][name],cat)
-        if len(df)>60:
-            df=df.tail(100); ind=indicateurs(df); cash=10000.0; pos=0.0; eq=[]
-            for i in range(50,len(df)):
-                sl={k:v.iloc[:i] for k,v in ind.items()}; sc,sig,_=prediscore(sl); prix=df["Close"].iloc[i]
-                if "ACHAT" in sig and cash>prix and pos==0: pos=cash/prix; cash=0
-                elif "VENTE" in sig and pos>0: cash=pos*prix; pos=0
-                eq.append(cash+pos*prix)
-            st.line_chart(pd.Series(eq,index=df.index[50:])); st.metric("P&L",f"${eq[-1]-10000:,.2f}")
+    st.title("📊 Backtest")
 
+    cat = st.selectbox(
+        "Catégorie",
+        list(ASSETS.keys()),
+        key="bt_cat"
+    )
+
+    name = st.selectbox(
+        "Actif",
+        list(ASSETS.get(cat, {}).keys()),
+        key="bt_name"
+    )
+
+    capital_initial = st.number_input(
+        "💰 Capital initial ($)",
+        min_value=100.0,
+        value=10000.0,
+        step=500.0,
+        key="bt_capital"
+    )
+
+    risque = st.slider(
+        "⚠️ Risque par trade (%)",
+        min_value=0.5,
+        max_value=5.0,
+        value=1.0,
+        step=0.5,
+        key="bt_risque"
+    )
+
+    if st.button("🚀 Lancer Backtest", use_container_width=True):
+
+        with st.spinner("Analyse historique en cours..."):
+
+            df = charger_donnees(
+                ASSETS[cat][name],
+                cat
+            )
+
+            resultat = backtester_strategie(
+                df,
+                capital_initial=capital_initial,
+                risque_par_trade=risque / 100
+            )
+
+        if resultat["statut"] != "OK":
+
+            st.warning(resultat["message"])
+
+        else:
+
+            st.success("✅ Backtest terminé")
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            c1.metric(
+                "💰 Capital final",
+                f"${resultat['capital_final']:,.2f}"
+            )
+
+            c2.metric(
+                "📈 Rendement",
+                f"{resultat['rendement']:.2f}%"
+            )
+
+            c3.metric(
+                "🎯 Winrate",
+                f"{resultat['winrate']:.1f}%"
+            )
+
+            c4.metric(
+                "📊 Trades",
+                resultat["nb_trades"]
+            )
+
+            c5, c6, c7 = st.columns(3)
+
+            c5.metric(
+                "🟢 Gagnants",
+                resultat["gagnants"]
+            )
+
+            c6.metric(
+                "🔴 Perdants",
+                resultat["perdants"]
+            )
+
+            c7.metric(
+                "📉 Max Drawdown",
+                f"{resultat['max_drawdown']:.2f}%"
+            )
+
+            st.divider()
+
+            st.subheader("📊 Performance")
+
+            trades = resultat["trades"]
+
+            if not trades.empty:
+
+                courbe = trades.set_index("date")["capital"]
+
+                st.line_chart(courbe)
+
+                st.divider()
+
+                st.subheader("📋 Historique des trades")
+
+                colonnes = [
+                    "date",
+                    "score",
+                    "signal",
+                    "strategie",
+                    "biais",
+                    "entree",
+                    "stop_loss",
+                    "tp1",
+                    "tp2",
+                    "tp3",
+                    "resultat",
+                    "multiple_R",
+                    "profit",
+                    "capital"
+                ]
+
+                st.dataframe(
+                    trades[colonnes],
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                st.divider()
+
+                st.subheader("📐 Statistiques")
+
+                c1, c2 = st.columns(2)
+
+                pf = resultat["profit_factor"]
+
+                if np.isinf(pf):
+                    pf_text = "∞"
+                else:
+                    pf_text = f"{pf:.2f}"
+
+                c1.metric(
+                    "Profit Factor",
+                    pf_text
+                )
+
+                c2.metric(
+                    "Profit total",
+                    f"${resultat['profit_total']:,.2f}"
+  )
 elif menu=="📚 Historique":
     st.title("📚 Historique")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history),use_container_width=True)
