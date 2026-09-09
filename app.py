@@ -205,130 +205,160 @@ def indicateurs(df):
     "volatility": volatility,
     "atr": atr
     }
-
 def prediscore(ind):
     close = ind["close"]
 
-    if len(close) < 50:
+    # Vérification des données
+    if len(close) < 200:
         return 50, "🟡 ATTENDRE", "Faible"
 
-    prix = float(close.iloc[-1])
-    ema20 = float(ind["ema20"].iloc[-1])
-    ema50 = float(ind["ema50"].iloc[-1])
-    ema200 = float(ind["ema200"].iloc[-1])
-    rsi = float(ind["rsi"].iloc[-1])
-    macd = float(ind["macd"].iloc[-1])
-    signal = float(ind["signal"].iloc[-1])
-    momentum = float(ind["momentum"].iloc[-1])
+    try:
+        prix = float(close.iloc[-1])
+        ema20 = float(ind["ema20"].iloc[-1])
+        ema50 = float(ind["ema50"].iloc[-1])
+        ema200 = float(ind["ema200"].iloc[-1])
+        rsi = float(ind["rsi"].iloc[-1])
+        macd = float(ind["macd"].iloc[-1])
+        signal = float(ind["signal"].iloc[-1])
+        momentum = float(ind["momentum"].iloc[-1])
 
-    # Score de départ neutre
+        valeurs = [prix, ema20, ema50, ema200, rsi, macd, signal, momentum]
+
+        if not all(np.isfinite(v) for v in valeurs):
+            return 50, "🟡 ATTENDRE", "Faible"
+
+    except Exception:
+        return 50, "🟡 ATTENDRE", "Faible"
+
+    # =========================================================
+    # SCORE DE BASE
+    # =========================================================
     score = 50.0
 
-    # =========================
+    # =========================================================
     # 1. TENDANCE COURT TERME
-    # =========================
+    # =========================================================
     if ema20 > ema50:
-        score += 8
+        score += 7
     else:
-        score -= 8
+        score -= 7
 
-    # =========================
+    # =========================================================
     # 2. ÉCART EMA20 / EMA50
-    # =========================
+    # =========================================================
     ecart = ((ema20 - ema50) / ema50) * 100
 
-    if ecart > 2:
-        score += 7
-    elif ecart > 0.5:
+    if ecart >= 3:
+        score += 6
+    elif ecart >= 1:
         score += 4
-    elif ecart < -2:
-        score -= 7
-    elif ecart < -0.5:
+    elif ecart > 0:
+        score += 2
+    elif ecart <= -3:
+        score -= 6
+    elif ecart <= -1:
         score -= 4
+    else:
+        score -= 2
 
-    # =========================
+    # =========================================================
     # 3. POSITION PAR RAPPORT À EMA200
-    # =========================
+    # =========================================================
     if prix > ema200:
         score += 7
     else:
         score -= 7
 
-    # =========================
-    # 4. STRUCTURE EMA50 / EMA200
-    # =========================
+    # =========================================================
+    # 4. STRUCTURE LONG TERME
+    # =========================================================
     if ema50 > ema200:
         score += 6
     else:
         score -= 6
 
-    # =========================
+    # =========================================================
     # 5. RSI
-    # =========================
-    if 50 <= rsi <= 65:
+    # =========================================================
+    # On privilégie une zone saine plutôt que de récompenser
+    # automatiquement un RSI extrêmement bas.
+    if 52 <= rsi <= 65:
         score += 8
     elif 65 < rsi <= 70:
         score += 4
-    elif 40 <= rsi < 50:
+    elif 45 <= rsi < 52:
+        score += 1
+    elif 40 <= rsi < 45:
         score -= 2
     elif 30 <= rsi < 40:
-        score += 2
+        score -= 4
     elif rsi < 30:
-        score += 5
+        score -= 5
     elif 70 < rsi <= 75:
         score -= 5
     elif rsi > 75:
-        score -= 9
+        score -= 8
 
-    # =========================
+    # =========================================================
     # 6. MACD
-    # =========================
+    # =========================================================
     if macd > signal:
         score += 7
+
+        # Bonus si le MACD est également positif
+        if macd > 0:
+            score += 2
     else:
         score -= 7
 
-    # =========================
-    # 7. MOMENTUM
-    # =========================
-    if momentum > 3:
-        score += 6
-    elif momentum > 0:
-        score += 3
-    elif momentum < -3:
-        score -= 6
-    else:
-        score -= 3
+        if macd < 0:
+            score -= 2
 
-    # =========================
-    # LIMITES DU SCORE
-    # =========================
+    # =========================================================
+    # 7. MOMENTUM
+    # =========================================================
+    if momentum >= 5:
+        score += 7
+    elif momentum >= 3:
+        score += 5
+    elif momentum > 0:
+        score += 2
+    elif momentum <= -5:
+        score -= 7
+    elif momentum <= -3:
+        score -= 5
+    else:
+        score -= 2
+
+    # =========================================================
+    # LIMITATION DU SCORE
+    # =========================================================
     score = int(np.clip(round(score), 15, 95))
 
-    # =========================
+    # =========================================================
     # SIGNAL
-    # =========================
-    if score >= 82:
+    # =========================================================
+    if score >= 88:
         sig = "🟢 ACHAT FORT"
-    elif score >= 68:
+    elif score >= 76:
         sig = "🟢 ACHAT"
-    elif score >= 55:
+    elif score >= 60:
         sig = "🟡 ATTENDRE"
-    elif score >= 42:
+    elif score >= 45:
         sig = "🟠 PRUDENCE"
     else:
         sig = "🔴 VENTE"
 
-    # =========================
+    # =========================================================
     # CONFIANCE
-    # =========================
+    # =========================================================
     distance = abs(score - 50)
 
-    if distance >= 30:
+    if distance >= 35:
         conf = "Très élevée"
-    elif distance >= 20:
+    elif distance >= 25:
         conf = "Élevée"
-    elif distance >= 10:
+    elif distance >= 12:
         conf = "Moyenne"
     else:
         conf = "Faible"
