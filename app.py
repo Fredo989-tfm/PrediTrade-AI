@@ -1297,41 +1297,37 @@ elif menu=="🧠 Analyse IA Pro":
     cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
     name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
     if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
-        with st.spinner("🤖 PrediTrade AI analyse le marché..."):
-            df=charger_donnees(ASSETS[cat][name],cat)
-    if df.empty:
-        st.error(f"❌ Impossible de récupérer les données de {name}.")
-    else:
-        ind=indicateurs(df)
-        score,signal,conf=prediscore(ind)
-        strategie=selectionner_technique(ind,score,signal)
-        plan=generer_plan_trade(ind,strategie)
-        approche=selectionner_approche(ind,score,strategie,plan)
-        setup=evaluer_qualite_setup(ind,score,strategie,plan)
-        scenarios=generer_scenarios(ind,score,strategie,plan,setup)
-
-        prix=float(ind["close"].iloc[-1])
-        rsi=float(ind["rsi"].iloc[-1])
-        momentum=float(ind["momentum"].iloc[-1])
-        macd=float(ind["macd"].iloc[-1])
-        macd_signal=float(ind["signal"].iloc[-1])
-        ema20=float(ind["ema20"].iloc[-1])
-        ema50=float(ind["ema50"].iloc[-1])
-        ema200=float(ind["ema200"].iloc[-1])
-
-        risque_info=calculer_risque_trade(
+      with st.spinner("🤖 PrediTrade AI analyse..."):
+        df=charger_donnees(ASSETS[cat],name)
+        if df.empty:
+          st.error(f"❌ Impossible de récupérer les données pour {name}")
+        else:
+          ind=indicateurs(df)
+          ind=indicateurs(df)
+          score,signal,conf=prediscore(ind)
+          strategie=selectionner_technique(ind,score,signal)
+          plan=generer_plan_trade(ind,strategie)
+          approche=selectionner_approche(ind,score,strategie,plan)
+          setup=evaluer_qualite_setup(ind,score,strategie,plan)
+          scenarios=generer_scenarios(ind,score,strategie,plan,setup)
+          prix=float(ind["close"].iloc[-1])
+          rsi=float(ind["rsi"].iloc[-1])
+          momentum=float(ind["momentum"].iloc[-1])
+          macd=float(ind["macd"].iloc[-1])
+          macd_signal=float(ind["signal"].iloc[-1])
+          ema20=float(ind["ema20"].iloc[-1])
+          ema50=float(ind["ema50"].iloc[-1])
+          ema200=float(ind["ema200"].iloc[-1])
+          risque_info=calculer_risque_trade(
             plan,
             capital=float(st.session_state.cash),
             risque_pct=1.0
-        )
-
-        st.success(f"✅ Analyse terminée — {name}")
-
-        st.subheader("🎯 Plan de trade PrediTrade AI")
-
-        if plan["statut"]=="NO_TRADE":
+          )
+          st.success(f"✅ Analyse terminée — {name}")
+          st.subheader("🎯 Plan de trade PrediTrade AI")
+          if plan["statut"]=="NO_TRADE":
             st.info("🟡 Aucun trade recommandé : les conditions actuelles ne sont pas suffisamment claires.")
-        else:
+          else:
             c1,c2,c3=st.columns(3)
             c1.metric("📍 Point d'entrée",f"{plan['entree']:,.4f}")
             c2.metric("🛑 Stop Loss",f"{plan['stop_loss']:,.4f}")
