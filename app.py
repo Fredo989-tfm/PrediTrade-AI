@@ -1301,6 +1301,7 @@ elif menu=="🧠 Analyse IA Pro":
         df=charger_donnees(ASSETS[cat],name)
         if df.empty:
           st.error(f"❌ Impossible de récupérer les données pour {name}")
+          st.stop()
         else:
           ind=indicateurs(df)
           ind=indicateurs(df)
