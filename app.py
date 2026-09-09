@@ -1037,6 +1037,226 @@ def evaluer_qualite_setup(ind, score, strategie, plan):
         "contradictions": contradictions,
         "raison": raison
     }
+def backtester_strategie(df, capital_initial=10000, risque_par_trade=0.01):
+    if df is None or len(df) < 250:
+        return {
+            "statut": "INSUFFISANT",
+            "message": "Pas assez de données pour effectuer un backtest.",
+            "trades": [],
+            "capital_final": capital_initial
+        }
+
+    trades = []
+    capital = float(capital_initial)
+
+    # On commence assez loin pour disposer de l'EMA200
+    debut = 210
+
+    for i in range(debut, len(df) - 1):
+
+        historique = df.iloc[:i].copy()
+
+        try:
+            ind = indicateurs(historique)
+
+            score, signal, confiance = prediscore(ind)
+
+            strategie = selectionner_technique(
+                ind,
+                score,
+                signal
+            )
+
+            plan = generer_plan_trade(
+                ind,
+                strategie
+            )
+
+        except Exception:
+            continue
+
+        if plan.get("statut") != "TRADE":
+            continue
+
+        entree = float(plan["entree"])
+        stop_loss = float(plan["stop_loss"])
+        tp1 = float(plan["tp1"])
+        tp2 = float(plan["tp2"])
+        tp3 = float(plan["tp3"])
+
+        biais = plan.get("biais")
+
+        # Bougies futures utilisées pour déterminer le résultat
+        futures = df.iloc[i:i + 50]
+
+        resultat = "NON_DETERMINE"
+        prix_sortie = None
+        multiple_r = None
+
+        risque_prix = abs(entree - stop_loss)
+
+        if risque_prix <= 0:
+            continue
+
+        for _, bougie in futures.iterrows():
+
+            high = float(bougie["High"])
+            low = float(bougie["Low"])
+
+            if biais == "Haussier":
+
+                # Stop touché
+                if low <= stop_loss:
+                    resultat = "STOP"
+                    prix_sortie = stop_loss
+                    multiple_r = -1
+                    break
+
+                # TP3
+                if high >= tp3:
+                    resultat = "TP3"
+                    prix_sortie = tp3
+                    multiple_r = 3.5
+                    break
+
+                # TP2
+                if high >= tp2:
+                    resultat = "TP2"
+                    prix_sortie = tp2
+                    multiple_r = 2.5
+                    break
+
+                # TP1
+                if high >= tp1:
+                    resultat = "TP1"
+                    prix_sortie = tp1
+                    multiple_r = 1.5
+                    break
+
+            elif biais == "Baissier":
+
+                # Stop touché
+                if high >= stop_loss:
+                    resultat = "STOP"
+                    prix_sortie = stop_loss
+                    multiple_r = -1
+                    break
+
+                # TP3
+                if low <= tp3:
+                    resultat = "TP3"
+                    prix_sortie = tp3
+                    multiple_r = 3.5
+                    break
+
+                # TP2
+                if low <= tp2:
+                    resultat = "TP2"
+                    prix_sortie = tp2
+                    multiple_r = 2.5
+                    break
+
+                # TP1
+                if low <= tp1:
+                    resultat = "TP1"
+                    prix_sortie = tp1
+                    multiple_r = 1.5
+                    break
+
+        if resultat == "NON_DETERMINE":
+            continue
+
+        # Risque financier fixe en % du capital
+        risque_dollars = capital * risque_par_trade
+
+        profit = risque_dollars * multiple_r
+
+        capital += profit
+
+        trades.append({
+            "date": df.index[i],
+            "score": score,
+            "signal": signal,
+            "confiance": confiance,
+            "strategie": strategie.get("nom", ""),
+            "biais": biais,
+            "entree": entree,
+            "stop_loss": stop_loss,
+            "tp1": tp1,
+            "tp2": tp2,
+            "tp3": tp3,
+            "resultat": resultat,
+            "multiple_R": multiple_r,
+            "profit": profit,
+            "capital": capital
+        })
+
+    if not trades:
+        return {
+            "statut": "AUCUN_TRADE",
+            "message": "Aucun trade valide trouvé.",
+            "trades": [],
+            "capital_final": capital
+        }
+
+    df_trades = pd.DataFrame(trades)
+
+    nb_trades = len(df_trades)
+    gagnants = int((df_trades["profit"] > 0).sum())
+    perdants = int((df_trades["profit"] < 0).sum())
+
+    winrate = (gagnants / nb_trades) * 100 if nb_trades else 0
+
+    profit_total = float(df_trades["profit"].sum())
+
+    rendement = (
+        (capital - capital_initial)
+        / capital_initial
+    ) * 100
+
+    gains = df_trades.loc[
+        df_trades["profit"] > 0,
+        "profit"
+    ].sum()
+
+    pertes = abs(
+        df_trades.loc[
+            df_trades["profit"] < 0,
+            "profit"
+        ].sum()
+    )
+
+    profit_factor = (
+        gains / pertes
+        if pertes > 0
+        else float("inf")
+    )
+
+    capital_series = df_trades["capital"]
+
+    drawdown = (
+        capital_series
+        / capital_series.cummax()
+        - 1
+    ) * 100
+
+    max_drawdown = abs(float(drawdown.min()))
+
+    return {
+        "statut": "OK",
+        "message": "Backtest terminé.",
+        "trades": df_trades,
+        "capital_initial": capital_initial,
+        "capital_final": capital,
+        "profit_total": profit_total,
+        "rendement": rendement,
+        "nb_trades": nb_trades,
+        "gagnants": gagnants,
+        "perdants": perdants,
+        "winrate": winrate,
+        "profit_factor": profit_factor,
+        "max_drawdown": max_drawdown
+      }
 def generer_scenarios(ind, score, strategie, plan, setup):
     """
     Génère les scénarios principaux du marché à partir de l'analyse
