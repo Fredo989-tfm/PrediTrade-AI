@@ -207,45 +207,133 @@ def indicateurs(df):
     }
 
 def prediscore(ind):
-    close=ind["close"]
-    if len(close)<50: return 50,"🟡 ATTENDRE","Faible"
-    prix=float(close.iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); signal=float(ind["signal"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); score=50.0
-    if ema20>ema50: score+=15
-    else: score-=15
-    ecart=((ema20-ema50)/ema50)*100
-    if ecart>1: score+=10
-    elif ecart<-1: score-=10
-    if prix>ema200: score+=10
-    else: score-=10
-    if ema50>ema200: score+=10
-    else: score-=10
-    if 50<=rsi<=65: score+=10
-    elif 65<rsi<=70: score+=5
-    elif rsi<30: score+=10
-    elif 30<=rsi<40: score+=5
-    elif rsi>75: score-=15
-    elif rsi>70: score-=10
-    elif rsi<25: score-=5
-    if macd>signal: score+=10
-    else: score-=10
-    if (macd-signal)>0: score+=10
-    else: score-=10
-    if momentum>3: score+=10
-    elif momentum>0: score+=5
-    elif momentum<-3: score-=10
-    else: score-=5
-    score=int(np.clip(round(score),0,100))
-    if score>=80: sig="🟢 ACHAT FORT"
-    elif score>=70: sig="🟢 ACHAT"
-    elif score>=55: sig="🟡 ATTENDRE"
-    elif score>=40: sig="🟠 PRUDENCE"
-    else: sig="🔴 VENTE"
-    d=abs(score-50)
-    if d>=35: conf="Très élevée"
-    elif d>=25: conf="Élevée"
-    elif d>=10: conf="Moyenne"
-    else: conf="Faible"
-    return score,sig,conf
+    close = ind["close"]
+
+    if len(close) < 50:
+        return 50, "🟡 ATTENDRE", "Faible"
+
+    prix = float(close.iloc[-1])
+    ema20 = float(ind["ema20"].iloc[-1])
+    ema50 = float(ind["ema50"].iloc[-1])
+    ema200 = float(ind["ema200"].iloc[-1])
+    rsi = float(ind["rsi"].iloc[-1])
+    macd = float(ind["macd"].iloc[-1])
+    signal = float(ind["signal"].iloc[-1])
+    momentum = float(ind["momentum"].iloc[-1])
+
+    # Score de départ neutre
+    score = 50.0
+
+    # =========================
+    # 1. TENDANCE COURT TERME
+    # =========================
+    if ema20 > ema50:
+        score += 8
+    else:
+        score -= 8
+
+    # =========================
+    # 2. ÉCART EMA20 / EMA50
+    # =========================
+    ecart = ((ema20 - ema50) / ema50) * 100
+
+    if ecart > 2:
+        score += 7
+    elif ecart > 0.5:
+        score += 4
+    elif ecart < -2:
+        score -= 7
+    elif ecart < -0.5:
+        score -= 4
+
+    # =========================
+    # 3. POSITION PAR RAPPORT À EMA200
+    # =========================
+    if prix > ema200:
+        score += 7
+    else:
+        score -= 7
+
+    # =========================
+    # 4. STRUCTURE EMA50 / EMA200
+    # =========================
+    if ema50 > ema200:
+        score += 6
+    else:
+        score -= 6
+
+    # =========================
+    # 5. RSI
+    # =========================
+    if 50 <= rsi <= 65:
+        score += 8
+    elif 65 < rsi <= 70:
+        score += 4
+    elif 40 <= rsi < 50:
+        score -= 2
+    elif 30 <= rsi < 40:
+        score += 2
+    elif rsi < 30:
+        score += 5
+    elif 70 < rsi <= 75:
+        score -= 5
+    elif rsi > 75:
+        score -= 9
+
+    # =========================
+    # 6. MACD
+    # =========================
+    if macd > signal:
+        score += 7
+    else:
+        score -= 7
+
+    # =========================
+    # 7. MOMENTUM
+    # =========================
+    if momentum > 3:
+        score += 6
+    elif momentum > 0:
+        score += 3
+    elif momentum < -3:
+        score -= 6
+    else:
+        score -= 3
+
+    # =========================
+    # LIMITES DU SCORE
+    # =========================
+    score = int(np.clip(round(score), 15, 95))
+
+    # =========================
+    # SIGNAL
+    # =========================
+    if score >= 82:
+        sig = "🟢 ACHAT FORT"
+    elif score >= 68:
+        sig = "🟢 ACHAT"
+    elif score >= 55:
+        sig = "🟡 ATTENDRE"
+    elif score >= 42:
+        sig = "🟠 PRUDENCE"
+    else:
+        sig = "🔴 VENTE"
+
+    # =========================
+    # CONFIANCE
+    # =========================
+    distance = abs(score - 50)
+
+    if distance >= 30:
+        conf = "Très élevée"
+    elif distance >= 20:
+        conf = "Élevée"
+    elif distance >= 10:
+        conf = "Moyenne"
+    else:
+        conf = "Faible"
+
+    return score, sig, conf
 
 def expliquer_score(ind):
     prix=float(ind["close"].iloc[-1]); ema20=float(ind["ema20"].iloc[-1]); ema50=float(ind["ema50"].iloc[-1]); ema200=float(ind["ema200"].iloc[-1]); rsi=float(ind["rsi"].iloc[-1]); macd=float(ind["macd"].iloc[-1]); signal=float(ind["signal"].iloc[-1]); momentum=float(ind["momentum"].iloc[-1]); ex=[]
