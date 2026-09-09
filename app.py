@@ -1648,10 +1648,226 @@ elif menu=="💼 Portefeuille":
     st.json(st.session_state.portfolio)
 
 elif menu=="🛡️ Gestion du risque":
-    st.title("🛡️ Gestion du risque"); st.info("Protège ton capital")
-    capital=st.number_input("Capital",value=float(st.session_state.cash)); risque=st.slider("Risque %",0.5,5.0,1.0)
-    st.metric("Risque $",f"${capital*risque/100:,.2f}")
 
+    st.title("🛡️ Gestion du risque")
+    st.info("Protège ton capital en calculant automatiquement une taille de position adaptée au risque choisi.")
+
+    # =========================
+    # CAPITAL ET RISQUE
+    # =========================
+
+    capital = st.number_input(
+        "Capital",
+        min_value=0.0,
+        value=10000.0,
+        step=100.0
+    )
+
+    risque = st.slider(
+        "Risque %",
+        min_value=0.1,
+        max_value=5.0,
+        value=1.0,
+        step=0.1
+    )
+
+    risque_usd = capital * risque / 100
+
+    st.metric(
+        "Risque $",
+        f"${risque_usd:,.2f}"
+    )
+
+    st.divider()
+
+    # =========================
+    # CHOIX DE L'ACTIF
+    # =========================
+
+    st.subheader("📊 Actif à analyser")
+
+    cat_risk = st.selectbox(
+        "Catégorie",
+        list(ASSETS.keys()),
+        key="risk_category"
+    )
+
+    assets_cat = ASSETS[cat_risk]
+
+    if isinstance(assets_cat, dict):
+        noms_risk = list(assets_cat.keys())
+    else:
+        noms_risk = list(assets_cat)
+
+    name_risk = st.selectbox(
+        "Actif",
+        noms_risk,
+        key="risk_asset"
+    )
+
+    # Récupération du symbole
+    if isinstance(assets_cat, dict):
+        symbol_risk = assets_cat[name_risk]
+    else:
+        symbol_risk = name_risk
+
+    # =========================
+    # DONNÉES RÉELLES
+    # =========================
+
+    df_risk = charger_donnees(symbol_risk, cat_risk)
+
+    if df_risk.empty:
+
+        st.error(
+            f"❌ Impossible de récupérer les données pour {name_risk}"
+        )
+
+    else:
+
+        prix_entree = float(df_risk["Close"].iloc[-1])
+
+        # =========================
+        # VOLATILITÉ / STOP LOSS
+        # =========================
+
+        if len(df_risk) >= 15:
+
+            tr = pd.concat(
+                [
+                    df_risk["High"] - df_risk["Low"],
+                    (df_risk["High"] - df_risk["Close"].shift()).abs(),
+                    (df_risk["Low"] - df_risk["Close"].shift()).abs()
+                ],
+                axis=1
+            ).max(axis=1)
+
+            atr = float(tr.rolling(14).mean().iloc[-1])
+
+        else:
+            atr = float(
+                (df_risk["High"] - df_risk["Low"]).mean()
+            )
+
+        if atr <= 0:
+            st.warning("⚠️ Volatilité insuffisante pour calculer le risque.")
+        else:
+
+            # =========================
+            # STOP LOSS
+            # =========================
+
+            stop_distance = atr * 1.5
+
+            stop_loss_long = prix_entree - stop_distance
+            stop_loss_short = prix_entree + stop_distance
+
+            distance_pct = (
+                stop_distance / prix_entree
+            ) * 100
+
+            # =========================
+            # TAILLE DE POSITION
+            # =========================
+
+            quantite = risque_usd / stop_distance
+
+            valeur_position = quantite * prix_entree
+
+            # On ne dépasse pas le capital disponible
+            valeur_position = min(
+                valeur_position,
+                capital
+            )
+
+            quantite_finale = (
+                valeur_position / prix_entree
+            )
+
+            # =========================
+            # OBJECTIFS
+            # =========================
+
+            objectif_long = prix_entree + (stop_distance * 2)
+            objectif_short = prix_entree - (stop_distance * 2)
+
+            # =========================
+            # AFFICHAGE
+            # =========================
+
+            st.subheader("📌 Analyse du risque")
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "Prix actuel",
+                f"{prix_entree:,.4f}"
+            )
+
+            c2.metric(
+                "Risque maximum",
+                f"${risque_usd:,.2f}"
+            )
+
+            c3.metric(
+                "Distance SL",
+                f"{distance_pct:.2f}%"
+            )
+
+            st.divider()
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                st.markdown("### 🟢 Scénario ACHAT")
+
+                st.write(
+                    f"**Entrée :** {prix_entree:,.4f}"
+                )
+
+                st.write(
+                    f"**Stop-Loss :** {stop_loss_long:,.4f}"
+                )
+
+                st.write(
+                    f"**Objectif 1:2 :** {objectif_long:,.4f}"
+                )
+
+            with c2:
+                st.markdown("### 🔴 Scénario VENTE")
+
+                st.write(
+                    f"**Entrée :** {prix_entree:,.4f}"
+                )
+
+                st.write(
+                    f"**Stop-Loss :** {stop_loss_short:,.4f}"
+                )
+
+                st.write(
+                    f"**Objectif 1:2 :** {objectif_short:,.4f}"
+                )
+
+            st.divider()
+
+            st.subheader("💰 Taille de position")
+
+            c1, c2 = st.columns(2)
+
+            c1.metric(
+                "Position maximale",
+                f"${valeur_position:,.2f}"
+            )
+
+            c2.metric(
+                "Quantité",
+                f"{quantite_finale:.6f}"
+            )
+
+            st.caption(
+                "La taille de position est calculée à partir du capital, "
+                "du risque choisi et de la volatilité récente de l'actif."
+  )
 elif menu=="📊 Backtest":
     st.title("📊 Backtest"); cat=st.selectbox("Cat",list(ASSETS.keys()),key="bt_cat"); name=st.selectbox("Actif",list(ASSETS.get(cat,{}).keys()),key="bt_name")
     if st.button("Lancer Backtest"):
