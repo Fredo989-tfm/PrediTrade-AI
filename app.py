@@ -2246,6 +2246,7 @@ elif menu=="📊 Backtest":
                 ASSETS[cat][name],
                 cat
             )
+            st.info(f"📚 Données disponibles : {len(df)} bougies")
 
             resultat = backtester_strategie(
                 df,
