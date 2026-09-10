@@ -3255,7 +3255,7 @@ def backtester_strategie(
         "frais_bps": frais_bps,
         "slippage_bps": slippage_bps,
         "max_bougies_trade": max_bougies_trade
-  }
+    } 
 elif menu=="📚 Historique":
     st.title("📚 Historique")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history),use_container_width=True)
