@@ -2206,162 +2206,1056 @@ elif menu=="🛡️ Gestion du risque":
                 "La taille de position est calculée à partir du capital, "
                 "du risque choisi et de la volatilité récente de l'actif."
   )
-elif menu=="📊 Backtest":
-    st.title("📊 Backtest")
+def backtester_strategie(
+    df,
+    capital_initial=10000,
+    risque_par_trade=0.01,
+    frais_bps=5,
+    slippage_bps=2,
+    max_bougies_trade=50
+):
+    """
+    Moteur de backtesting professionnel PrediTrade AI.
 
-    cat = st.selectbox(
-        "Catégorie",
-        list(ASSETS.keys()),
-        key="bt_cat"
-    )
+    Principes :
+    - Pas de look-ahead
+    - Un seul trade à la fois
+    - Entrée à la clôture du signal
+    - Exécution à partir de la bougie suivante
+    - Sorties partielles TP1/TP2/TP3
+    - Stop-loss prioritaire en cas d'ambiguïté intrabar
+    - Frais + slippage
+    - Risque fixe en % du capital
+    """
 
-    name = st.selectbox(
-        "Actif",
-        list(ASSETS.get(cat, {}).keys()),
-        key="bt_name"
-    )
+    capital_initial = float(capital_initial)
+    capital = capital_initial
 
-    capital_initial = st.number_input(
-        "💰 Capital initial ($)",
-        min_value=100.0,
-        value=10000.0,
-        step=500.0,
-        key="bt_capital"
-    )
+    # ---------------------------------------------------------
+    # VALIDATION DES DONNÉES
+    # ---------------------------------------------------------
 
-    risque = st.slider(
-        "⚠️ Risque par trade (%)",
-        min_value=0.5,
-        max_value=5.0,
-        value=1.0,
-        step=0.5,
-        key="bt_risque"
-    )
+    if df is None or df.empty:
+        return {
+            "statut": "INSUFFISANT",
+            "message": "Aucune donnée disponible.",
+            "trades": pd.DataFrame(),
+            "capital_initial": capital_initial,
+            "capital_final": capital_initial
+        }
 
-    if st.button("🚀 Lancer Backtest", use_container_width=True):
+    colonnes_requises = ["Open", "High", "Low", "Close"]
 
-        with st.spinner("Analyse historique en cours..."):
+    if not all(c in df.columns for c in colonnes_requises):
+        return {
+            "statut": "INSUFFISANT",
+            "message": "Les données OHLC sont incomplètes.",
+            "trades": pd.DataFrame(),
+            "capital_initial": capital_initial,
+            "capital_final": capital_initial
+        }
 
-            df = charger_donnees(
-                ASSETS[cat][name],
-                cat
+    df = df.copy()
+    df = df.dropna(subset=colonnes_requises)
+    df = df.sort_index()
+
+    if len(df) < 220:
+        return {
+            "statut": "INSUFFISANT",
+            "message": f"Seulement {len(df)} bougies disponibles. Minimum recommandé : 220.",
+            "trades": pd.DataFrame(),
+            "capital_initial": capital_initial,
+            "capital_final": capital_initial
+        }
+
+    # ---------------------------------------------------------
+    # PARAMÈTRES D'EXÉCUTION
+    # ---------------------------------------------------------
+
+    frais_rate = float(frais_bps) / 10000.0
+    slippage_rate = float(slippage_bps) / 10000.0
+
+    trades = []
+    equity_points = []
+
+    # On démarre après EMA200 + marge de sécurité
+    i = 210
+
+    while i < len(df) - 1:
+
+        # -----------------------------------------------------
+        # ÉQUITY DE BASE
+        # -----------------------------------------------------
+
+        equity_points.append({
+            "date": df.index[i],
+            "capital": capital
+        })
+
+        # -----------------------------------------------------
+        # HISTORIQUE DISPONIBLE À CET INSTANT
+        # -----------------------------------------------------
+
+        historique = df.iloc[:i + 1].copy()
+
+        try:
+            ind = indicateurs(historique)
+
+            score, signal, confiance = prediscore(ind)
+
+            strategie = selectionner_technique(
+                ind,
+                score,
+                signal
             )
-            st.info(f"📚 Données disponibles : {len(df)} bougies")
 
-            resultat = backtester_strategie(
-                df,
-                capital_initial=capital_initial,
-                risque_par_trade=risque / 100
+            plan = generer_plan_trade(
+                ind,
+                strategie
             )
 
-        if resultat["statut"] != "OK":
+        except Exception:
+            i += 1
+            continue
 
-            st.warning(resultat["message"])
+        # -----------------------------------------------------
+        # PAS DE TRADE
+        # -----------------------------------------------------
+
+        if plan.get("statut") != "TRADE":
+            i += 1
+            continue
+
+        biais = plan.get("biais", "Neutre")
+
+        if biais not in ("Haussier", "Baissier"):
+            i += 1
+            continue
+
+        try:
+            entree_theorique = float(plan["entree"])
+            stop_loss = float(plan["stop_loss"])
+            tp1 = float(plan["tp1"])
+            tp2 = float(plan["tp2"])
+            tp3 = float(plan["tp3"])
+        except (TypeError, ValueError, KeyError):
+            i += 1
+            continue
+
+        if not all(
+            np.isfinite(x)
+            for x in [
+                entree_theorique,
+                stop_loss,
+                tp1,
+                tp2,
+                tp3
+            ]
+        ):
+            i += 1
+            continue
+
+        # -----------------------------------------------------
+        # VALIDATION DE LA STRUCTURE DU TRADE
+        # -----------------------------------------------------
+
+        risque_prix = abs(entree_theorique - stop_loss)
+
+        if risque_prix <= 0:
+            i += 1
+            continue
+
+        if biais == "Haussier":
+
+            if not (
+                stop_loss < entree_theorique
+                and tp1 > entree_theorique
+                and tp2 > tp1
+                and tp3 > tp2
+            ):
+                i += 1
+                continue
+
+        elif biais == "Baissier":
+
+            if not (
+                stop_loss > entree_theorique
+                and tp1 < entree_theorique
+                and tp2 < tp1
+                and tp3 < tp2
+            ):
+                i += 1
+                continue
+
+        # -----------------------------------------------------
+        # EXÉCUTION RÉALISTE DE L'ENTRÉE
+        # -----------------------------------------------------
+
+        if biais == "Haussier":
+            entree = entree_theorique * (1 + slippage_rate)
+        else:
+            entree = entree_theorique * (1 - slippage_rate)
+
+        # -----------------------------------------------------
+        # RISQUE FINANCIER
+        # -----------------------------------------------------
+
+        risque_monnaie = capital * float(risque_par_trade)
+
+        if risque_monnaie <= 0:
+            break
+
+        # Taille basée sur le risque réel
+        taille = risque_monnaie / risque_prix
+
+        valeur_position = taille * entree
+
+        # Frais d'entrée
+        frais_entree = valeur_position * frais_rate
+
+        capital -= frais_entree
+
+        capital_avant_trade = capital
+
+        # -----------------------------------------------------
+        # SORTIES PARTIELLES
+        # -----------------------------------------------------
+
+        # 30 % à TP1
+        # 30 % à TP2
+        # 40 % à TP3
+
+        fractions = {
+            "TP1": 0.30,
+            "TP2": 0.30,
+            "TP3": 0.40
+        }
+
+        remaining = 1.0
+
+        realise_r = 0.0
+        frais_sortie = 0.0
+
+        tp1_hit = False
+        tp2_hit = False
+        tp3_hit = False
+        stop_hit = False
+
+        sortie_date = None
+        sortie_prix = None
+        resultat = "EXPIRATION"
+
+        max_favorable = 0.0
+        max_adverse = 0.0
+
+        # -----------------------------------------------------
+        # PARCOURS DES BOUGIES FUTURES
+        # -----------------------------------------------------
+
+        fin = min(
+            i + 1 + max_bougies_trade,
+            len(df)
+        )
+
+        exit_index = fin - 1
+
+        for j in range(i + 1, fin):
+
+            bougie = df.iloc[j]
+
+            high = float(bougie["High"])
+            low = float(bougie["Low"])
+
+            # -------------------------------------------------
+            # MFE / MAE
+            # -------------------------------------------------
+
+            if biais == "Haussier":
+
+                favorable = high - entree
+                adverse = entree - low
+
+            else:
+
+                favorable = entree - low
+                adverse = high - entree
+
+            if risque_prix > 0:
+
+                max_favorable = max(
+                    max_favorable,
+                    favorable / risque_prix
+                )
+
+                max_adverse = max(
+                    max_adverse,
+                    adverse / risque_prix
+                )
+
+            # -------------------------------------------------
+            # ORDRE DE PRIORITÉ
+            # -------------------------------------------------
+            #
+            # Si TP et SL sont touchés dans la même bougie,
+            # nous considérons le STOP en premier.
+            #
+            # C'est volontairement conservateur.
+            # -------------------------------------------------
+
+            if biais == "Haussier":
+
+                stop_touche = low <= stop_loss
+                tp1_touche = high >= tp1
+                tp2_touche = high >= tp2
+                tp3_touche = high >= tp3
+
+            else:
+
+                stop_touche = high >= stop_loss
+                tp1_touche = low <= tp1
+                tp2_touche = low <= tp2
+                tp3_touche = low <= tp3
+
+            # -------------------------------------------------
+            # STOP
+            # -------------------------------------------------
+
+            if stop_touche:
+
+                if remaining > 0:
+
+                    if biais == "Haussier":
+                        prix_stop_execution = stop_loss * (
+                            1 - slippage_rate
+                        )
+                    else:
+                        prix_stop_execution = stop_loss * (
+                            1 + slippage_rate
+                        )
+
+                    part_valeur = (
+                        valeur_position
+                        * remaining
+                    )
+
+                    frais = part_valeur * frais_rate
+                    frais_sortie += frais
+
+                    # Perte correspondant au prix de sortie
+                    perte_prix = (
+                        entree - prix_stop_execution
+                        if biais == "Haussier"
+                        else prix_stop_execution - entree
+                    )
+
+                    pnl = (
+                        -perte_prix
+                        * taille
+                        * remaining
+                    )
+
+                    capital += pnl
+                    capital -= frais
+
+                    realise_r += (
+                        (pnl / risque_monnaie)
+                    )
+
+                remaining = 0
+                stop_hit = True
+                resultat = "STOP"
+
+                sortie_date = df.index[j]
+                sortie_prix = stop_loss
+                exit_index = j
+
+                break
+
+            # -------------------------------------------------
+            # TP3
+            # -------------------------------------------------
+
+            if tp3_touche and not tp3_hit:
+
+                fraction = fractions["TP3"]
+
+                if fraction > remaining:
+                    fraction = remaining
+
+                if fraction > 0:
+
+                    prix_sortie_tp = (
+                        tp3 * (1 - slippage_rate)
+                        if biais == "Haussier"
+                        else tp3 * (1 + slippage_rate)
+                    )
+
+                    part_valeur = (
+                        valeur_position
+                        * fraction
+                    )
+
+                    frais = part_valeur * frais_rate
+                    frais_sortie += frais
+
+                    gain_prix = (
+                        prix_sortie_tp - entree
+                        if biais == "Haussier"
+                        else entree - prix_sortie_tp
+                    )
+
+                    pnl = (
+                        gain_prix
+                        * taille
+                        * fraction
+                    )
+
+                    capital += pnl
+                    capital -= frais
+
+                    realise_r += (
+                        pnl / risque_monnaie
+                    )
+
+                    remaining -= fraction
+
+                tp3_hit = True
+                sortie_date = df.index[j]
+                sortie_prix = tp3
+
+                if remaining <= 0.000001:
+
+                    remaining = 0
+                    resultat = "TP3"
+                    exit_index = j
+                    break
+
+            # -------------------------------------------------
+            # TP2
+            # -------------------------------------------------
+
+            if tp2_touche and not tp2_hit:
+
+                fraction = fractions["TP2"]
+
+                if fraction > remaining:
+                    fraction = remaining
+
+                if fraction > 0:
+
+                    prix_sortie_tp = (
+                        tp2 * (1 - slippage_rate)
+                        if biais == "Haussier"
+                        else tp2 * (1 + slippage_rate)
+                    )
+
+                    part_valeur = (
+                        valeur_position
+                        * fraction
+                    )
+
+                    frais = part_valeur * frais_rate
+                    frais_sortie += frais
+
+                    gain_prix = (
+                        prix_sortie_tp - entree
+                        if biais == "Haussier"
+                        else entree - prix_sortie_tp
+                    )
+
+                    pnl = (
+                        gain_prix
+                        * taille
+                        * fraction
+                    )
+
+                    capital += pnl
+                    capital -= frais
+
+                    realise_r += (
+                        pnl / risque_monnaie
+                    )
+
+                    remaining -= fraction
+
+                tp2_hit = True
+                sortie_date = df.index[j]
+                sortie_prix = tp2
+
+            # -------------------------------------------------
+            # TP1
+            # -------------------------------------------------
+
+            if tp1_touche and not tp1_hit:
+
+                fraction = fractions["TP1"]
+
+                if fraction > remaining:
+                    fraction = remaining
+
+                if fraction > 0:
+
+                    prix_sortie_tp = (
+                        tp1 * (1 - slippage_rate)
+                        if biais == "Haussier"
+                        else tp1 * (1 + slippage_rate)
+                    )
+
+                    part_valeur = (
+                        valeur_position
+                        * fraction
+                    )
+
+                    frais = part_valeur * frais_rate
+                    frais_sortie += frais
+
+                    gain_prix = (
+                        prix_sortie_tp - entree
+                        if biais == "Haussier"
+                        else entree - prix_sortie_tp
+                    )
+
+                    pnl = (
+                        gain_prix
+                        * taille
+                        * fraction
+                    )
+
+                    capital += pnl
+                    capital -= frais
+
+                    realise_r += (
+                        pnl / risque_monnaie
+                    )
+
+                    remaining -= fraction
+
+                tp1_hit = True
+                sortie_date = df.index[j]
+                sortie_prix = tp1
+
+            # -------------------------------------------------
+            # FIN SI TOUS LES TP SONT ATTEINTS
+            # -------------------------------------------------
+
+            if remaining <= 0.000001:
+
+                remaining = 0
+                resultat = "TP3"
+                exit_index = j
+                break
+
+        # -----------------------------------------------------
+        # EXPIRATION DU TRADE
+        # -----------------------------------------------------
+
+        if remaining > 0:
+
+            derniere_bougie = df.iloc[exit_index]
+
+            prix_expiration = float(
+                derniere_bougie["Close"]
+            )
+
+            if biais == "Haussier":
+                prix_execution = (
+                    prix_expiration
+                    * (1 - slippage_rate)
+                )
+            else:
+                prix_execution = (
+                    prix_expiration
+                    * (1 + slippage_rate)
+                )
+
+            part_valeur = (
+                valeur_position
+                * remaining
+            )
+
+            frais = part_valeur * frais_rate
+            frais_sortie += frais
+
+            pnl = (
+                (
+                    prix_execution - entree
+                    if biais == "Haussier"
+                    else entree - prix_execution
+                )
+                * taille
+                * remaining
+            )
+
+            capital += pnl
+            capital -= frais
+
+            realise_r += (
+                pnl / risque_monnaie
+            )
+
+            sortie_date = df.index[exit_index]
+            sortie_prix = prix_expiration
+
+            remaining = 0
+
+            if realise_r > 0:
+                resultat = "EXPIRATION_GAIN"
+            elif realise_r < 0:
+                resultat = "EXPIRATION_PERTE"
+            else:
+                resultat = "BREAKEVEN"
+
+        # -----------------------------------------------------
+        # STATISTIQUES DU TRADE
+        # -----------------------------------------------------
+
+        profit = capital - capital_avant_trade
+
+        duree = max(
+            1,
+            exit_index - i
+        )
+
+        rendement_trade = (
+            profit / capital_avant_trade
+        ) * 100 if capital_avant_trade != 0 else 0
+
+        trades.append({
+            "date_entree": df.index[i],
+            "date_sortie": sortie_date,
+            "duree_bougies": duree,
+            "score": int(score),
+            "signal": signal,
+            "confiance": confiance,
+            "strategie": strategie.get(
+                "nom",
+                "Inconnue"
+            ),
+            "biais": biais,
+            "entree": entree,
+            "stop_loss": stop_loss,
+            "tp1": tp1,
+            "tp2": tp2,
+            "tp3": tp3,
+            "prix_sortie": sortie_prix,
+            "resultat": resultat,
+            "multiple_R": realise_r,
+            "profit": profit,
+            "rendement_trade": rendement_trade,
+            "frais": frais_entree + frais_sortie,
+            "MFE_R": max_favorable,
+            "MAE_R": max_adverse,
+            "capital": capital
+        })
+
+        # -----------------------------------------------------
+        # IMPORTANT :
+        # ON REPREND APRÈS LA FIN DU TRADE
+        # DONC AUCUN CHEVAUCHEMENT
+        # -----------------------------------------------------
+
+        i = exit_index + 1
+
+    # ---------------------------------------------------------
+    # AUCUN TRADE
+    # ---------------------------------------------------------
+
+    if not trades:
+
+        return {
+            "statut": "AUCUN_TRADE",
+            "message": "Aucun trade valide trouvé.",
+            "trades": pd.DataFrame(),
+            "capital_initial": capital_initial,
+            "capital_final": capital
+        }
+
+    # ---------------------------------------------------------
+    # DATAFRAME FINAL
+    # ---------------------------------------------------------
+
+    df_trades = pd.DataFrame(trades)
+
+    # ---------------------------------------------------------
+    # STATISTIQUES PRINCIPALES
+    # ---------------------------------------------------------
+
+    nb_trades = len(df_trades)
+
+    gagnants = int(
+        (df_trades["profit"] > 0).sum()
+    )
+
+    perdants = int(
+        (df_trades["profit"] < 0).sum()
+    )
+
+    breakeven = int(
+        (df_trades["profit"] == 0).sum()
+    )
+
+    winrate = (
+        gagnants / nb_trades * 100
+        if nb_trades > 0
+        else 0
+    )
+
+    profit_total = float(
+        df_trades["profit"].sum()
+    )
+
+    rendement = (
+        (capital - capital_initial)
+        / capital_initial
+    ) * 100
+
+    # ---------------------------------------------------------
+    # GAINS / PERTES
+    # ---------------------------------------------------------
+
+    gains = float(
+        df_trades.loc[
+            df_trades["profit"] > 0,
+            "profit"
+        ].sum()
+    )
+
+    pertes = abs(
+        float(
+            df_trades.loc[
+                df_trades["profit"] < 0,
+                "profit"
+            ].sum()
+        )
+    )
+
+    profit_factor = (
+        gains / pertes
+        if pertes > 0
+        else float("inf")
+    )
+
+    # ---------------------------------------------------------
+    # EXPECTANCY
+    # ---------------------------------------------------------
+
+    expectancy_R = float(
+        df_trades["multiple_R"].mean()
+    )
+
+    expectancy_dollars = float(
+        df_trades["profit"].mean()
+    )
+
+    # ---------------------------------------------------------
+    # MOYENNES
+    # ---------------------------------------------------------
+
+    trades_gagnants = df_trades[
+        df_trades["profit"] > 0
+    ]
+
+    trades_perdants = df_trades[
+        df_trades["profit"] < 0
+    ]
+
+    gain_moyen = (
+        float(trades_gagnants["profit"].mean())
+        if not trades_gagnants.empty
+        else 0
+    )
+
+    perte_moyenne = (
+        float(trades_perdants["profit"].mean())
+        if not trades_perdants.empty
+        else 0
+    )
+
+    R_moyen_gagnant = (
+        float(trades_gagnants["multiple_R"].mean())
+        if not trades_gagnants.empty
+        else 0
+    )
+
+    R_moyen_perdant = (
+        float(trades_perdants["multiple_R"].mean())
+        if not trades_perdants.empty
+        else 0
+    )
+
+    # ---------------------------------------------------------
+    # MEILLEUR / PIRE TRADE
+    # ---------------------------------------------------------
+
+    meilleur_trade = float(
+        df_trades["profit"].max()
+    )
+
+    pire_trade = float(
+        df_trades["profit"].min()
+    )
+
+    meilleur_R = float(
+        df_trades["multiple_R"].max()
+    )
+
+    pire_R = float(
+        df_trades["multiple_R"].min()
+    )
+
+    # ---------------------------------------------------------
+    # DRAWDOWN
+    # ---------------------------------------------------------
+
+    equity = df_trades["capital"].astype(float)
+
+    peak = equity.cummax()
+
+    drawdown = (
+        equity / peak - 1
+    ) * 100
+
+    max_drawdown = abs(
+        float(drawdown.min())
+    )
+
+    # ---------------------------------------------------------
+    # SHARPE PAR TRADE
+    # ---------------------------------------------------------
+
+    rendements = df_trades[
+        "rendement_trade"
+    ].astype(float) / 100.0
+
+    if len(rendements) > 1 and rendements.std() > 0:
+
+        sharpe = (
+            rendements.mean()
+            / rendements.std()
+        ) * np.sqrt(len(rendements))
+
+    else:
+        sharpe = 0.0
+
+    # ---------------------------------------------------------
+    # WIN / LOSS STREAKS
+    # ---------------------------------------------------------
+
+    meilleure_serie_gains = 0
+    pire_serie_pertes = 0
+
+    serie_gains = 0
+    serie_pertes = 0
+
+    for p in df_trades["profit"]:
+
+        if p > 0:
+
+            serie_gains += 1
+            serie_pertes = 0
+
+        elif p < 0:
+
+            serie_pertes += 1
+            serie_gains = 0
 
         else:
 
-            st.success("✅ Backtest terminé")
+            serie_gains = 0
+            serie_pertes = 0
 
-            c1, c2, c3, c4 = st.columns(4)
+        meilleure_serie_gains = max(
+            meilleure_serie_gains,
+            serie_gains
+        )
 
-            c1.metric(
-                "💰 Capital final",
-                f"${resultat['capital_final']:,.2f}"
-            )
+        pire_serie_pertes = max(
+            pire_serie_pertes,
+            serie_pertes
+        )
 
-            c2.metric(
-                "📈 Rendement",
-                f"{resultat['rendement']:.2f}%"
-            )
+    # ---------------------------------------------------------
+    # DURÉE MOYENNE
+    # ---------------------------------------------------------
 
-            c3.metric(
-                "🎯 Winrate",
-                f"{resultat['winrate']:.1f}%"
-            )
+    duree_moyenne = float(
+        df_trades["duree_bougies"].mean()
+    )
 
-            c4.metric(
-                "📊 Trades",
-                resultat["nb_trades"]
-            )
+    # ---------------------------------------------------------
+    # STATISTIQUES PAR STRATÉGIE
+    # ---------------------------------------------------------
 
-            c5, c6, c7 = st.columns(3)
+    statistiques_strategies = (
+        df_trades
+        .groupby("strategie")
+        .agg(
+            trades=("profit", "count"),
+            winrate=("profit", lambda x: (
+                (x > 0).mean() * 100
+            )),
+            profit=("profit", "sum"),
+            R_moyen=("multiple_R", "mean")
+        )
+        .reset_index()
+    )
 
-            c5.metric(
-                "🟢 Gagnants",
-                resultat["gagnants"]
-            )
+    # ---------------------------------------------------------
+    # STATISTIQUES PAR SIGNAL
+    # ---------------------------------------------------------
 
-            c6.metric(
-                "🔴 Perdants",
-                resultat["perdants"]
-            )
+    statistiques_signaux = (
+        df_trades
+        .groupby("signal")
+        .agg(
+            trades=("profit", "count"),
+            winrate=("profit", lambda x: (
+                (x > 0).mean() * 100
+            )),
+            profit=("profit", "sum"),
+            R_moyen=("multiple_R", "mean")
+        )
+        .reset_index()
+    )
 
-            c7.metric(
-                "📉 Max Drawdown",
-                f"{resultat['max_drawdown']:.2f}%"
-            )
+    # ---------------------------------------------------------
+    # STATISTIQUES PAR BIAIS
+    # ---------------------------------------------------------
 
-            st.divider()
+    statistiques_biais = (
+        df_trades
+        .groupby("biais")
+        .agg(
+            trades=("profit", "count"),
+            winrate=("profit", lambda x: (
+                (x > 0).mean() * 100
+            )),
+            profit=("profit", "sum"),
+            R_moyen=("multiple_R", "mean")
+        )
+        .reset_index()
+    )
 
-            st.subheader("📊 Performance")
+    # ---------------------------------------------------------
+    # SCORE DE ROBUSTESSE
+    # ---------------------------------------------------------
 
-            trades = resultat["trades"]
+    score_robustesse = 0.0
 
-            if not trades.empty:
+    if profit_factor >= 1.30:
+        score_robustesse += 25
+    elif profit_factor >= 1.10:
+        score_robustesse += 15
 
-                courbe = trades.set_index("date")["capital"]
+    if expectancy_R > 0.20:
+        score_robustesse += 20
+    elif expectancy_R > 0:
+        score_robustesse += 10
 
-                st.line_chart(courbe)
+    if winrate >= 50:
+        score_robustesse += 15
+    elif winrate >= 40:
+        score_robustesse += 10
 
-                st.divider()
+    if max_drawdown < 10:
+        score_robustesse += 20
+    elif max_drawdown < 20:
+        score_robustesse += 10
 
-                st.subheader("📋 Historique des trades")
+    if nb_trades >= 100:
+        score_robustesse += 20
+    elif nb_trades >= 50:
+        score_robustesse += 10
 
-                colonnes = [
-                    "date",
-                    "score",
-                    "signal",
-                    "strategie",
-                    "biais",
-                    "entree",
-                    "stop_loss",
-                    "tp1",
-                    "tp2",
-                    "tp3",
-                    "resultat",
-                    "multiple_R",
-                    "profit",
-                    "capital"
-                ]
+    score_robustesse = int(
+        min(100, score_robustesse)
+    )
 
-                st.dataframe(
-                    trades[colonnes],
-                    use_container_width=True,
-                    hide_index=True
-                )
+    # ---------------------------------------------------------
+    # COURBE D'ÉQUITÉ
+    # ---------------------------------------------------------
 
-                st.divider()
+    equity_df = pd.DataFrame(
+        equity_points
+    )
 
-                st.subheader("📐 Statistiques")
+    if not equity_df.empty:
 
-                c1, c2 = st.columns(2)
+        equity_df = equity_df.drop_duplicates(
+            subset=["date"]
+        )
 
-                pf = resultat["profit_factor"]
+        equity_df = equity_df.set_index(
+            "date"
+        )
 
-                if np.isinf(pf):
-                    pf_text = "∞"
-                else:
-                    pf_text = f"{pf:.2f}"
+    # ---------------------------------------------------------
+    # RÉSULTAT FINAL
+    # ---------------------------------------------------------
 
-                c1.metric(
-                    "Profit Factor",
-                    pf_text
-                )
+    return {
+        "statut": "OK",
+        "message": "Backtest professionnel terminé.",
 
-                c2.metric(
-                    "Profit total",
-                    f"${resultat['profit_total']:,.2f}"
-  )
+        "trades": df_trades,
+
+        "equity_curve": equity_df,
+
+        "capital_initial": capital_initial,
+        "capital_final": capital,
+
+        "profit_total": profit_total,
+        "rendement": rendement,
+
+        "nb_trades": nb_trades,
+        "gagnants": gagnants,
+        "perdants": perdants,
+        "breakeven": breakeven,
+
+        "winrate": winrate,
+
+        "profit_factor": profit_factor,
+
+        "expectancy_R": expectancy_R,
+        "expectancy_dollars": expectancy_dollars,
+
+        "gain_moyen": gain_moyen,
+        "perte_moyenne": perte_moyenne,
+
+        "R_moyen_gagnant": R_moyen_gagnant,
+        "R_moyen_perdant": R_moyen_perdant,
+
+        "meilleur_trade": meilleur_trade,
+        "pire_trade": pire_trade,
+
+        "meilleur_R": meilleur_R,
+        "pire_R": pire_R,
+
+        "max_drawdown": max_drawdown,
+
+        "sharpe": float(sharpe),
+
+        "meilleure_serie_gains": meilleure_serie_gains,
+        "pire_serie_pertes": pire_serie_pertes,
+
+        "duree_moyenne": duree_moyenne,
+
+        "statistiques_strategies":
+            statistiques_strategies,
+
+        "statistiques_signaux":
+            statistiques_signaux,
+
+        "statistiques_biais":
+            statistiques_biais,
+
+        "score_robustesse":
+            score_robustesse,
+
+        "frais_bps": frais_bps,
+        "slippage_bps": slippage_bps,
+        "max_bougies_trade": max_bougies_trade
+  }
 elif menu=="📚 Historique":
     st.title("📚 Historique")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history),use_container_width=True)
