@@ -155,10 +155,14 @@ def ajouter_notification(actif,score,signal,confiance):
 
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
-    try:
-        # =====================================================
-        # CRYPTO — BINANCE
-        # =====================================================
+  try:
+        # Convertit les noms affichés comme "Bitcoin (BTC)"
+        # en symboles utilisables par les sources de données.
+        if "(" in symbol and ")" in symbol:
+            symbol = symbol.split("(")[-1].split(")")[0].strip()
+          # =================================================
+    # CRYPTO — BINANCE
+      # =====================================================
         if asset_type == "Crypto":
             try:
                 bs = f"{symbol}USDT"
