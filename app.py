@@ -300,8 +300,7 @@ def charger_donnees(symbol, asset_type):
             return pd.DataFrame()
 
         return df
-
-    except Exception:
+  except Exception:
         return pd.DataFrame()
 def indicateurs(df):
     close=df["Close"]; ema20=close.ewm(span=20,adjust=False).mean(); ema50=close.ewm(span=50,adjust=False).mean(); ema200=close.ewm(span=200,adjust=False).mean()
