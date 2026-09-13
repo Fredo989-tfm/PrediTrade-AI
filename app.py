@@ -3253,7 +3253,7 @@ elif menu=="📊 Backtest":
                     "Le téléchargement des données a échoué. "
                     "Vérifiez la connexion aux sources Binance/Yahoo."
                   )
-                  st.write("Actif sélectionné :", actif_bt
+                  st.write("Actif sélectionné :", actif_bt) 
                   st.write("Type d'actif :", type_actif_bt)
                            st.stop()
 
