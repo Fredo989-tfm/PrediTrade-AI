@@ -153,36 +153,152 @@ def ajouter_notification(actif,score,signal,confiance):
     if len(st.session_state.notifications)>50: st.session_state.notifications=st.session_state.notifications[-50:]
     return True
 
-@st.cache_data(ttl=300,show_spinner=False)
-def charger_donnees(symbol,asset_type):
+@st.cache_data(ttl=300, show_spinner=False)
+def charger_donnees(symbol, asset_type):
     try:
-        if asset_type=="Crypto":
+        # =====================================================
+        # CRYPTO — BINANCE
+        # =====================================================
+        if asset_type == "Crypto":
             try:
-                bs=f"{symbol}USDT" if symbol in ["BTC","ETH","SOL","BNB","XRP","ADA","DOGE"] else symbol
-                if len(symbol)<=4 and not symbol.endswith("USDT"): bs=f"{symbol}USDT"
-                r=requests.get(proxy_url(f"https://data-api.binance.vision/api/v3/klines?symbol={bs}&interval=4h&limit=100"),timeout=10)
-                if r.ok:
-                    data=r.json()
-                    if isinstance(data,list) and len(data)>20:
-                        df=pd.DataFrame(data,columns=["time","Open","High","Low","Close","vol","close_time","qav","trades","taker_base","taker_quote","ignore"])
-                        df["Close"]=pd.to_numeric(df["Close"]); df["Open"]=pd.to_numeric(df["Open"]); df["High"]=pd.to_numeric(df["High"]); df["Low"]=pd.to_numeric(df["Low"])
-                        df.index=pd.to_datetime(df["time"],unit='ms'); df=df[["Open","High","Low","Close"]].sort_index(); return df
-            except: pass
-        ymap={"EURUSD":"EURUSD=X","GBPUSD":"GBPUSD=X","USDJPY":"JPY=X","XAU":"GC=F","WTI":"CL=F","BRENT":"BZ=F","XAG":"SI=F","SPY":"SPY","QQQ":"QQQ","DIA":"DIA"}
-        ys=ymap.get(symbol,symbol)
-        if asset_type=="Crypto": ys=f"{symbol}-USD"
-        url=f"https://query1.finance.yahoo.com/v8/finance/chart/{ys}?range=1y&interval=1d"; headers={"User-Agent":"Mozilla/5.0"}
-        r=requests.get(url,headers=headers,timeout=15)
-        if not r.ok: return pd.DataFrame()
-        data=r.json(); result=data.get("chart",{}).get("result",[])
-        if not result: return pd.DataFrame()
-        quotes=result[0].get("indicators",{}).get("quote",[{}])[0]; timestamps=result[0].get("timestamp",[])
-        if not quotes or not timestamps: return pd.DataFrame()
-        df=pd.DataFrame({"Open":quotes.get("open",[]),"High":quotes.get("high",[]),"Low":quotes.get("low",[]),"Close":quotes.get("close",[]),}); df.index=pd.to_datetime(timestamps,unit='s'); df=df.dropna().sort_index()
-        if len(df)<20: return pd.DataFrame()
-        return df
-    except: return pd.DataFrame()
+                bs = f"{symbol}USDT"
 
+                url_binance = proxy_url(
+                    f"https://data-api.binance.vision/api/v3/klines"
+                    f"?symbol={bs}&interval=4h&limit=500"
+                )
+
+                r = requests.get(url_binance, timeout=15)
+
+                if r.ok:
+                    data = r.json()
+
+                    if isinstance(data, list) and len(data) > 0:
+                        df = pd.DataFrame(data)
+
+                        df = df.iloc[:, :6]
+                        df.columns = [
+                            "timestamp",
+                            "Open",
+                            "High",
+                            "Low",
+                            "Close",
+                            "Volume"
+                        ]
+
+                        df["Open"] = pd.to_numeric(df["Open"], errors="coerce")
+                        df["High"] = pd.to_numeric(df["High"], errors="coerce")
+                        df["Low"] = pd.to_numeric(df["Low"], errors="coerce")
+                        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+                        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+
+                        df["timestamp"] = pd.to_datetime(
+                            df["timestamp"],
+                            unit="ms",
+                            errors="coerce"
+                        )
+
+                        df = df.dropna(
+                            subset=["Open", "High", "Low", "Close"]
+                        )
+
+                        df = df.set_index("timestamp")
+                        df = df.sort_index()
+
+                        if len(df) >= 220:
+                            return df
+
+            except Exception:
+                pass
+
+        # =====================================================
+        # YAHOO FINANCE — FALLBACK
+        # =====================================================
+        ymap = {
+            "EURUSD": "EURUSD=X",
+            "GBPUSD": "GBPUSD=X",
+            "USDJPY": "USDJPY=X",
+            "USDCHF": "USDCHF=X",
+            "AUDUSD": "AUDUSD=X",
+            "USDCAD": "USDCAD=X",
+            "XAU": "GC=F",
+            "WTI": "CL=F",
+            "BRENT": "BZ=F",
+            "XAG": "SI=F"
+        }
+
+        ys = ymap.get(symbol, symbol)
+
+        if asset_type == "Crypto":
+            ys = f"{symbol}-USD"
+
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/"
+            f"{ys}?range=2y&interval=1d"
+        )
+
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+
+        r = requests.get(
+            url,
+            headers=headers,
+            timeout=15
+        )
+
+        if not r.ok:
+            return pd.DataFrame()
+
+        data = r.json()
+
+        result = data.get("chart", {}).get("result")
+
+        if not result:
+            return pd.DataFrame()
+
+        result = result[0]
+
+        timestamps = result.get("timestamp")
+        quotes = result.get("indicators", {}).get("quote", [{}])[0]
+
+        if not timestamps or not quotes:
+            return pd.DataFrame()
+
+        df = pd.DataFrame({
+            "Open": quotes.get("open", []),
+            "High": quotes.get("high", []),
+            "Low": quotes.get("low", []),
+            "Close": quotes.get("close", []),
+            "Volume": quotes.get("volume", []),
+        })
+
+        df["timestamp"] = pd.to_datetime(
+            timestamps,
+            unit="s",
+            errors="coerce"
+        )
+
+        for col in ["Open", "High", "Low", "Close", "Volume"]:
+            df[col] = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
+        df = df.dropna(
+            subset=["Open", "High", "Low", "Close"]
+        )
+
+        df = df.set_index("timestamp")
+        df = df.sort_index()
+
+        if len(df) < 220:
+            return pd.DataFrame()
+
+        return df
+
+    except Exception:
+        return pd.DataFrame()
 def indicateurs(df):
     close=df["Close"]; ema20=close.ewm(span=20,adjust=False).mean(); ema50=close.ewm(span=50,adjust=False).mean(); ema200=close.ewm(span=200,adjust=False).mean()
     delta=close.diff(); gain=delta.clip(lower=0).rolling(14).mean(); loss=-delta.clip(upper=0).rolling(14).mean(); rs=gain/loss.replace(0,np.nan); rsi=100-(100/(1+rs))
