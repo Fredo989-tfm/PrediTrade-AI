@@ -3731,13 +3731,13 @@ elif menu=="🔔 Alertes":
                             if niveaux.get(conf, 0) < niveaux.get(qualite_min, 0):
                                 continue
                             strategie = selectionner_technique(ind, score, sig)
-                          plan = generer_plan_trade(ind, strategie)
-                      approche = selectionner_approche(
-                      ind,
-                      score,
-                      strategie,
-                      plan
-                    )
+                            plan = generer_plan_trade(ind, strategie)
+                            approche = selectionner_approche(
+                              ind,
+                              score,
+                              strategie,
+                              plan
+                            )
                             # Pas de trade = pas d'alerte exploitable
                             if plan.get("statut") != "TRADE":
                                 continue
