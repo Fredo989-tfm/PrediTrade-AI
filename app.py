@@ -3935,8 +3935,6 @@ elif menu=="🔔 Notifications":
         if al: st.success(f"{len(al)} alertes")
         else: st.info("Aucune")
     for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
-
-elif menu=="🔔 Alertes":
   
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
