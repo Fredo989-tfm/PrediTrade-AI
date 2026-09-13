@@ -3255,7 +3255,7 @@ elif menu=="📊 Backtest":
                   )
                   st.write("Actif sélectionné :", actif_bt) 
                   st.write("Type d'actif :", type_actif_bt)
-                           st.stop()
+                  st.stop()
 
                 elif len(df_bt) < 220:
 
