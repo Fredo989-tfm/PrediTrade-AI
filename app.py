@@ -3672,11 +3672,199 @@ elif menu=="🔔 Notifications":
         else: st.info("Aucune")
     for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
 
-elif menu=="🔔 Alertes Pro":
-    st.title("🔔 Alertes Pro 24/24")
-    if not st.session_state.is_premium: st.error("🔒 Premium")
-    else: st.success("✅ Premium Actif"); st.info("Cloud scanne H24")
+elif menu=="🔔 Alertes":
+    st.title("🔔 Radar intelligent")
+    st.caption("Détection automatique des opportunités selon plusieurs critères techniques.")
 
+    # =========================================================
+    # CONFIGURATION DU RADAR
+    # =========================================================
+    dispo = []
+    for c, a in ASSETS.items():
+        dispo.extend(list(a.keys()))
+
+    choisis = st.multiselect(
+        "📊 Actifs à surveiller",
+        dispo,
+        default=[x for x in ["Bitcoin (BTC)", "Ethereum (ETH)"] if x in dispo]
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        seuil = st.slider(
+            "🎯 Score minimum",
+            50, 95, 75
+        )
+
+    with col2:
+        qualite_min = st.selectbox(
+            "🧠 Qualité minimale",
+            ["Toutes", "Moyenne", "Élevée", "Très élevée"],
+            index=1
+        )
+
+    # =========================================================
+    # SCANNER
+    # =========================================================
+    if st.button("🔍 Lancer le radar", use_container_width=True):
+
+        if not choisis:
+            st.warning("⚠️ Sélectionne au moins un actif.")
+        else:
+
+            res = []
+
+            with st.spinner("🧠 Analyse intelligente des marchés..."):
+
+                for nom in choisis:
+
+                    for c, a in ASSETS.items():
+
+                        if nom not in a:
+                            continue
+
+                        symbol = a[nom]
+
+                        try:
+                            df = charger_donnees(symbol, c)
+
+                            if df.empty:
+                                continue
+
+                            ind = indicateurs(df)
+                            score, sig, conf = prediscore(ind)
+
+                            # -------------------------------------------------
+                            # FILTRE DE CONFIANCE
+                            # -------------------------------------------------
+                            niveaux = {
+                                "Faible": 0,
+                                "Moyenne": 1,
+                                "Élevée": 2,
+                                "Très élevée": 3
+                            }
+
+                            if niveaux.get(conf, 0) < niveaux.get(qualite_min, 0):
+                                continue
+
+                            if score < seuil:
+                                continue
+
+                            # -------------------------------------------------
+                            # PRIX ACTUEL
+                            # -------------------------------------------------
+                            prix = float(df["Close"].iloc[-1])
+
+                            # -------------------------------------------------
+                            # DÉTERMINATION DU BIAIS
+                            # -------------------------------------------------
+                            if score >= 80:
+                                niveau = "🔥 OPPORTUNITÉ FORTE"
+                            elif score >= 70:
+                                niveau = "🟢 OPPORTUNITÉ"
+                            elif score >= 55:
+                                niveau = "🟡 SURVEILLER"
+                            else:
+                                niveau = "⚪ FAIBLE"
+
+                            # -------------------------------------------------
+                            # TENDANCE
+                            # -------------------------------------------------
+                            tendance = "Neutre"
+
+                            try:
+                                ema20 = float(ind.get("EMA20", 0))
+                                ema50 = float(ind.get("EMA50", 0))
+
+                                if ema20 > ema50:
+                                    tendance = "📈 Haussière"
+                                elif ema20 < ema50:
+                                    tendance = "📉 Baissière"
+                            except:
+                                pass
+
+                            res.append({
+                                "Actif": nom,
+                                "Prix": prix,
+                                "Score": score,
+                                "Signal": sig,
+                                "Confiance": conf,
+                                "Tendance": tendance,
+                                "Niveau": niveau
+                            })
+
+                        except Exception:
+                            continue
+
+            # =========================================================
+            # AFFICHAGE DES ALERTES
+            # =========================================================
+            if res:
+
+                st.success(f"🚨 {len(res)} alerte(s) détectée(s)")
+
+                df_alertes = pd.DataFrame(res)
+
+                # Trier du meilleur score au plus faible
+                df_alertes = df_alertes.sort_values(
+                    "Score",
+                    ascending=False
+                )
+
+                # -------------------------------------------------
+                # CARTES D'ALERTES
+                # -------------------------------------------------
+                for _, alerte in df_alertes.iterrows():
+
+                    st.markdown("---")
+
+                    c1, c2, c3 = st.columns([2, 1, 1])
+
+                    with c1:
+                        st.subheader(
+                            f"{alerte['Niveau']} — {alerte['Actif']}"
+                        )
+                        st.write(
+                            f"**Signal :** {alerte['Signal']}"
+                        )
+
+                    with c2:
+                        st.metric(
+                            "PrediScore",
+                            f"{alerte['Score']}/100"
+                        )
+
+                    with c3:
+                        st.metric(
+                            "Confiance",
+                            alerte["Confiance"]
+                        )
+
+                    st.write(
+                        f"📈 **Tendance :** {alerte['Tendance']}"
+                    )
+
+                    st.write(
+                        f"💰 **Prix actuel :** ${alerte['Prix']:,.4f}"
+                    )
+
+                # -------------------------------------------------
+                # TABLEAU GLOBAL
+                # -------------------------------------------------
+                st.markdown("### 📋 Vue globale")
+
+                st.dataframe(
+                    df_alertes,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+            else:
+                st.info(
+                    "🔎 Aucune opportunité ne respecte actuellement "
+                    "les critères sélectionnés."
+      )
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
     if st.button(f"Payer {montant} XAF",type="primary",use_container_width=True):
