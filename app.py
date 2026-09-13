@@ -3644,40 +3644,11 @@ elif menu=="📄 Rapports":
     else: st.info("Aucune donnée")
 
 elif menu=="🔔 Alertes":
-    st.title("🔔 Radar"); dispo=[]
-    for c,a in ASSETS.items(): dispo.extend(list(a.keys()))
-    choisis=st.multiselect("Actifs",dispo,default=["Bitcoin (BTC)","Ethereum (ETH)"]); seuil=st.slider("Seuil",50,95,75)
-    if st.button("Scanner"):
-        res=[]
-        for nom in choisis:
-            for c,a in ASSETS.items():
-                if nom in a:
-                    df=charger_donnees(a[nom],c)
-                    if df.empty: continue
-                    ind=indicateurs(df); sc,sig,conf=prediscore(ind)
-                    if sc>=seuil: res.append({"Actif":nom,"Score":sc,"Signal":sig})
-        if res: st.dataframe(pd.DataFrame(res),use_container_width=True)
-        else: st.info("Aucune")
-
-elif menu=="🔔 Notifications":
-    st.title("🔔 Notifications"); initialiser_notifications(); pref=st.session_state.notification_preferences
-    pref["enabled"]=st.toggle("Activer",value=pref.get("enabled",True)); pref["threshold"]=st.slider("Seuil",50,95,pref.get("threshold",75))
-    dispo=[]
-    for c,a in ASSETS.items(): dispo.extend(list(a.keys()))
-    pref["assets"]=st.multiselect("Actifs surveillés",dispo,default=[x for x in pref.get("assets",[]) if x in dispo])
-    st.session_state.notification_preferences=pref
-    if st.button("Vérifier maintenant"):
-        al=scanner_notifications_complet()
-        if al: st.success(f"{len(al)} alertes")
-        else: st.info("Aucune")
-    for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
-
-elif menu=="🔔 Alertes":
     st.title("🔔 Radar intelligent")
-    st.caption("Détection automatique des opportunités selon plusieurs critères techniques.")
+    st.caption("Détection des opportunités avec plan de trade automatique.")
 
     # =========================================================
-    # CONFIGURATION DU RADAR
+    # CONFIGURATION
     # =========================================================
     dispo = []
     for c, a in ASSETS.items():
@@ -3699,7 +3670,7 @@ elif menu=="🔔 Alertes":
 
     with col2:
         qualite_min = st.selectbox(
-            "🧠 Qualité minimale",
+            "🧠 Confiance minimale",
             ["Toutes", "Moyenne", "Élevée", "Très élevée"],
             index=1
         )
@@ -3711,9 +3682,17 @@ elif menu=="🔔 Alertes":
 
         if not choisis:
             st.warning("⚠️ Sélectionne au moins un actif.")
+
         else:
 
             res = []
+
+            niveaux = {
+                "Faible": 0,
+                "Moyenne": 1,
+                "Élevée": 2,
+                "Très élevée": 3
+            }
 
             with st.spinner("🧠 Analyse intelligente des marchés..."):
 
@@ -3727,46 +3706,56 @@ elif menu=="🔔 Alertes":
                         symbol = a[nom]
 
                         try:
+
+                            # -------------------------------------------------
+                            # DONNÉES
+                            # -------------------------------------------------
                             df = charger_donnees(symbol, c)
 
                             if df.empty:
                                 continue
 
+                            # -------------------------------------------------
+                            # INDICATEURS
+                            # -------------------------------------------------
                             ind = indicateurs(df)
+
+                            # -------------------------------------------------
+                            # PREDISCORE
+                            # -------------------------------------------------
                             score, sig, conf = prediscore(ind)
-
-                            # -------------------------------------------------
-                            # FILTRE DE CONFIANCE
-                            # -------------------------------------------------
-                            niveaux = {
-                                "Faible": 0,
-                                "Moyenne": 1,
-                                "Élevée": 2,
-                                "Très élevée": 3
-                            }
-
-                            if niveaux.get(conf, 0) < niveaux.get(qualite_min, 0):
-                                continue
 
                             if score < seuil:
                                 continue
 
-                            # -------------------------------------------------
-                            # PRIX ACTUEL
-                            # -------------------------------------------------
-                            prix = float(df["Close"].iloc[-1])
+                            if niveaux.get(conf, 0) < niveaux.get(qualite_min, 0):
+                                continue
 
                             # -------------------------------------------------
-                            # DÉTERMINATION DU BIAIS
+                            # STRATÉGIE
                             # -------------------------------------------------
-                            if score >= 80:
-                                niveau = "🔥 OPPORTUNITÉ FORTE"
-                            elif score >= 70:
-                                niveau = "🟢 OPPORTUNITÉ"
-                            elif score >= 55:
-                                niveau = "🟡 SURVEILLER"
-                            else:
-                                niveau = "⚪ FAIBLE"
+                            try:
+                                strategie = selectionner_approche(ind, score)
+                            except Exception:
+                                try:
+                                    strategie = selectionner_technique(ind, score)
+                                except Exception:
+                                    strategie = {
+                                        "nom": "Attendre",
+                                        "biais": "Neutre",
+                                        "qualite": 0
+                                    }
+
+                            # -------------------------------------------------
+                            # PLAN DE TRADE
+                            # -------------------------------------------------
+                            plan = generer_plan_trade(ind, strategie)
+
+                            # Pas de trade = pas d'alerte exploitable
+                            if plan.get("statut") != "TRADE":
+                                continue
+
+                            prix = float(plan["entree"])
 
                             # -------------------------------------------------
                             # TENDANCE
@@ -3774,23 +3763,44 @@ elif menu=="🔔 Alertes":
                             tendance = "Neutre"
 
                             try:
-                                ema20 = float(ind.get("EMA20", 0))
-                                ema50 = float(ind.get("EMA50", 0))
+                                ema20 = float(ind["EMA20"].iloc[-1])
+                                ema50 = float(ind["EMA50"].iloc[-1])
 
                                 if ema20 > ema50:
                                     tendance = "📈 Haussière"
                                 elif ema20 < ema50:
                                     tendance = "📉 Baissière"
-                            except:
+                            except Exception:
                                 pass
+
+                            # -------------------------------------------------
+                            # NIVEAU D'ALERTE
+                            # -------------------------------------------------
+                            if score >= 85:
+                                niveau = "🔥 OPPORTUNITÉ EXCEPTIONNELLE"
+                            elif score >= 80:
+                                niveau = "🔥 OPPORTUNITÉ FORTE"
+                            else:
+                                niveau = "🟢 OPPORTUNITÉ"
 
                             res.append({
                                 "Actif": nom,
-                                "Prix": prix,
                                 "Score": score,
                                 "Signal": sig,
                                 "Confiance": conf,
                                 "Tendance": tendance,
+                                "Biais": plan["biais"],
+                                "Stratégie": strategie.get(
+                                    "nom",
+                                    "Automatique"
+                                ),
+                                "Entrée": plan["entree"],
+                                "Stop Loss": plan["stop_loss"],
+                                "TP1": plan["tp1"],
+                                "TP2": plan["tp2"],
+                                "TP3": plan["tp3"],
+                                "R/R": plan["rr2"],
+                                "Qualité": plan["qualite"],
                                 "Niveau": niveau
                             })
 
@@ -3798,61 +3808,108 @@ elif menu=="🔔 Alertes":
                             continue
 
             # =========================================================
-            # AFFICHAGE DES ALERTES
+            # AFFICHAGE
             # =========================================================
             if res:
 
-                st.success(f"🚨 {len(res)} alerte(s) détectée(s)")
-
                 df_alertes = pd.DataFrame(res)
 
-                # Trier du meilleur score au plus faible
                 df_alertes = df_alertes.sort_values(
                     "Score",
                     ascending=False
                 )
 
-                # -------------------------------------------------
+                st.success(
+                    f"🚨 {len(res)} opportunité(s) détectée(s)"
+                )
+
+                # =====================================================
                 # CARTES D'ALERTES
-                # -------------------------------------------------
+                # =====================================================
                 for _, alerte in df_alertes.iterrows():
 
                     st.markdown("---")
 
-                    c1, c2, c3 = st.columns([2, 1, 1])
+                    st.subheader(
+                        f"{alerte['Niveau']} — {alerte['Actif']}"
+                    )
+
+                    c1, c2, c3, c4 = st.columns(4)
 
                     with c1:
-                        st.subheader(
-                            f"{alerte['Niveau']} — {alerte['Actif']}"
-                        )
-                        st.write(
-                            f"**Signal :** {alerte['Signal']}"
-                        )
-
-                    with c2:
                         st.metric(
                             "PrediScore",
                             f"{alerte['Score']}/100"
                         )
 
-                    with c3:
+                    with c2:
                         st.metric(
                             "Confiance",
                             alerte["Confiance"]
                         )
 
+                    with c3:
+                        st.metric(
+                            "Qualité",
+                            f"{alerte['Qualité']}/100"
+                        )
+
+                    with c4:
+                        st.metric(
+                            "R/R",
+                            f"1:{alerte['R/R']}"
+                        )
+
                     st.write(
-                        f"📈 **Tendance :** {alerte['Tendance']}"
+                        f"**Signal :** {alerte['Signal']}"
                     )
 
                     st.write(
-                        f"💰 **Prix actuel :** ${alerte['Prix']:,.4f}"
+                        f"**Tendance :** {alerte['Tendance']}  |  "
+                        f"**Biais :** {alerte['Biais']}"
                     )
 
-                # -------------------------------------------------
-                # TABLEAU GLOBAL
-                # -------------------------------------------------
-                st.markdown("### 📋 Vue globale")
+                    st.write(
+                        f"**Stratégie :** {alerte['Stratégie']}"
+                    )
+
+                    st.markdown("### 🎯 Plan de trade")
+
+                    p1, p2, p3, p4 = st.columns(4)
+
+                    with p1:
+                        st.metric(
+                            "Entrée",
+                            f"${alerte['Entrée']:,.4f}"
+                        )
+
+                    with p2:
+                        st.metric(
+                            "Stop Loss",
+                            f"${alerte['Stop Loss']:,.4f}"
+                        )
+
+                    with p3:
+                        st.metric(
+                            "TP1",
+                            f"${alerte['TP1']:,.4f}"
+                        )
+
+                    with p4:
+                        st.metric(
+                            "TP2",
+                            f"${alerte['TP2']:,.4f}"
+                        )
+
+                    st.write(
+                        f"🎯 **TP3 :** ${alerte['TP3']:,.4f}"
+                    )
+
+                # =====================================================
+                # TABLEAU
+                # =====================================================
+                st.markdown("---")
+                st.markdown("### 📋 Vue globale des opportunités")
 
                 st.dataframe(
                     df_alertes,
@@ -3861,10 +3918,26 @@ elif menu=="🔔 Alertes":
                 )
 
             else:
+
                 st.info(
                     "🔎 Aucune opportunité ne respecte actuellement "
                     "les critères sélectionnés."
-      )
+          )
+elif menu=="🔔 Notifications":
+    st.title("🔔 Notifications"); initialiser_notifications(); pref=st.session_state.notification_preferences
+    pref["enabled"]=st.toggle("Activer",value=pref.get("enabled",True)); pref["threshold"]=st.slider("Seuil",50,95,pref.get("threshold",75))
+    dispo=[]
+    for c,a in ASSETS.items(): dispo.extend(list(a.keys()))
+    pref["assets"]=st.multiselect("Actifs surveillés",dispo,default=[x for x in pref.get("assets",[]) if x in dispo])
+    st.session_state.notification_preferences=pref
+    if st.button("Vérifier maintenant"):
+        al=scanner_notifications_complet()
+        if al: st.success(f"{len(al)} alertes")
+        else: st.info("Aucune")
+    for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
+
+elif menu=="🔔 Alertes":
+  
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
     if st.button(f"Payer {montant} XAF",type="primary",use_container_width=True):
