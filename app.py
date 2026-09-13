@@ -3036,538 +3036,471 @@ elif menu=="🛡️ Gestion du risque":
             st.caption(
                 "La taille de position est calculée à partir du capital, "
                 "du risque choisi et de la volatilité récente de l'actif."
-  )
-elif menu == "Backtest":
+  )# ============================================================
+# 📊 BACKTEST PREDITRADE AI
+# ============================================================
+
+elif menu=="📊 Backtest":
 
     st.title("📊 Backtest PrediTrade AI")
-    st.caption("Testez une stratégie sur les données historiques.")
+    st.write("Testez les performances de PrediTrade AI sur les données historiques.")
 
-    # =========================================================
+    # --------------------------------------------------------
     # PARAMÈTRES
-    # =========================================================
+    # --------------------------------------------------------
 
-    c1, c2, c3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    with c1:
-        type_actif = st.selectbox(
+    with col1:
+        type_actif_bt = st.selectbox(
             "Type d'actif",
             list(ASSETS.keys()),
-            key="backtest_asset_type"
+            key="bt_type_actif"
         )
 
-    with c2:
-        actif = st.selectbox(
+    with col2:
+        actif_bt = st.selectbox(
             "Actif",
-            ASSETS[type_actif],
-            key="backtest_asset"
+            ASSETS[type_actif_bt],
+            key="bt_actif"
         )
 
-    with c3:
-        capital_initial_bt = st.number_input(
-            "Capital initial ($)",
+    with col3:
+        capital_bt = st.number_input(
+            "Capital initial",
             min_value=100.0,
             value=10000.0,
             step=500.0,
-            key="backtest_capital"
+            key="bt_capital"
         )
 
-    c4, c5, c6 = st.columns(3)
+    col4, col5, col6 = st.columns(3)
 
-    with c4:
-        risque_bt = st.slider(
+    with col4:
+        risque_bt = st.number_input(
             "Risque par trade (%)",
-            min_value=0.25,
-            max_value=5.0,
+            min_value=0.1,
+            max_value=10.0,
             value=1.0,
-            step=0.25,
-            key="backtest_risque"
+            step=0.1,
+            key="bt_risque"
         )
 
-    with c5:
+    with col5:
         frais_bt = st.number_input(
             "Frais (bps)",
             min_value=0.0,
             value=5.0,
             step=1.0,
-            key="backtest_frais"
+            key="bt_frais"
         )
 
-    with c6:
+    with col6:
         slippage_bt = st.number_input(
             "Slippage (bps)",
             min_value=0.0,
             value=2.0,
             step=1.0,
-            key="backtest_slippage"
+            key="bt_slippage"
         )
 
     st.divider()
 
-    # =========================================================
-    # LANCEMENT
-    # =========================================================
+    # --------------------------------------------------------
+    # BOUTON
+    # --------------------------------------------------------
 
-    lancer_bt = st.button(
-        "🚀 Lancer le backtest",
+    if st.button(
+        "🚀 LANCER LE BACKTEST",
         type="primary",
         use_container_width=True
-    )
+    ):
 
-    if lancer_bt:
+        try:
 
-        with st.spinner(
-            f"Analyse historique de {actif} en cours..."
-        ):
-
-            try:
-
-                # -------------------------------------------------
-                # CHARGEMENT DES DONNÉES
-                # -------------------------------------------------
+            with st.spinner(
+                f"Analyse historique de {actif_bt}..."
+            ):
 
                 df_bt = charger_donnees(
-                    actif,
-                    type_actif
+                    actif_bt,
+                    type_actif_bt
                 )
+
+                # --------------------------------------------
+                # DONNÉES
+                # --------------------------------------------
 
                 if df_bt is None or df_bt.empty:
 
                     st.error(
-                        f"❌ Impossible de récupérer les données de {actif}."
+                        "❌ Aucune donnée historique disponible."
                     )
 
-                    st.stop()
+                elif len(df_bt) < 220:
 
-                # -------------------------------------------------
-                # VÉRIFICATION DU VOLUME DE DONNÉES
-                # -------------------------------------------------
+                    st.warning(
+                        f"⚠️ Données insuffisantes : "
+                        f"{len(df_bt)} bougies disponibles. "
+                        f"Le moteur nécessite au moins 220 bougies."
+                    )
 
-                st.info(
-                    f"📥 {len(df_bt)} bougies historiques disponibles."
-                )
+                else:
 
-                # -------------------------------------------------
-                # EXÉCUTION DU BACKTEST
-                # -------------------------------------------------
+                    # ----------------------------------------
+                    # BACKTEST
+                    # ----------------------------------------
 
-                resultat_bt = backtester_strategie(
-                    df_bt,
-                    capital_initial=capital_initial_bt,
-                    risque_par_trade=risque_bt / 100,
-                    frais_bps=frais_bt,
-                    slippage_bps=slippage_bt,
-                    max_bougies_trade=50
-                )
+                    resultat_bt = backtester_strategie(
+                        df_bt,
+                        capital_initial=capital_bt,
+                        risque_par_trade=risque_bt / 100,
+                        frais_bps=frais_bt,
+                        slippage_bps=slippage_bt,
+                        max_bougies_trade=50
+                    )
 
-                # Sauvegarde du résultat
-                st.session_state["backtest_resultat"] = resultat_bt
-                st.session_state["backtest_actif"] = actif
-                st.session_state["backtest_type"] = type_actif
+                    # ----------------------------------------
+                    # STATUT
+                    # ----------------------------------------
 
-            except Exception as e:
+                    if resultat_bt.get("statut") != "OK":
 
-                st.error(
-                    "❌ Erreur pendant le backtest."
-                )
+                        st.warning(
+                            resultat_bt.get(
+                                "message",
+                                "Le backtest n'a produit aucun résultat."
+                            )
+                        )
 
-                st.exception(e)
+                    else:
 
-    # =========================================================
-    # AFFICHAGE DES RÉSULTATS
-    # =========================================================
+                        st.success(
+                            "✅ Backtest terminé."
+                        )
 
-    resultat_bt = st.session_state.get(
-        "backtest_resultat"
-    )
+                        # ====================================
+                        # RÉSULTATS PRINCIPAUX
+                        # ====================================
 
-    if resultat_bt:
+                        st.subheader("📊 Résultats")
 
-        statut = resultat_bt.get(
-            "statut",
-            "INCONNU"
-        )
+                        capital_final = float(
+                            resultat_bt["capital_final"]
+                        )
 
-        # -----------------------------------------------------
-        # BACKTEST INSUFFISANT / AUCUN TRADE
-        # -----------------------------------------------------
+                        profit_total = float(
+                            resultat_bt["profit_total"]
+                        )
 
-        if statut != "OK":
+                        rendement = float(
+                            resultat_bt["rendement"]
+                        )
 
-            st.warning(
-                resultat_bt.get(
-                    "message",
-                    "Aucun résultat disponible."
-                )
+                        nb_trades = int(
+                            resultat_bt["nb_trades"]
+                        )
+
+                        winrate = float(
+                            resultat_bt["winrate"]
+                        )
+
+                        profit_factor = resultat_bt[
+                            "profit_factor"
+                        ]
+
+                        max_drawdown = float(
+                            resultat_bt["max_drawdown"]
+                        )
+
+                        score_robustesse = int(
+                            resultat_bt["score_robustesse"]
+                        )
+
+                        # ------------------------------------
+                        # LIGNE 1
+                        # ------------------------------------
+
+                        a, b, c, d = st.columns(4)
+
+                        a.metric(
+                            "Capital final",
+                            f"${capital_final:,.2f}"
+                        )
+
+                        b.metric(
+                            "Profit",
+                            f"${profit_total:,.2f}"
+                        )
+
+                        c.metric(
+                            "Rendement",
+                            f"{rendement:+.2f}%"
+                        )
+
+                        d.metric(
+                            "Trades",
+                            nb_trades
+                        )
+
+                        # ------------------------------------
+                        # LIGNE 2
+                        # ------------------------------------
+
+                        e, f, g, h = st.columns(4)
+
+                        e.metric(
+                            "Winrate",
+                            f"{winrate:.1f}%"
+                        )
+
+                        if profit_factor == float("inf"):
+                            pf_text = "∞"
+                        else:
+                            pf_text = f"{float(profit_factor):.2f}"
+
+                        f.metric(
+                            "Profit Factor",
+                            pf_text
+                        )
+
+                        g.metric(
+                            "Drawdown max",
+                            f"{max_drawdown:.2f}%"
+                        )
+
+                        h.metric(
+                            "Robustesse",
+                            f"{score_robustesse}/100"
+                        )
+
+                        # ====================================
+                        # COURBE D'ÉQUITÉ
+                        # ====================================
+
+                        st.subheader(
+                            "📈 Courbe d'équité"
+                        )
+
+                        equity_df = resultat_bt.get(
+                            "equity_curve"
+                        )
+
+                        if (
+                            equity_df is not None
+                            and not equity_df.empty
+                            and "capital" in equity_df.columns
+                        ):
+
+                            st.line_chart(
+                                equity_df["capital"],
+                                use_container_width=True
+                            )
+
+                        else:
+
+                            trades_temp = resultat_bt.get(
+                                "trades"
+                            )
+
+                            if (
+                                trades_temp is not None
+                                and not trades_temp.empty
+                            ):
+
+                                courbe = trades_temp[
+                                    ["date_sortie", "capital"]
+                                ].copy()
+
+                                courbe = courbe.dropna(
+                                    subset=["date_sortie"]
+                                )
+
+                                if not courbe.empty:
+
+                                    courbe = courbe.set_index(
+                                        "date_sortie"
+                                    )
+
+                                    st.line_chart(
+                                        courbe["capital"],
+                                        use_container_width=True
+                                    )
+
+                                else:
+
+                                    st.info(
+                                        "Courbe d'équité indisponible."
+                                    )
+
+                            else:
+
+                                st.info(
+                                    "Courbe d'équité indisponible."
+                                )
+
+                        # ====================================
+                        # STATISTIQUES
+                        # ====================================
+
+                        st.subheader(
+                            "📋 Statistiques détaillées"
+                        )
+
+                        x1, x2, x3, x4 = st.columns(4)
+
+                        x1.metric(
+                            "Gagnants",
+                            resultat_bt["gagnants"]
+                        )
+
+                        x2.metric(
+                            "Perdants",
+                            resultat_bt["perdants"]
+                        )
+
+                        x3.metric(
+                            "Meilleur trade",
+                            f"${resultat_bt['meilleur_trade']:,.2f}"
+                        )
+
+                        x4.metric(
+                            "Pire trade",
+                            f"${resultat_bt['pire_trade']:,.2f}"
+                        )
+
+                        x5, x6, x7, x8 = st.columns(4)
+
+                        x5.metric(
+                            "Expectancy",
+                            f"{resultat_bt['expectancy_R']:.2f} R"
+                        )
+
+                        x6.metric(
+                            "Sharpe",
+                            f"{resultat_bt['sharpe']:.2f}"
+                        )
+
+                        x7.metric(
+                            "Meilleure série",
+                            resultat_bt[
+                                "meilleure_serie_gains"
+                            ]
+                        )
+
+                        x8.metric(
+                            "Pire série",
+                            resultat_bt[
+                                "pire_serie_pertes"
+                            ]
+                        )
+
+                        # ====================================
+                        # STRATÉGIES
+                        # ====================================
+
+                        stats_strategies = resultat_bt.get(
+                            "statistiques_strategies"
+                        )
+
+                        if (
+                            stats_strategies is not None
+                            and not stats_strategies.empty
+                        ):
+
+                            st.subheader(
+                                "🧠 Performance par stratégie"
+                            )
+
+                            st.dataframe(
+                                stats_strategies,
+                                use_container_width=True,
+                                hide_index=True
+                            )
+
+                        # ====================================
+                        # SIGNAUX
+                        # ====================================
+
+                        stats_signaux = resultat_bt.get(
+                            "statistiques_signaux"
+                        )
+
+                        if (
+                            stats_signaux is not None
+                            and not stats_signaux.empty
+                        ):
+
+                            st.subheader(
+                                "🎯 Performance par signal"
+                            )
+
+                            st.dataframe(
+                                stats_signaux,
+                                use_container_width=True,
+                                hide_index=True
+                            )
+
+                        # ====================================
+                        # BIAIS
+                        # ====================================
+
+                        stats_biais = resultat_bt.get(
+                            "statistiques_biais"
+                        )
+
+                        if (
+                            stats_biais is not None
+                            and not stats_biais.empty
+                        ):
+
+                            st.subheader(
+                                "📐 Performance par biais"
+                            )
+
+                            st.dataframe(
+                                stats_biais,
+                                use_container_width=True,
+                                hide_index=True
+                            )
+
+                        # ====================================
+                        # HISTORIQUE
+                        # ====================================
+
+                        trades_bt = resultat_bt.get(
+                            "trades"
+                        )
+
+                        if (
+                            trades_bt is not None
+                            and not trades_bt.empty
+                        ):
+
+                            st.subheader(
+                                "📑 Historique des trades"
+                            )
+
+                            st.dataframe(
+                                trades_bt,
+                                use_container_width=True,
+                                hide_index=True
+                            )
+
+                        else:
+
+                            st.info(
+                                "Aucun trade enregistré."
+                            )
+
+        except Exception as erreur:
+
+            st.error(
+                "❌ Une erreur est survenue pendant le backtest."
             )
 
-            st.stop()
+            st.exception(erreur)
 
-        # -----------------------------------------------------
-        # TITRE
-        # -----------------------------------------------------
-
-        actif_resultat = st.session_state.get(
-            "backtest_actif",
-            actif
-        )
-
-        st.subheader(
-            f"📈 Résultats — {actif_resultat}"
-        )
-
-        # -----------------------------------------------------
-        # KPIs PRINCIPAUX
-        # -----------------------------------------------------
-
-        capital_final_bt = resultat_bt.get(
-            "capital_final",
-            capital_initial_bt
-        )
-
-        profit_total_bt = resultat_bt.get(
-            "profit_total",
-            0
-        )
-
-        rendement_bt = resultat_bt.get(
-            "rendement",
-            0
-        )
-
-        nb_trades_bt = resultat_bt.get(
-            "nb_trades",
-            0
-        )
-
-        winrate_bt = resultat_bt.get(
-            "winrate",
-            0
-        )
-
-        profit_factor_bt = resultat_bt.get(
-            "profit_factor",
-            0
-        )
-
-        max_dd_bt = resultat_bt.get(
-            "max_drawdown",
-            0
-        )
-
-        expectancy_bt = resultat_bt.get(
-            "expectancy_R",
-            0
-        )
-
-        score_bt = resultat_bt.get(
-            "score_robustesse",
-            0
-        )
-
-        k1, k2, k3, k4 = st.columns(4)
-
-        k1.metric(
-            "Capital final",
-            f"${capital_final_bt:,.2f}"
-        )
-
-        k2.metric(
-            "Profit total",
-            f"${profit_total_bt:,.2f}",
-            f"{rendement_bt:+.2f}%"
-        )
-
-        k3.metric(
-            "Trades",
-            nb_trades_bt
-        )
-
-        k4.metric(
-            "Winrate",
-            f"{winrate_bt:.1f}%"
-        )
-
-        k5, k6, k7, k8 = st.columns(4)
-
-        k5.metric(
-            "Profit Factor",
-            (
-                "∞"
-                if profit_factor_bt == float("inf")
-                else f"{profit_factor_bt:.2f}"
-            )
-        )
-
-        k6.metric(
-            "Expectancy",
-            f"{expectancy_bt:.2f} R"
-        )
-
-        k7.metric(
-            "Max Drawdown",
-            f"{max_dd_bt:.2f}%"
-        )
-
-        k8.metric(
-            "Robustesse",
-            f"{score_bt}/100"
-        )
-
-        st.divider()
-
-        # =====================================================
-        # COURBE D'ÉQUITÉ
-        # =====================================================
-
-        st.subheader("📈 Courbe d'équité")
-
-        equity_df = resultat_bt.get(
-            "equity_curve"
-        )
-
-        if (
-            equity_df is not None
-            and not equity_df.empty
-            and "capital" in equity_df.columns
-        ):
-
-            st.line_chart(
-                equity_df["capital"],
-                use_container_width=True
-            )
-
-        else:
-
-            # Fallback : construire la courbe à partir des trades
-            trades_bt = resultat_bt.get(
-                "trades",
-                pd.DataFrame()
-            )
-
-            if (
-                trades_bt is not None
-                and not trades_bt.empty
-                and "capital" in trades_bt.columns
-            ):
-
-                st.line_chart(
-                    trades_bt.set_index(
-                        "date_sortie"
-                    )["capital"],
-                    use_container_width=True
-                )
-
-            else:
-
-                st.info(
-                    "Aucune donnée disponible pour la courbe d'équité."
-                )
-
-        # =====================================================
-        # STATISTIQUES
-        # =====================================================
-
-        st.subheader("📊 Statistiques du backtest")
-
-        s1, s2, s3, s4 = st.columns(4)
-
-        s1.metric(
-            "Trades gagnants",
-            resultat_bt.get("gagnants", 0)
-        )
-
-        s2.metric(
-            "Trades perdants",
-            resultat_bt.get("perdants", 0)
-        )
-
-        s3.metric(
-            "Meilleur trade",
-            f"${resultat_bt.get('meilleur_trade', 0):,.2f}"
-        )
-
-        s4.metric(
-            "Pire trade",
-            f"${resultat_bt.get('pire_trade', 0):,.2f}"
-        )
-
-        s5, s6, s7, s8 = st.columns(4)
-
-        s5.metric(
-            "Gain moyen",
-            f"${resultat_bt.get('gain_moyen', 0):,.2f}"
-        )
-
-        s6.metric(
-            "Perte moyenne",
-            f"${resultat_bt.get('perte_moyenne', 0):,.2f}"
-        )
-
-        s7.metric(
-            "Meilleur R",
-            f"{resultat_bt.get('meilleur_R', 0):.2f} R"
-        )
-
-        s8.metric(
-            "Pire R",
-            f"{resultat_bt.get('pire_R', 0):.2f} R"
-        )
-
-        # =====================================================
-        # SÉRIES
-        # =====================================================
-
-        s9, s10, s11 = st.columns(3)
-
-        s9.metric(
-            "Meilleure série gagnante",
-            resultat_bt.get(
-                "meilleure_serie_gains",
-                0
-            )
-        )
-
-        s10.metric(
-            "Pire série perdante",
-            resultat_bt.get(
-                "pire_serie_pertes",
-                0
-            )
-        )
-
-        s11.metric(
-            "Durée moyenne",
-            f"{resultat_bt.get('duree_moyenne', 0):.1f} bougies"
-        )
-
-        # =====================================================
-        # STATISTIQUES PAR STRATÉGIE
-        # =====================================================
-
-        stats_strategies = resultat_bt.get(
-            "statistiques_strategies"
-        )
-
-        if (
-            stats_strategies is not None
-            and not stats_strategies.empty
-        ):
-
-            st.subheader(
-                "🧠 Performance par stratégie"
-            )
-
-            st.dataframe(
-                stats_strategies,
-                use_container_width=True,
-                hide_index=True
-            )
-
-        # =====================================================
-        # STATISTIQUES PAR SIGNAL
-        # =====================================================
-
-        stats_signaux = resultat_bt.get(
-            "statistiques_signaux"
-        )
-
-        if (
-            stats_signaux is not None
-            and not stats_signaux.empty
-        ):
-
-            st.subheader(
-                "🎯 Performance par signal"
-            )
-
-            st.dataframe(
-                stats_signaux,
-                use_container_width=True,
-                hide_index=True
-            )
-
-        # =====================================================
-        # STATISTIQUES PAR BIAIS
-        # =====================================================
-
-        stats_biais = resultat_bt.get(
-            "statistiques_biais"
-        )
-
-        if (
-            stats_biais is not None
-            and not stats_biais.empty
-        ):
-
-            st.subheader(
-                "📐 Performance par biais"
-            )
-
-            st.dataframe(
-                stats_biais,
-                use_container_width=True,
-                hide_index=True
-            )
-
-        # =====================================================
-        # HISTORIQUE DES TRADES
-        # =====================================================
-
-        trades_bt = resultat_bt.get(
-            "trades",
-            pd.DataFrame()
-        )
-
-        if (
-            trades_bt is not None
-            and not trades_bt.empty
-        ):
-
-            st.subheader(
-                "📋 Historique des trades"
-            )
-
-            colonnes_affichage = [
-                "date_entree",
-                "date_sortie",
-                "strategie",
-                "biais",
-                "score",
-                "signal",
-                "entree",
-                "stop_loss",
-                "tp1",
-                "tp2",
-                "tp3",
-                "prix_sortie",
-                "resultat",
-                "multiple_R",
-                "profit",
-                "rendement_trade",
-                "MFE_R",
-                "MAE_R",
-                "capital"
-            ]
-
-            colonnes_disponibles = [
-                c for c in colonnes_affichage
-                if c in trades_bt.columns
-            ]
-
-            st.dataframe(
-                trades_bt[colonnes_disponibles],
-                use_container_width=True,
-                hide_index=True
-            )
-
-        # =====================================================
-        # MESSAGE FINAL
-        # =====================================================
-
-        st.success(
-            "✅ Backtest terminé avec succès. "
-            "Les résultats sont basés uniquement sur les données historiques disponibles."
-      )
 elif menu=="📚 Historique":
     st.title("📚 Historique")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history),use_container_width=True)
