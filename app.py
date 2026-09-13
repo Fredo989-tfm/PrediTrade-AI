@@ -3778,6 +3778,9 @@ elif menu=="🔔 Alertes":
                                 "Tendance": tendance,
                                 "Biais": plan["biais"],
                                 "Approche": approche.get("approche", "ATTENDRE"),
+                                "Levier": approche.get("levier", "0x"),
+                                "Raison approche": approche.get("raison", ""),
+                                "Niveau approche": approche.get("niveau", ""),
                                 "Stratégie": strategie.get(
                                     "nom",
                                     "Automatique"
@@ -3863,6 +3866,15 @@ elif menu=="🔔 Alertes":
                     st.write(
                       f"🧠 **Approche :** {alerte['Approche']}"
                       )
+                  st.write(
+                      f"⚡ **Levier :** {alerte.get('Levier', '0x')}"
+                 )
+                 st.info(
+                   f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
+                 )
+              st.write(
+                  f"🏅 **Niveau :** {alerte['Niveau approche']}"
+                 )
 
                     st.markdown("### 🎯 Plan de trade")
 
