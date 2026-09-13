@@ -3730,27 +3730,14 @@ elif menu=="🔔 Alertes":
 
                             if niveaux.get(conf, 0) < niveaux.get(qualite_min, 0):
                                 continue
-
-                            # -------------------------------------------------
-                            # STRATÉGIE
-                            # -------------------------------------------------
-                            try:
-                                strategie = selectionner_approche(ind, score)
-                            except Exception:
-                                try:
-                                    strategie = selectionner_technique(ind, score)
-                                except Exception:
-                                    strategie = {
-                                        "nom": "Attendre",
-                                        "biais": "Neutre",
-                                        "qualite": 0
-                                    }
-
-                            # -------------------------------------------------
-                            # PLAN DE TRADE
-                            # -------------------------------------------------
-                            plan = generer_plan_trade(ind, strategie)
-
+                            strategie = selectionner_technique(ind, score, sig)
+                          plan = generer_plan_trade(ind, strategie)
+                      approche = selectionner_approche(
+                      ind,
+                      score,
+                      strategie,
+                      plan
+                    )
                             # Pas de trade = pas d'alerte exploitable
                             if plan.get("statut") != "TRADE":
                                 continue
@@ -3790,6 +3777,7 @@ elif menu=="🔔 Alertes":
                                 "Confiance": conf,
                                 "Tendance": tendance,
                                 "Biais": plan["biais"],
+                                "Approche": approche.get("approche", "ATTENDRE"),
                                 "Stratégie": strategie.get(
                                     "nom",
                                     "Automatique"
@@ -3870,8 +3858,11 @@ elif menu=="🔔 Alertes":
                     )
 
                     st.write(
-                        f"**Stratégie :** {alerte['Stratégie']}"
-                    )
+                      f"**Stratégie :** {alerte['Stratégie']}"
+                    ) 
+                    st.write(
+                      f"🧠 **Approche :** {alerte['Approche']}"
+                      )
 
                     st.markdown("### 🎯 Plan de trade")
 
