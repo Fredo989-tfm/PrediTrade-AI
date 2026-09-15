@@ -3902,7 +3902,7 @@ elif menu=="🔔 Alertes":
                           f"${alerte['TP2']:,.4f}"
                       )
 
-                   st.write(
+                  st.write(
                       f"🎯 **TP3 :** ${alerte['TP3']:,.4f}"
                   )
 
