@@ -3865,48 +3865,45 @@ elif menu=="🔔 Alertes":
                     ) 
                     st.write(
                       f"🧠 **Approche :** {alerte['Approche']}"
-                      )
-                  st.write(
-                      f"⚡ **Levier :** {alerte.get('Levier', '0x')}"
-                 )
-                 st.info(
-                   f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
-                 )
-              st.write(
-                  f"🏅 **Niveau :** {alerte['Niveau approche']}"
-                 )
-
-                    st.markdown("### 🎯 Plan de trade")
-
-                    p1, p2, p3, p4 = st.columns(4)
-
-                    with p1:
-                        st.metric(
-                            "Entrée",
-                            f"${alerte['Entrée']:,.4f}"
-                        )
-
-                    with p2:
-                        st.metric(
-                            "Stop Loss",
-                            f"${alerte['Stop Loss']:,.4f}"
-                        )
-
-                    with p3:
-                        st.metric(
-                            "TP1",
-                            f"${alerte['TP1']:,.4f}"
-                        )
-
-                    with p4:
-                        st.metric(
-                            "TP2",
-                            f"${alerte['TP2']:,.4f}"
-                        )
-
-                    st.write(
-                        f"🎯 **TP3 :** ${alerte['TP3']:,.4f}"
                     )
+                    st.write(
+                      f"⚡ **Levier :** {alerte.get('Levier', '0x')}"
+                   )
+                   st.info(
+                      f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
+                  )
+                  st.write(
+                     f"🏅 **Niveau :** {alerte['Niveau approche']}"
+                  )
+                  st.markdown("### 🎯 Plan de trade")
+                  p1, p2, p3, p4 = st.columns(4)
+                  with p1:
+                      st.metric(
+                          "Entrée",
+                          f"${alerte['Entrée']:,.4f}"
+                      )
+
+                  with p2:
+                      st.metric(
+                          "Stop Loss",
+                          f"${alerte['Stop Loss']:,.4f}"
+                      )
+
+                  with p3:
+                      st.metric(
+                          "TP1",
+                          f"${alerte['TP1']:,.4f}"
+                      )
+
+                  with p4:
+                      st.metric(
+                          "TP2",
+                          f"${alerte['TP2']:,.4f}"
+                      )
+
+                  st.write(
+                      f"🎯 **TP3 :** ${alerte['TP3']:,.4f}"
+                  )
 
                 # =====================================================
                 # TABLEAU
