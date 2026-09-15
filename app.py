@@ -3872,7 +3872,8 @@ elif menu=="🔔 Alertes":
                     st.info(
                       f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
                    )
-                   st.write(
+                   
+                    st.write(
                      f"🏅 **Niveau :** {alerte['Niveau approche']}"
                    )
                    st.markdown("### 🎯 Plan de trade")
