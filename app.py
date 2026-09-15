@@ -3868,11 +3868,11 @@ elif menu=="🔔 Alertes":
                     )
                     st.write(
                       f"⚡ **Levier :** {alerte.get('Levier', '0x')}"
-                   )
-                   st.info(
+                    )
+                    st.info(
                       f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
-                  )
-                  st.write(
+                   )
+                   st.write(
                      f"🏅 **Niveau :** {alerte['Niveau approche']}"
                   )
                   st.markdown("### 🎯 Plan de trade")
