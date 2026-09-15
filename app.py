@@ -144,15 +144,34 @@ def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
     if "notification_preferences" not in st.session_state: st.session_state.notification_preferences={"enabled":True,"threshold":75,"assets":["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"],"buy_strong":True,"buy":True,"sell":False}
 
-def ajouter_notification(actif,score,signal,confiance):
+def ajouter_notification(actif,score,signal,confiance,technique="",qualite=0,approche="",levier="0x",raison="",niveau=""):
     initialiser_notifications()
-    n={"id":hashlib.md5(f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()).hexdigest(),"actif":actif,"score":score,"signal":signal,"confiance":confiance,"date":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),"lu":False}
-    for a in st.session_state.notifications[-10:]:
-        if a["actif"]==actif and a["signal"]==signal and a["score"]==score: return False
-    st.session_state.notifications.append(n)
-    if len(st.session_state.notifications)>50: st.session_state.notifications=st.session_state.notifications[-50:]
-    return True
+    n={
+        "id":hashlib.md5(f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()).hexdigest(),
+        "actif":actif,
+        "score":score,
+        "signal":signal,
+        "confiance":confiance,
+        "technique":technique,
+        "qualite":qualite,
+        "approche":approche,
+        "levier":levier,
+        "raison":raison,
+        "niveau":niveau,
+        "date":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "lu":False
+    }
 
+    for a in st.session_state.notifications[-10:]:
+        if a["actif"]==actif and a["signal"]==signal and a["score"]==score:
+            return False
+
+    st.session_state.notifications.append(n)
+
+    if len(st.session_state.notifications)>50:
+        st.session_state.notifications=st.session_state.notifications[-50:]
+
+    return True
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
   try:
@@ -2481,12 +2500,29 @@ def scanner_notifications_complet():
             df=charger_donnees(sym,cat)
             if df.empty: continue
             ind=indicateurs(df); score,signal,conf=prediscore(ind)
+            strategie = selectionner_technique(ind, score, signal)
+            plan = generer_plan_trade(ind, strategie)
+            approche = selectionner_approche(ind, score, strategie, plan)
+            if plan.get("statut") != "TRADE":
+              continue
             if score<pref.get("threshold",75): continue
             aut=False
             if "ACHAT FORT" in signal and pref.get("buy_strong",True): aut=True
             elif signal=="🟢 ACHAT" and pref.get("buy",True): aut=True
             elif "VENTE" in signal and pref.get("sell",False): aut=True
-            if aut and ajouter_notification(nom,score,signal,conf): al.append({"Actif":nom,"Score":score,"Signal":signal,"Confiance":conf})
+            if aut and ajouter_notification(nom,score,signal,conf):
+              al.append({
+                "Actif": nom,
+                "Score": score,
+                "Signal": signal,
+                "Confiance": conf,
+                "Technique": strategie.get("nom", "Pas de trade"),
+                "Qualité": strategie.get("qualite", 0),
+                "Approche": approche.get("approche", "ATTENDRE"),
+                "Levier": approche.get("levier", "0x"),
+                "Raison": approche.get("raison", ""),
+                "Niveau": approche.get("niveau", "")
+              })
         except: continue
     return al
 
@@ -3936,6 +3972,12 @@ elif menu=="🔔 Notifications":
         if al: st.success(f"{len(al)} alertes")
         else: st.info("Aucune")
     for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
+    st.write(f"🧠 **Technique :** {n.get('technique', 'Non définie')}")
+    st.write(f"🏅 **Qualité :** {n.get('qualite', 0)}/100")
+    st.write(f"🎯 **Approche :** {n.get('approche', 'ATTENDRE')}")
+    st.write(f"⚡ **Levier :** {n.get('levier', '0x')}")
+    st.info(f"💡 **Pourquoi ?** {n.get('raison', '')}")
+    st.write(f"📊 **Niveau :** {n.get('niveau', '')}")
   
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
