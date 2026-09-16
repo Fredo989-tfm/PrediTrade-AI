@@ -2609,6 +2609,14 @@ with st.sidebar:
     elif st.session_state.is_premium: st.success("⭐ Premium Actif")
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
+def niveau_urgence_alerte(score, confiance, qualite):
+    if score >= 90 and confiance == "Très élevée" and qualite >= 85:
+        return "🔴 URGENTE"
+
+    if score >= 80 and confiance in ("Élevée", "Très élevée") and qualite >= 75:
+        return "🟠 IMPORTANTE"
+
+    return "🟢 SURVEILLANCE"
     menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
 
 if menu=="📊 Tableau de bord":
@@ -3822,6 +3830,11 @@ elif menu=="🔔 Alertes":
                                     "nom",
                                     "Automatique"
                                 ),
+                                "Urgence": niveau_urgence_alerte(
+                                  score,
+                                  conf,
+                                  strategie.get("qualite", 0)
+                                ),
                                 "Entrée": plan["entree"],
                                 "Stop Loss": plan["stop_loss"],
                                 "TP1": plan["tp1"],
@@ -3905,6 +3918,9 @@ elif menu=="🔔 Alertes":
                     )
                     st.write(
                       f"⚡ **Levier :** {alerte.get('Levier', '0x')}"
+                    )
+                    st.write(
+                      f"🚨 **Urgence :** {alerte.get('Urgence', '🟢 SURVEILLANCE')}"
                     )
                     st.info(
                       f"🧠 **Pourquoi cette approche ?** {alerte['Raison approche']}"
