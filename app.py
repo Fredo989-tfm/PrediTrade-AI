@@ -2513,11 +2513,11 @@ def scanner_notifications_complet():
             etat_alerte = "🆕 NOUVELLE"
             if ancienne_alerte:
               if variation_score >= 5:
-           etat_alerte = "📈 RENFORCÉE"
+            etat_alerte = "📈 RENFORCÉE"
               elif variation_score <= -5:
-          etat_alerte = "📉 AFFAIBLIE"
+            etat_alerte = "📉 AFFAIBLIE"
               else:
-         etat_alerte = "🔁 STABLE" 
+            etat_alerte = "🔁 STABLE" 
             plan = generer_plan_trade(ind, strategie)
             approche = selectionner_approche(ind, score, strategie, plan)
             if plan.get("statut") != "TRADE":
