@@ -683,8 +683,7 @@ def selectionner_technique(ind, score, signal):
         and abs(momentum) < 3
         and volatilite < 5
     ):
-        biais = "Haussier" if rsi < 40 else "Baissier"
-
+        biais = "Haussier" if score >= 70 else "Baissier"
         return {
             "technique": "🧱 Support / Resistance Bounce",
             "nom": "Support / Resistance Bounce",
