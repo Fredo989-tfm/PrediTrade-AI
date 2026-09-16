@@ -2505,6 +2505,8 @@ def scanner_notifications_complet():
             approche = selectionner_approche(ind, score, strategie, plan)
             if plan.get("statut") != "TRADE":
               continue
+            if "ATTENDRE" in signal:
+              continue
             if score<pref.get("threshold",75): continue
             aut=False
             if "ACHAT FORT" in signal and pref.get("buy_strong",True): aut=True
