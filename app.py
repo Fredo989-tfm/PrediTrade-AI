@@ -3924,13 +3924,13 @@ elif menu=="🔔 Alertes":
                     st.write(
                         f"**Signal :** {alerte['Signal']}"
                     )
-                   st.write(
-                       f"📊 **État de l'alerte :** {alerte.get('État', '🆕 NOUVELLE')}"
-                   )
-                   if alerte.get("État") in ("📈 RENFORCÉE", "📉 AFFAIBLIE"):
-                     st.caption(
+                    st.write(
+                        f"📊 **État de l'alerte :** {alerte.get('État', '🆕 NOUVELLE')}"
+                    )
+                    if alerte.get("État") in ("📈 RENFORCÉE", "📉 AFFAIBLIE"):
+                       st.caption(
                        f"Variation du PrediScore : {alerte.get('Variation', 0):+.0f} points"
-                     )
+                    )
 
                     st.write(
                         f"**Tendance :** {alerte['Tendance']}  |  "
