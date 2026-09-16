@@ -2490,7 +2490,14 @@ def scanner_notifications_complet():
     initialiser_notifications(); pref=st.session_state.notification_preferences
     if not pref.get("enabled",True): return []
     al=[]
+    alertes_existantes = st.session_state.get("notifications", [])
+    def trouver_alerte_existante(actif):
+    for alerte in alertes_existantes:
+        if alerte.get("actif") == actif:
+            return alerte
+    return None
     for nom in pref.get("assets",[]):
+        ancienne_alerte = trouver_alerte_existante(nom)
         cat=None; sym=None
         for c,a in ASSETS.items():
             if nom in a: cat=c; sym=a[nom]; break
@@ -2499,7 +2506,18 @@ def scanner_notifications_complet():
             df=charger_donnees(sym,cat)
             if df.empty: continue
             ind=indicateurs(df); score,signal,conf=prediscore(ind)
+            variation_score = 0
+            if ancienne_alerte:
+              variation_score = score - ancienne_alerte.get("score", score)
             strategie = selectionner_technique(ind, score, signal)
+            etat_alerte = "🆕 NOUVELLE"
+            if ancienne_alerte:
+              if variation_score >= 5:
+           etat_alerte = "📈 RENFORCÉE"
+              elif variation_score <= -5:
+          etat_alerte = "📉 AFFAIBLIE"
+              else:
+         etat_alerte = "🔁 STABLE" 
             plan = generer_plan_trade(ind, strategie)
             approche = selectionner_approche(ind, score, strategie, plan)
             if plan.get("statut") != "TRADE":
@@ -2515,6 +2533,8 @@ def scanner_notifications_complet():
               al.append({
                 "Actif": nom,
                 "Score": score,
+                "État": etat_alerte,
+                "Variation": variation_score,
                 "Signal": signal,
                 "Confiance": conf,
                 "Technique": strategie.get("nom", "Pas de trade"),
@@ -3904,6 +3924,13 @@ elif menu=="🔔 Alertes":
                     st.write(
                         f"**Signal :** {alerte['Signal']}"
                     )
+                   st.write(
+                       f"📊 **État de l'alerte :** {alerte.get('État', '🆕 NOUVELLE')}"
+                   )
+                   if alerte.get("État") in ("📈 RENFORCÉE", "📉 AFFAIBLIE"):
+                     st.caption(
+                       f"Variation du PrediScore : {alerte.get('Variation', 0):+.0f} points"
+                     )
 
                     st.write(
                         f"**Tendance :** {alerte['Tendance']}  |  "
