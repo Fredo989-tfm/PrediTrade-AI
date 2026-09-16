@@ -2492,7 +2492,7 @@ def scanner_notifications_complet():
     al=[]
     alertes_existantes = st.session_state.get("notifications", [])
     def trouver_alerte_existante(actif):
-    for alerte in alertes_existantes:
+      for alerte in alertes_existantes:
         if alerte.get("actif") == actif:
             return alerte
     return None
