@@ -6,14 +6,453 @@ APP_VERSION="5.0.0"
 import sqlite3
 # --- PWA PrediTrade IA - Activation Installation ---
 st.markdown("""
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icon-512.png">
-<meta name="theme-color" content="#00E5FF">
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+<style>
+
+/* =========================================================
+   PREDITRADE AI — TRADING TERMINAL UI
+   ========================================================= */
+
+/* ---------- GLOBAL ---------- */
+
+.stApp {
+    background:
+        radial-gradient(circle at 15% 10%, rgba(0, 210, 160, 0.07), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(40, 120, 255, 0.06), transparent 30%),
+        #080d12 !important;
+    color: #e8eef5 !important;
 }
-</script>
+
+html, body, [class*="css"] {
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.main {
+    background: transparent !important;
+}
+
+/* ---------- MAIN CONTENT ---------- */
+
+.block-container {
+    max-width: 1500px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+/* ---------- SIDEBAR ---------- */
+
+section[data-testid="stSidebar"] {
+    background:
+        linear-gradient(
+            180deg,
+            #0b1118 0%,
+            #080d13 55%,
+            #070b10 100%
+        ) !important;
+
+    border-right: 1px solid rgba(255,255,255,0.07) !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    background: transparent !important;
+}
+
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.2rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* Sidebar text */
+
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span {
+    color: #b9c5d1 !important;
+}
+
+/* Sidebar radio */
+
+section[data-testid="stSidebar"] div[role="radiogroup"] {
+    gap: 5px !important;
+}
+
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: rgba(255,255,255,0.025) !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    padding: 9px 10px !important;
+    margin: 2px 0 !important;
+    transition: all 0.18s ease !important;
+}
+
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(0, 210, 160, 0.08) !important;
+    border-color: rgba(0, 210, 160, 0.18) !important;
+}
+
+/* Selected navigation item */
+
+section[data-testid="stSidebar"]
+div[role="radiogroup"]
+label:has(input:checked) {
+    background:
+        linear-gradient(
+            90deg,
+            rgba(0, 210, 160, 0.16),
+            rgba(0, 210, 160, 0.05)
+        ) !important;
+
+    border: 1px solid rgba(0, 210, 160, 0.30) !important;
+    box-shadow:
+        inset 3px 0 0 #00d2a0,
+        0 4px 14px rgba(0,0,0,0.18) !important;
+}
+
+section[data-testid="stSidebar"]
+div[role="radiogroup"]
+label:has(input:checked) span {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+/* ---------- HEADINGS ---------- */
+
+h1 {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.8px !important;
+}
+
+h2 {
+    color: #f5f8fb !important;
+    font-weight: 750 !important;
+    letter-spacing: -0.4px !important;
+}
+
+h3 {
+    color: #dce5ed !important;
+    font-weight: 700 !important;
+}
+
+/* ---------- TEXT ---------- */
+
+p, li {
+    color: #b8c4cf;
+}
+
+small {
+    color: #82909e !important;
+}
+
+/* ---------- CARDS / CONTAINERS ---------- */
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(18, 27, 36, 0.96),
+            rgba(10, 16, 23, 0.96)
+        ) !important;
+
+    border: 1px solid rgba(255,255,255,0.065) !important;
+    border-radius: 16px !important;
+
+    box-shadow:
+        0 12px 35px rgba(0,0,0,0.22),
+        inset 0 1px 0 rgba(255,255,255,0.025) !important;
+}
+
+/* ---------- METRICS ---------- */
+
+div[data-testid="stMetric"] {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(19,29,39,0.98),
+            rgba(11,18,25,0.98)
+        ) !important;
+
+    border: 1px solid rgba(255,255,255,0.065) !important;
+    border-radius: 14px !important;
+
+    padding: 16px 18px !important;
+
+    box-shadow:
+        0 8px 24px rgba(0,0,0,0.18) !important;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #8e9ba8 !important;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.6px !important;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+div[data-testid="stMetricDelta"] {
+    font-weight: 700 !important;
+}
+
+/* ---------- BUTTONS ---------- */
+
+.stButton > button {
+    background:
+        linear-gradient(
+            135deg,
+            #00d2a0,
+            #00b889
+        ) !important;
+
+    color: #06110e !important;
+
+    border: none !important;
+    border-radius: 10px !important;
+
+    min-height: 42px !important;
+
+    font-weight: 750 !important;
+
+    box-shadow:
+        0 6px 18px rgba(0, 210, 160, 0.15) !important;
+
+    transition: all 0.18s ease !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+
+    box-shadow:
+        0 9px 24px rgba(0, 210, 160, 0.24) !important;
+}
+
+/* ---------- INPUTS ---------- */
+
+.stTextInput input,
+.stNumberInput input,
+.stSelectbox div[data-baseweb="select"],
+.stMultiSelect div[data-baseweb="select"] {
+    background: #0e151d !important;
+    color: #edf3f8 !important;
+
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    border-radius: 10px !important;
+}
+
+.stTextInput input:focus,
+.stNumberInput input:focus {
+    border-color: #00d2a0 !important;
+    box-shadow: 0 0 0 1px rgba(0,210,160,0.25) !important;
+}
+
+/* ---------- SELECTBOX ---------- */
+
+div[data-baseweb="select"] {
+    background: #0e151d !important;
+}
+
+div[data-baseweb="select"] * {
+    color: #e8eef5 !important;
+}
+
+/* ---------- SLIDERS ---------- */
+
+div[data-testid="stSlider"] div[role="slider"] {
+    background-color: #00d2a0 !important;
+}
+
+/* ---------- DATAFRAMES ---------- */
+
+div[data-testid="stDataFrame"] {
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+/* ---------- ALERTS ---------- */
+
+div[data-testid="stAlert"] {
+    background: rgba(15,23,31,0.95) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+}
+
+/* ---------- INFO ---------- */
+
+div[data-testid="stAlert"][kind="info"] {
+    border-left: 4px solid #3b82f6 !important;
+}
+
+/* ---------- SUCCESS ---------- */
+
+div[data-testid="stAlert"][kind="success"] {
+    border-left: 4px solid #00d2a0 !important;
+}
+
+/* ---------- WARNING ---------- */
+
+div[data-testid="stAlert"][kind="warning"] {
+    border-left: 4px solid #f59e0b !important;
+}
+
+/* ---------- ERROR ---------- */
+
+div[data-testid="stAlert"][kind="error"] {
+    border-left: 4px solid #ef4444 !important;
+}
+
+/* ---------- EXPANDERS ---------- */
+
+details {
+    background: rgba(14,21,29,0.92) !important;
+    border: 1px solid rgba(255,255,255,0.065) !important;
+    border-radius: 12px !important;
+}
+
+details summary {
+    color: #e8eef5 !important;
+    font-weight: 650 !important;
+}
+
+/* ---------- TABS ---------- */
+
+button[data-baseweb="tab"] {
+    color: #8f9daa !important;
+    font-weight: 650 !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #00d2a0 !important;
+}
+
+/* ---------- DIVIDERS ---------- */
+
+hr {
+    border-color: rgba(255,255,255,0.07) !important;
+}
+
+/* ---------- CODE / TECHNICAL ---------- */
+
+code {
+    background: #0a1118 !important;
+    color: #7ee7c5 !important;
+    border-radius: 5px !important;
+}
+
+/* ---------- TRADING COLORS ---------- */
+
+.trade-buy,
+.buy,
+.signal-buy {
+    color: #00d2a0 !important;
+}
+
+.trade-sell,
+.sell,
+.signal-sell {
+    color: #ff5c68 !important;
+}
+
+.trade-warning,
+.warning {
+    color: #f5a623 !important;
+}
+
+/* ---------- MOBILE ---------- */
+
+@media (max-width: 768px) {
+
+    .block-container {
+        padding-top: 1rem !important;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+    }
+
+    h1 {
+        font-size: 1.65rem !important;
+    }
+
+    h2 {
+        font-size: 1.35rem !important;
+    }
+
+    h3 {
+        font-size: 1.1rem !important;
+    }
+
+    div[data-testid="stMetric"] {
+        padding: 12px !important;
+    }
+
+    .stButton > button {
+        min-height: 44px !important;
+    }
+}
+
+/* ---------- SCROLLBAR ---------- */
+
+::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+
+::-webkit-scrollbar-track {
+    background: #080d12;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #263440;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00a982;
+}
+
+/* ---------- HIDE STREAMLIT BRANDING ---------- */
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
+}
+
+header[data-testid="stHeader"] {
+    background: rgba(8,13,18,0.92) !important;
+}
+
+/* ---------- TRADING TERMINAL EFFECT ---------- */
+
+.main .block-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+
+    background-image:
+        linear-gradient(
+            rgba(255,255,255,0.012) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(255,255,255,0.012) 1px,
+            transparent 1px
+        );
+
+    background-size: 40px 40px;
+    z-index: -1;
+}
+
+</style>
 """, unsafe_allow_html=True)
 DB_FILE = "users.db"
 
@@ -2637,7 +3076,7 @@ def niveau_urgence_alerte(score, confiance, qualite):
         return "🟠 IMPORTANTE"
 
     return "🟢 SURVEILLANCE"
-menu=st.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
+menu=st.sidebar.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
 
 if menu=="📊 Tableau de bord":
     st.title("📊 Tableau de bord"); st.image("IMG-20260810-WA1501.jpg",width=100)
