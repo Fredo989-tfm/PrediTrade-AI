@@ -63,6 +63,143 @@ section[data-testid="stSidebar"] .block-container {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
 }
+/* ---------- PREDITRADE SIDEBAR BRAND ---------- */
+
+.pt-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px 14px 4px;
+}
+
+.pt-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg, #00d2a0, #087f68);
+
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 900;
+
+    box-shadow:
+        0 8px 22px rgba(0, 210, 160, 0.22);
+}
+
+.pt-brand-name {
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.pt-brand-sub {
+    color: #71808e;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    margin-top: 4px;
+}
+
+.pt-user-card {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+
+    background: rgba(255,255,255,0.025);
+
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+}
+
+.pt-user-name {
+    color: #dce5ed;
+    font-size: 12px;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pt-user-status {
+    color: #00d2a0;
+    font-size: 10px;
+    font-weight: 800;
+
+    margin-top: 5px;
+    letter-spacing: 0.8px;
+}
+
+.pt-wallet-card {
+    padding: 12px;
+    margin-bottom: 14px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,210,160,0.10),
+            rgba(0,210,160,0.025)
+        );
+
+    border: 1px solid rgba(0,210,160,0.14);
+    border-radius: 10px;
+}
+
+.pt-wallet-label {
+    color: #71808e;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.pt-wallet-value {
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 800;
+    margin-top: 4px;
+}
+
+.pt-section-title {
+    color: #566574;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    margin: 8px 4px 5px 4px;
+}
+
+.pt-market-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    color: #8b99a6;
+    font-size: 10px;
+    font-weight: 600;
+
+    padding: 5px 4px;
+}
+
+.pt-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+
+    background: #00d2a0;
+
+    box-shadow:
+        0 0 8px rgba(0,210,160,0.8);
+}
+
+.pt-version {
+    color: #414e5a;
+    font-size: 9px;
+    padding: 4px;
+}
 
 /* Sidebar text */
 
@@ -3076,8 +3213,226 @@ def niveau_urgence_alerte(score, confiance, qualite):
         return "🟠 IMPORTANTE"
 
     return "🟢 SURVEILLANCE"
-menu=st.sidebar.radio("Navigation",["📊 Tableau de bord","🧠 Analyse IA Pro","🔍 Scanner intelligent","⚖️ Comparaison","💼 Portefeuille","🛡️ Gestion du risque","📊 Backtest","📚 Historique","🤖 Assistant IA","📄 Rapports","🔔 Alertes","🔔 Notifications","🔔 Alertes Pro","⚙️ Paiement","🔗 Connexions aux plateformes"],key="main_menu_v512")
+# =========================================================
+# SIDEBAR — PREDITRADE AI
+# =========================================================
+st.sidebar.markdown(
+    '<div class="pt-section-title">TRADING</div>',
+    unsafe_allow_html=True
+)
+st.sidebar.markdown(
+    """
+    <div class="pt-sidebar-brand">
+        <div class="pt-logo">T</div>
+        <div>
+            <div class="pt-brand-name">PrediTrade AI</div>
+            <div class="pt-brand-sub">AI TRADING ASSISTANT</div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
+st.sidebar.markdown("---")
+
+# Profil
+statut_compte = "PREMIUM" if st.session_state.get("is_premium", False) else "FREE"
+
+st.sidebar.markdown(
+    f"""
+    <div class="pt-user-card">
+        <div class="pt-user-name">
+            👋 {st.session_state.get("user_email", "Trader")}
+        </div>
+        <div class="pt-user-status">
+            ● {statut_compte}
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Portefeuille rapide
+st.sidebar.markdown(
+    f"""
+    <div class="pt-wallet-card">
+        <div class="pt-wallet-label">CASH DISPONIBLE</div>
+        <div class="pt-wallet-value">
+            ${st.session_state.get("cash", 10000.0):,.2f}
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.markdown(
+    '<div class="pt-section-title">APERÇU</div>',
+    unsafe_allow_html=True
+)
+
+menu = st.sidebar.radio(
+    "Navigation",
+    [
+        "📊 Tableau de bord",
+        "🧠 Analyse IA Pro",
+        "🔍 Scanner intelligent",
+        "⚖️ Comparaison",
+        "💼 Portefeuille",
+        "🛡️ Gestion du risque",
+        "📊 Backtest",
+        "📚 Historique",
+        "🤖 Assistant IA",
+        "📄 Rapports",
+        "🔔 Alertes",
+        "🔔 Notifications",
+        "🔔 Alertes Pro",
+        "⚙️ Paiement",
+        "🔗 Connexions aux plateformes"
+    ],
+    key="main_menu_v512"
+   label_visibility="collapsed"
+)
+
+st.sidebar.markdown("---")
+
+st.sidebar.markdown(
+    """
+    <div class="pt-market-status">
+        <span class="pt-status-dot"></span>
+        <span>Marchés connectés</span>
+    </div>
+    <div class="pt-version">
+        PrediTrade AI V5.0.0
+    </div>
+    """,
+    unsafe_allow_html=True
+   )
+st.markdown("""
+<style>
+
+/* =========================================================
+   PREDITRADE AI — FOND TRADING
+   ========================================================= */
+
+.stApp {
+    background:
+        radial-gradient(
+            circle at 15% 10%,
+            rgba(0, 210, 160, 0.06),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(40, 120, 255, 0.05),
+            transparent 30%
+        ),
+        #080d12 !important;
+}
+
+.main {
+    background: transparent !important;
+}
+
+.block-container {
+    max-width: 1500px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+/* =========================================================
+   CARTES INDICATEURS
+   ========================================================= */
+
+div[data-testid="stMetric"] {
+    background: rgba(255, 255, 255, 0.025) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #7f8c99 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+}
+
+div[data-testid="stMetricValue"] {
+    color: #ffffff !important;
+    font-size: 24px !important;
+    font-weight: 800 !important;
+}
+/* =========================================================
+   BOUTONS PREDITRADE
+   ========================================================= */
+
+.stButton > button {
+    border-radius: 10px !important;
+    border: 1px solid rgba(0, 210, 160, 0.25) !important;
+    background: rgba(0, 210, 160, 0.08) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease !important;
+}
+
+.stButton > button:hover {
+    background: rgba(0, 210, 160, 0.16) !important;
+    border-color: rgba(0, 210, 160, 0.50) !important;
+    transform: translateY(-1px);
+}
+/* =========================================================
+   SELECTBOX PREDITRADE
+   ========================================================= */
+
+div[data-baseweb="select"] > div {
+    background: rgba(255, 255, 255, 0.025) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    color: #ffffff !important;
+}
+
+div[data-baseweb="select"] span {
+    color: #e8eef5 !important;
+}
+/* =========================================================
+   CHAMPS NUMÉRIQUES
+   ========================================================= */
+
+div[data-testid="stNumberInput"] input {
+    background: rgba(255, 255, 255, 0.025) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+}
+
+div[data-testid="stNumberInput"] button {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #9aa7b4 !important;
+}
+/* =========================================================
+   CARTES PREDITRADE
+   ========================================================= */
+
+div[data-testid="stContainer"] {
+    border-radius: 12px;
+}
+/* =========================================================
+   TITRES PREDITRADE
+   ========================================================= */
+
+h1, h2, h3 {
+    color: #f5f8fb !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.3px;
+}
+
+p {
+    color: #aeb9c5;
+}
+
+</style>
+""", unsafe_allow_html=True)
 if menu=="📊 Tableau de bord":
     st.title("📊 Tableau de bord"); st.image("IMG-20260810-WA1501.jpg",width=100)
     c1,c2,c3=st.columns(3); c1.metric("Actifs",sum(len(v) for v in ASSETS.values())); c2.metric("Version",APP_VERSION); c3.metric("Statut","Premium" if st.session_state.is_premium else "Gratuit")
