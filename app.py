@@ -3289,7 +3289,7 @@ menu = st.sidebar.radio(
         "⚙️ Paiement",
         "🔗 Connexions aux plateformes"
     ],
-   key="main_menu_v512"
+   key="main_menu_v512", 
    label_visibility="collapsed"
 )
 
