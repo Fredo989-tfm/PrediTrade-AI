@@ -3374,9 +3374,6 @@ st.markdown("""
         min-height: 42px !important;
     }
 }
-
-</style>
-""", unsafe_allow_html=True)
 /* =========================================================
    PREDITRADE AI — FOND TRADING
    ========================================================= */
