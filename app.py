@@ -3308,6 +3308,8 @@ st.sidebar.markdown(
     unsafe_allow_html=True
    )
 st.markdown("""
+<style>
+
 /* =========================================================
    OPTIMISATION MOBILE
    ========================================================= */
@@ -3319,31 +3321,33 @@ st.markdown("""
         padding-right: 0.8rem !important;
         padding-top: 1rem !important;
     }
+
     /* SIDEBAR MOBILE */
-section[data-testid="stSidebar"] {
-    min-width: 250px !important;
-    max-width: 250px !important;
-}
 
-section[data-testid="stSidebar"] .block-container {
-    padding-left: 0.7rem !important;
-    padding-right: 0.7rem !important;
-    padding-top: 0.8rem !important;
-}
+    section[data-testid="stSidebar"] {
+        min-width: 250px !important;
+        max-width: 250px !important;
+    }
 
-.pt-sidebar-brand {
-    gap: 9px !important;
-}
+    section[data-testid="stSidebar"] .block-container {
+        padding-left: 0.7rem !important;
+        padding-right: 0.7rem !important;
+        padding-top: 0.8rem !important;
+    }
 
-.pt-logo {
-    width: 36px !important;
-    height: 36px !important;
-    font-size: 20px !important;
-}
+    .pt-sidebar-brand {
+        gap: 9px !important;
+    }
 
-.pt-brand-name {
-    font-size: 15px !important;
-}
+    .pt-logo {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 20px !important;
+    }
+
+    .pt-brand-name {
+        font-size: 15px !important;
+    }
 
     div[data-testid="stMetric"] {
         padding: 11px !important;
@@ -3370,8 +3374,9 @@ section[data-testid="stSidebar"] .block-container {
         min-height: 42px !important;
     }
 }
-<style>
 
+</style>
+""", unsafe_allow_html=True)
 /* =========================================================
    PREDITRADE AI — FOND TRADING
    ========================================================= */
