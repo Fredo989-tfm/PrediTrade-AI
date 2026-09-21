@@ -3323,12 +3323,6 @@ st.markdown("""
     }
 
     /* SIDEBAR MOBILE */
-
-    section[data-testid="stSidebar"] {
-        min-width: 250px !important;
-        max-width: 250px !important;
-    }
-
     section[data-testid="stSidebar"] .block-container {
         padding-left: 0.7rem !important;
         padding-right: 0.7rem !important;
