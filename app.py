@@ -4856,25 +4856,331 @@ elif menu=="🔔 Alertes":
                     "🔎 Aucune opportunité ne respecte actuellement "
                     "les critères sélectionnés."
           )
-elif menu=="🔔 Notifications":
-    st.title("🔔 Notifications"); initialiser_notifications(); pref=st.session_state.notification_preferences
-    pref["enabled"]=st.toggle("Activer",value=pref.get("enabled",True)); pref["threshold"]=st.slider("Seuil",50,95,pref.get("threshold",75))
-    dispo=[]
-    for c,a in ASSETS.items(): dispo.extend(list(a.keys()))
-    pref["assets"]=st.multiselect("Actifs surveillés",dispo,default=[x for x in pref.get("assets",[]) if x in dispo])
-    st.session_state.notification_preferences=pref
-    if st.button("Vérifier maintenant"):
-        al=scanner_notifications_complet()
-        if al: st.success(f"{len(al)} alertes")
-        else: st.info("Aucune")
-    for n in reversed(st.session_state.notifications): st.write(f"{n['actif']} - {n['score']} - {n['signal']} - {n['date']}")
-    st.write(f"🧠 **Technique :** {n.get('technique', 'Non définie')}")
-    st.write(f"🏅 **Qualité :** {n.get('qualite', 0)}/100")
-    st.write(f"🎯 **Approche :** {n.get('approche', 'ATTENDRE')}")
-    st.write(f"⚡ **Levier :** {n.get('levier', '0x')}")
-    st.info(f"💡 **Pourquoi ?** {n.get('raison', '')}")
-    st.write(f"📊 **Niveau :** {n.get('niveau', '')}")
-  
+elif menu == "🔔 Notifications":
+
+    # =========================================================
+    # 🔔 CENTRE DE NOTIFICATIONS — PREDITRADE AI
+    # =========================================================
+
+    initialiser_notifications()
+
+    notifications = st.session_state.get("notifications", [])
+    pref = st.session_state.notification_preferences
+
+    st.title("🔔 Centre de notifications")
+    st.caption("Surveillance intelligente des opportunités détectées par PrediTrade AI.")
+
+    # =========================================================
+    # CONFIGURATION
+    # =========================================================
+
+    with st.expander("⚙️ Configuration de la surveillance", expanded=False):
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            pref["enabled"] = st.toggle(
+                "Activer la surveillance",
+                value=pref.get("enabled", True)
+            )
+
+            pref["threshold"] = st.slider(
+                "🎯 Seuil PrediScore",
+                50,
+                95,
+                pref.get("threshold", 75)
+            )
+
+        with col2:
+            pref["min_confidence"] = st.selectbox(
+                "🧠 Confiance minimale",
+                ["Faible", "Moyenne", "Élevée", "Très élevée"],
+                index=[
+                    "Faible",
+                    "Moyenne",
+                    "Élevée",
+                    "Très élevée"
+                ].index(
+                    pref.get("min_confidence", "Moyenne")
+                )
+            )
+
+            pref["min_quality"] = st.slider(
+                "🏅 Qualité minimale du setup",
+                0,
+                100,
+                pref.get("min_quality", 60)
+            )
+
+        dispo = []
+
+        for categorie, actifs in ASSETS.items():
+            dispo.extend(list(actifs.keys()))
+
+        pref["assets"] = st.multiselect(
+            "📡 Actifs surveillés",
+            dispo,
+            default=[
+                x for x in pref.get("assets", [])
+                if x in dispo
+            ]
+        )
+
+        st.session_state.notification_preferences = pref
+
+    # =========================================================
+    # ANALYSE
+    # =========================================================
+
+    col1, col2, col3 = st.columns(3)
+
+    urgentes = [
+        n for n in notifications
+        if n.get("niveau") == "🔴 URGENTE"
+    ]
+
+    importantes = [
+        n for n in notifications
+        if n.get("niveau") == "🟠 IMPORTANTE"
+    ]
+
+    renforcees = [
+        n for n in notifications
+        if n.get("etat") == "📈 RENFORCÉE"
+    ]
+
+    with col1:
+        st.metric(
+            "🔔 Alertes",
+            len(notifications)
+        )
+
+    with col2:
+        st.metric(
+            "🚨 Urgentes",
+            len(urgentes)
+        )
+
+    with col3:
+        st.metric(
+            "📈 Renforcées",
+            len(renforcees)
+        )
+
+    # =========================================================
+    # VERIFICATION
+    # =========================================================
+
+    st.markdown("### 🔎 Surveillance")
+
+    if st.button(
+        "🚀 Vérifier les marchés maintenant",
+        use_container_width=True
+    ):
+
+        with st.spinner("Analyse des marchés en cours..."):
+
+            nouvelles_alertes = scanner_notifications_complet()
+
+        if nouvelles_alertes:
+
+            st.success(
+                f"✅ {len(nouvelles_alertes)} alerte(s) détectée(s)"
+            )
+
+            st.rerun()
+
+        else:
+
+            st.info(
+                "Aucune nouvelle alerte correspondant à vos critères."
+            )
+
+    # =========================================================
+    # FILTRES
+    # =========================================================
+
+    st.markdown("### 🔍 Filtrer les alertes")
+
+    filtre_col1, filtre_col2 = st.columns(2)
+
+    with filtre_col1:
+
+        filtre_etat = st.selectbox(
+            "État",
+            [
+                "Toutes",
+                "🆕 NOUVELLE",
+                "📈 RENFORCÉE",
+                "🔁 STABLE",
+                "📉 AFFAIBLIE"
+            ]
+        )
+
+    with filtre_col2:
+
+        filtre_niveau = st.selectbox(
+            "Priorité",
+            [
+                "Toutes",
+                "🔴 URGENTE",
+                "🟠 IMPORTANTE",
+                "🟢 SURVEILLANCE"
+            ]
+        )
+
+    # =========================================================
+    # APPLICATION DES FILTRES
+    # =========================================================
+
+    alertes_affichees = notifications
+
+    if filtre_etat != "Toutes":
+
+        alertes_affichees = [
+            n for n in alertes_affichees
+            if n.get("etat", "🆕 NOUVELLE") == filtre_etat
+        ]
+
+    if filtre_niveau != "Toutes":
+
+        alertes_affichees = [
+            n for n in alertes_affichees
+            if n.get("niveau", "") == filtre_niveau
+        ]
+
+    # =========================================================
+    # LISTE DES ALERTES
+    # =========================================================
+
+    st.markdown("### 🚨 Alertes détectées")
+
+    if not alertes_affichees:
+
+        st.info(
+            "Aucune alerte à afficher avec les filtres actuels."
+        )
+
+    else:
+
+        for n in reversed(alertes_affichees):
+
+            actif = n.get("actif", "Actif inconnu")
+            score = n.get("score", 0)
+            signal = n.get("signal", "—")
+            confiance = n.get("confiance", "—")
+            technique = n.get("technique", "Non définie")
+            qualite = n.get("qualite", 0)
+            approche = n.get("approche", "ATTENDRE")
+            levier = n.get("levier", "0x")
+            raison = n.get("raison", "")
+            niveau = n.get("niveau", "🟢 SURVEILLANCE")
+            etat = n.get("etat", "🆕 NOUVELLE")
+            variation = n.get("variation", 0)
+            date = n.get("date", "")
+
+            with st.container(border=True):
+
+                titre_col, score_col = st.columns([3, 1])
+
+                with titre_col:
+
+                    st.subheader(actif)
+
+                    st.write(
+                        f"**{signal}** · {confiance}"
+                    )
+
+                    st.caption(date)
+
+                with score_col:
+
+                    st.metric(
+                        "PrediScore",
+                        score,
+                        f"{variation:+.0f}" if variation else None
+                    )
+
+                info1, info2, info3 = st.columns(3)
+
+                with info1:
+                    st.write(
+                        f"🚨 **Priorité :** {niveau}"
+                    )
+
+                with info2:
+                    st.write(
+                        f"📊 **État :** {etat}"
+                    )
+
+                with info3:
+                    st.write(
+                        f"🏅 **Qualité :** {qualite}/100"
+                    )
+
+                st.divider()
+
+                detail1, detail2 = st.columns(2)
+
+                with detail1:
+
+                    st.write(
+                        f"🧠 **Technique :** {technique}"
+                    )
+
+                    st.write(
+                        f"🎯 **Approche :** {approche}"
+                    )
+
+                with detail2:
+
+                    st.write(
+                        f"⚡ **Levier :** {levier}"
+                    )
+
+                    if variation:
+                        st.write(
+                            f"📈 **Variation :** "
+                            f"{variation:+.0f} points"
+                        )
+
+                if raison:
+
+                    st.info(
+                        f"💡 **Analyse PrediTrade :** {raison}"
+                    )
+
+    # =========================================================
+    # HISTORIQUE
+    # =========================================================
+
+    with st.expander("📚 Historique des notifications"):
+
+        if notifications:
+
+            st.dataframe(
+                [
+                    {
+                        "Date": n.get("date", ""),
+                        "Actif": n.get("actif", ""),
+                        "Score": n.get("score", 0),
+                        "Signal": n.get("signal", ""),
+                        "Confiance": n.get("confiance", ""),
+                        "État": n.get("etat", "🆕 NOUVELLE"),
+                        "Variation": n.get("variation", 0),
+                        "Priorité": n.get("niveau", ""),
+                    }
+                    for n in reversed(notifications)
+                ],
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.caption(
+                "Aucun historique de notification."
+)
 elif menu=="⚙️ Paiement":
     st.title("⚙️ Paiement Premium"); montant="25"; numero=st.text_input("Numéro CamPay",placeholder="2376XXXXXXXX")
     if st.button(f"Payer {montant} XAF",type="primary",use_container_width=True):
