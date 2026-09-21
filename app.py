@@ -3198,11 +3198,11 @@ def scanner_notifications_complet():
                 strategie,
                 plan
             )
-           niveau_urgence = niveau_urgence_alerte(
-           score,
-           conf,
-           qualite
-           )
+            niveau_urgence = niveau_urgence_alerte(
+            score,
+            conf,
+            qualite
+            )
 
             # ==========================================
             # AUTORISATION DE L'ALERTE
