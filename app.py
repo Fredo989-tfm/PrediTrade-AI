@@ -720,34 +720,111 @@ def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
     if "notification_preferences" not in st.session_state: st.session_state.notification_preferences={"enabled":True,"threshold":75,"assets":["Bitcoin (BTC)","Ethereum (ETH)","NVIDIA (NVDA)"],"buy_strong":True,"buy":True,"sell":False}
 
-def ajouter_notification(actif,score,signal,confiance,technique="",qualite=0,approche="",levier="0x",raison="",niveau=""):
+def ajouter_notification(
+    actif,
+    score,
+    signal,
+    confiance,
+    technique="",
+    qualite=0,
+    approche="",
+    levier="0x",
+    raison="",
+    niveau=""
+):
     initialiser_notifications()
-    n={
-        "id":hashlib.md5(f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M')}".encode()).hexdigest(),
-        "actif":actif,
-        "score":score,
-        "signal":signal,
-        "confiance":confiance,
-        "technique":technique,
-        "qualite":qualite,
-        "approche":approche,
-        "levier":levier,
-        "raison":raison,
-        "niveau":niveau,
-        "date":datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "lu":False
-    }
 
-    for a in st.session_state.notifications[-10:]:
-        if a["actif"]==actif and a["signal"]==signal and a["score"]==score:
+    notifications = st.session_state.notifications
+
+    # =====================================================
+    # ANTI-SPAM INTELLIGENT
+    # =====================================================
+
+    for ancienne in reversed(notifications):
+
+        if ancienne.get("actif") != actif:
+            continue
+
+        ancien_score = ancienne.get("score", score)
+        ancien_signal = ancienne.get("signal", signal)
+
+        variation = score - ancien_score
+
+        # Même signal + petite variation :
+        # on ne crée PAS une nouvelle notification.
+        if (
+            ancien_signal == signal
+            and abs(variation) < 5
+        ):
             return False
 
-    st.session_state.notifications.append(n)
+        break
 
-    if len(st.session_state.notifications)>50:
-        st.session_state.notifications=st.session_state.notifications[-50:]
+    # =====================================================
+    # ÉTAT DE L'ALERTE
+    # =====================================================
 
-    return True
+    etat = "🆕 NOUVELLE"
+
+    if notifications:
+
+        for ancienne in reversed(notifications):
+
+            if ancienne.get("actif") != actif:
+                continue
+
+            ancien_score = ancienne.get("score", score)
+            variation = score - ancien_score
+
+            if variation >= 5:
+                etat = "📈 RENFORCÉE"
+
+            elif variation <= -5:
+                etat = "📉 AFFAIBLIE"
+
+            else:
+                etat = "🔁 STABLE"
+
+            break
+
+    # =====================================================
+    # NOUVELLE NOTIFICATION
+    # =====================================================
+
+    n = {
+        "id": hashlib.md5(
+            f"{actif}-{score}-{signal}-{datetime.now().strftime('%Y%m%d%H%M%S')}".encode()
+        ).hexdigest(),
+
+        "actif": actif,
+        "score": score,
+        "signal": signal,
+        "confiance": confiance,
+
+        "technique": technique,
+        "qualite": qualite,
+
+        "approche": approche,
+        "levier": levier,
+
+        "raison": raison,
+        "niveau": niveau,
+
+        "etat": etat,
+        "variation": variation if 'variation' in locals() else 0,
+
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+
+        "lu": False
+    }
+
+    notifications.append(n)
+
+    # Maximum 50 notifications
+    if len(notifications) > 50:
+        st.session_state.notifications = notifications[-50:]
+
+    return n
 @st.cache_data(ttl=300, show_spinner=False)
 def charger_donnees(symbol, asset_type):
   try:
