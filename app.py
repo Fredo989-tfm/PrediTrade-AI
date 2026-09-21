@@ -3063,64 +3063,221 @@ try:
     else: campay=None; CAMPAY_OK=False
 except: campay=None; CAMPAY_OK=False; CAMPAY_ENV="DEV"
 def scanner_notifications_complet():
-    initialiser_notifications(); pref=st.session_state.notification_preferences
-    if not pref.get("enabled",True): return []
-    al=[]
+    initialiser_notifications()
+    pref = st.session_state.notification_preferences
+
+    if not pref.get("enabled", True):
+        return []
+
+    al = []
     alertes_existantes = st.session_state.get("notifications", [])
+
     def trouver_alerte_existante(actif):
-      for alerte in alertes_existantes:
-        if alerte.get("actif") == actif:
-            return alerte
-    return None
-    for nom in pref.get("assets",[]):
+        for alerte in alertes_existantes:
+            if alerte.get("actif") == actif:
+                return alerte
+        return None
+
+    ordre_confiance = [
+        "Faible",
+        "Moyenne",
+        "Élevée",
+        "Très élevée"
+    ]
+
+    confiance_min = pref.get("min_confidence", "Moyenne")
+    qualite_min = pref.get("min_quality", 60)
+    seuil_score = pref.get("threshold", 75)
+
+    for nom in pref.get("assets", []):
+
         ancienne_alerte = trouver_alerte_existante(nom)
-        cat=None; sym=None
-        for c,a in ASSETS.items():
-            if nom in a: cat=c; sym=a[nom]; break
-        if not sym: continue
+
+        cat = None
+        sym = None
+
+        for c, a in ASSETS.items():
+            if nom in a:
+                cat = c
+                sym = a[nom]
+                break
+
+        if not sym:
+            continue
+
         try:
-            df=charger_donnees(sym,cat)
-            if df.empty: continue
-            ind=indicateurs(df); score,signal,conf=prediscore(ind)
+            df = charger_donnees(sym, cat)
+
+            if df.empty:
+                continue
+
+            ind = indicateurs(df)
+            score, signal, conf = prediscore(ind)
+
+            # ==========================================
+            # FILTRE CONFIANCE
+            # ==========================================
+
+            if conf in ordre_confiance:
+                if ordre_confiance.index(conf) < ordre_confiance.index(confiance_min):
+                    continue
+
+            # ==========================================
+            # FILTRE PREDISCORE
+            # ==========================================
+
+            if score < seuil_score:
+                continue
+
+            # ==========================================
+            # TECHNIQUE
+            # ==========================================
+
+            strategie = selectionner_technique(
+                ind,
+                score,
+                signal
+            )
+
+            qualite = strategie.get("qualite", 0)
+
+            # ==========================================
+            # FILTRE QUALITÉ
+            # ==========================================
+
+            if qualite < qualite_min:
+                continue
+
+            # ==========================================
+            # ÉVOLUTION DE L'ALERTE
+            # ==========================================
+
             variation_score = 0
+
             if ancienne_alerte:
-              variation_score = score - ancienne_alerte.get("score", score)
-            strategie = selectionner_technique(ind, score, signal)
+                variation_score = score - ancienne_alerte.get(
+                    "score",
+                    score
+                )
+
             etat_alerte = "🆕 NOUVELLE"
+
             if ancienne_alerte:
-              if variation_score >= 5:
-                etat_alerte = "📈 RENFORCÉE"
-              elif variation_score <= -5:
-                etat_alerte = "📉 AFFAIBLIE"
-              else:
-                etat_alerte = "🔁 STABLE" 
-            plan = generer_plan_trade(ind, strategie)
-            approche = selectionner_approche(ind, score, strategie, plan)
+
+                if variation_score >= 5:
+                    etat_alerte = "📈 RENFORCÉE"
+
+                elif variation_score <= -5:
+                    etat_alerte = "📉 AFFAIBLIE"
+
+                else:
+                    etat_alerte = "🔁 STABLE"
+
+            # ==========================================
+            # PLAN DE TRADE
+            # ==========================================
+
+            plan = generer_plan_trade(
+                ind,
+                strategie
+            )
+
             if plan.get("statut") != "TRADE":
-              continue
+                continue
+
             if "ATTENDRE" in signal:
-              continue
-            if score<pref.get("threshold",75): continue
-            aut=False
-            if "ACHAT FORT" in signal and pref.get("buy_strong",True): aut=True
-            elif signal=="🟢 ACHAT" and pref.get("buy",True): aut=True
-            elif "VENTE" in signal and pref.get("sell",False): aut=True
-            if aut and ajouter_notification(nom,score,signal,conf):
-              al.append({
-                "Actif": nom,
-                "Score": score,
-                "État": etat_alerte,
-                "Variation": variation_score,
-                "Signal": signal,
-                "Confiance": conf,
-                "Technique": strategie.get("nom", "Pas de trade"),
-                "Qualité": strategie.get("qualite", 0),
-                "Approche": approche.get("approche", "ATTENDRE"),
-                "Levier": approche.get("levier", "0x"),
-                "Raison": approche.get("raison", ""),
-                "Niveau": approche.get("niveau", "")
-              })
-        except: continue
+                continue
+
+            # ==========================================
+            # APPROCHE
+            # ==========================================
+
+            approche = selectionner_approche(
+                ind,
+                score,
+                strategie,
+                plan
+            )
+
+            # ==========================================
+            # AUTORISATION DE L'ALERTE
+            # ==========================================
+
+            aut = False
+
+            if (
+                "ACHAT FORT" in signal
+                and pref.get("buy_strong", True)
+            ):
+                aut = True
+
+            elif (
+                signal == "🟢 ACHAT"
+                and pref.get("buy", True)
+            ):
+                aut = True
+
+            elif (
+                "VENTE" in signal
+                and pref.get("sell", False)
+            ):
+                aut = True
+
+            if not aut:
+                continue
+
+            # ==========================================
+            # CRÉATION DE LA NOTIFICATION
+            # ==========================================
+
+            notification = ajouter_notification(
+                nom,
+                score,
+                signal,
+                conf,
+                strategie.get("nom", "Pas de trade"),
+                qualite,
+                approche.get("approche", "ATTENDRE"),
+                approche.get("levier", "0x"),
+                approche.get("raison", ""),
+                approche.get("niveau", "")
+            )
+
+            if notification:
+
+                al.append({
+                    "Actif": nom,
+                    "Score": score,
+                    "État": etat_alerte,
+                    "Variation": variation_score,
+                    "Signal": signal,
+                    "Confiance": conf,
+                    "Technique": strategie.get(
+                        "nom",
+                        "Pas de trade"
+                    ),
+                    "Qualité": qualite,
+                    "Approche": approche.get(
+                        "approche",
+                        "ATTENDRE"
+                    ),
+                    "Levier": approche.get(
+                        "levier",
+                        "0x"
+                    ),
+                    "Raison": approche.get(
+                        "raison",
+                        ""
+                    ),
+                    "Niveau": approche.get(
+                        "niveau",
+                        ""
+                    )
+                })
+
+        except Exception:
+            continue
+
     return al
 
 for k, v in [("logged_in", False),("is_premium", False),("user_email", ""),("cash", 10000.0),("history", []),("operations", []),("show_landing", True),("show_login", True),("trial_until", None),("portfolio", {})]:
