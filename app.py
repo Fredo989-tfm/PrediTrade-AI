@@ -3308,6 +3308,68 @@ st.sidebar.markdown(
     unsafe_allow_html=True
    )
 st.markdown("""
+/* =========================================================
+   OPTIMISATION MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    .block-container {
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+        padding-top: 1rem !important;
+    }
+    /* SIDEBAR MOBILE */
+section[data-testid="stSidebar"] {
+    min-width: 250px !important;
+    max-width: 250px !important;
+}
+
+section[data-testid="stSidebar"] .block-container {
+    padding-left: 0.7rem !important;
+    padding-right: 0.7rem !important;
+    padding-top: 0.8rem !important;
+}
+
+.pt-sidebar-brand {
+    gap: 9px !important;
+}
+
+.pt-logo {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 20px !important;
+}
+
+.pt-brand-name {
+    font-size: 15px !important;
+}
+
+    div[data-testid="stMetric"] {
+        padding: 11px !important;
+        border-radius: 10px !important;
+    }
+
+    div[data-testid="stMetricValue"] {
+        font-size: 20px !important;
+    }
+
+    h1 {
+        font-size: 1.7rem !important;
+    }
+
+    h2 {
+        font-size: 1.35rem !important;
+    }
+
+    h3 {
+        font-size: 1.15rem !important;
+    }
+
+    .stButton > button {
+        min-height: 42px !important;
+    }
+}
 <style>
 
 /* =========================================================
