@@ -3198,6 +3198,11 @@ def scanner_notifications_complet():
                 strategie,
                 plan
             )
+           niveau_urgence = niveau_urgence_alerte(
+           score,
+           conf,
+           qualite
+           )
 
             # ==========================================
             # AUTORISATION DE L'ALERTE
@@ -3240,7 +3245,7 @@ def scanner_notifications_complet():
                 approche.get("approche", "ATTENDRE"),
                 approche.get("levier", "0x"),
                 approche.get("raison", ""),
-                approche.get("niveau", "")
+                niveau_urgence
             )
 
             if notification:
@@ -3269,10 +3274,7 @@ def scanner_notifications_complet():
                         "raison",
                         ""
                     ),
-                    "Niveau": approche.get(
-                        "niveau",
-                        ""
-                    )
+                    "Niveau": niveau_urgence
                 })
 
         except Exception:
