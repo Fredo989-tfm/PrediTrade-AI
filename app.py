@@ -4052,21 +4052,803 @@ elif menu=="🧠 Analyse IA Pro":
             "confiance":conf,
             "prix":prix
         })
-elif menu=="🔍 Scanner intelligent":
-    st.title("🔍 Scanner intelligent")
-    if st.button("🚀 Lancer le scan",type="primary",use_container_width=True):
-        results=[]
-        for cat,assets in ASSETS.items():
-            for n,s in list(assets.items())[:3]:
-                try:
-                    df=charger_donnees(s,cat)
-                    if df.empty: continue
-                    ind=indicateurs(df); sc,sig,conf=prediscore(ind)
-                    if sc>=75: results.append({"Actif":n,"Score":sc,"Signal":sig,"Confiance":conf})
-                except: continue
-        if results: st.success(f"🔥 {len(results)} opportunités"); st.dataframe(pd.DataFrame(sorted(results,key=lambda x:x["Score"],reverse=True)),use_container_width=True)
-        else: st.info("Aucune opportunité ≥75")
+elif menu == "🔍 Scanner intelligent":
 
+    import re
+
+    st.title("🔍 Scanner intelligent")
+    st.caption(
+        "Décrivez votre recherche en langage naturel. "
+        "PrediTrade AI analyse les marchés et classe les opportunités."
+    )
+
+    # =========================================================
+    # CONFIGURATION INTERNE DU SCANNER
+    # =========================================================
+
+    ordre_confiance = [
+        "Faible",
+        "Moyenne",
+        "Élevée",
+        "Très élevée"
+    ]
+
+    ordre_signal = {
+        "🔴 VENTE": 1,
+        "🟠 PRUDENCE": 2,
+        "🟡 ATTENDRE": 3,
+        "🟢 ACHAT": 4,
+        "🟢 ACHAT FORT": 5
+    }
+
+    # =========================================================
+    # SAISIE EN LANGAGE NATUREL
+    # =========================================================
+
+    recherche = st.text_input(
+        "💬 Que recherchez-vous ?",
+        placeholder=(
+            "Exemple : actions avec un score supérieur à 80 "
+            "et une confiance très élevée"
+        ),
+        key="scanner_nl_final"
+    )
+
+    st.markdown("### 💡 Recherches rapides")
+
+    ex1, ex2, ex3, ex4 = st.columns(4)
+
+    with ex1:
+        if st.button(
+            "🔥 Meilleures opportunités",
+            use_container_width=True
+        ):
+            recherche = "meilleures opportunités"
+
+    with ex2:
+        if st.button(
+            "📈 Achats forts",
+            use_container_width=True
+        ):
+            recherche = "achats forts score supérieur à 80"
+
+    with ex3:
+        if st.button(
+            "⭐ Haute confiance",
+            use_container_width=True
+        ):
+            recherche = "confiance très élevée"
+
+    with ex4:
+        if st.button(
+            "🏅 Qualité élevée",
+            use_container_width=True
+        ):
+            recherche = "qualité supérieure à 75"
+
+    # =========================================================
+    # FILTRES MANUELS COMPLÉMENTAIRES
+    # =========================================================
+
+    with st.expander("⚙️ Filtres avancés", expanded=False):
+
+        f1, f2 = st.columns(2)
+
+        with f1:
+
+            categorie_filtre = st.selectbox(
+                "📂 Catégorie",
+                [
+                    "Toutes",
+                    "Crypto",
+                    "Forex",
+                    "Matières Premières",
+                    "Actions",
+                    "Indices",
+                    "ETF"
+                ]
+            )
+
+            score_filtre = st.slider(
+                "🎯 PrediScore minimum",
+                0,
+                100,
+                0
+            )
+
+            qualite_filtre = st.slider(
+                "🏅 Qualité minimum",
+                0,
+                100,
+                0
+            )
+
+        with f2:
+
+            confiance_filtre = st.selectbox(
+                "🧠 Confiance minimum",
+                [
+                    "Toutes",
+                    "Faible",
+                    "Moyenne",
+                    "Élevée",
+                    "Très élevée"
+                ]
+            )
+
+            signal_filtre = st.selectbox(
+                "📈 Signal",
+                [
+                    "Tous",
+                    "🟢 ACHAT FORT",
+                    "🟢 ACHAT",
+                    "🟠 PRUDENCE",
+                    "🔴 VENTE"
+                ]
+            )
+
+            nombre_resultats = st.slider(
+                "📋 Nombre maximum de résultats",
+                5,
+                50,
+                15
+            )
+
+    # =========================================================
+    # LANCEMENT DU SCANNER
+    # =========================================================
+
+    if st.button(
+        "🚀 Scanner les marchés",
+        type="primary",
+        use_container_width=True
+    ):
+
+        texte = recherche.lower().strip()
+
+        # =====================================================
+        # INTERPRÉTATION DU LANGAGE NATUREL
+        # =====================================================
+
+        seuil_score_nl = 0
+        seuil_qualite_nl = 0
+
+        confiance_nl = None
+        signal_nl = None
+        categorie_nl = None
+
+        # -----------------------------------------------------
+        # SCORE
+        # -----------------------------------------------------
+
+        match_score = re.search(
+            r"(?:score|prediscore)"
+            r".{0,25}"
+            r"(?:supérieur|superieur|plus grand|au dessus|au-dessus|>)"
+            r"\s*(?:à|a)?\s*(\d+)",
+            texte
+        )
+
+        if match_score:
+            seuil_score_nl = int(match_score.group(1))
+
+        # Ex: "score 80+"
+        if seuil_score_nl == 0:
+
+            match_score_plus = re.search(
+                r"(?:score|prediscore)?\s*(\d+)\s*\+",
+                texte
+            )
+
+            if match_score_plus:
+                seuil_score_nl = int(
+                    match_score_plus.group(1)
+                )
+
+        # -----------------------------------------------------
+        # QUALITÉ
+        # -----------------------------------------------------
+
+        match_qualite = re.search(
+            r"(?:qualité|qualite|setup)"
+            r".{0,25}"
+            r"(?:supérieur|superieur|plus grand|au dessus|au-dessus|>)"
+            r"\s*(?:à|a)?\s*(\d+)",
+            texte
+        )
+
+        if match_qualite:
+            seuil_qualite_nl = int(
+                match_qualite.group(1)
+            )
+
+        # -----------------------------------------------------
+        # CONFIANCE
+        # -----------------------------------------------------
+
+        if (
+            "très élevée" in texte
+            or "tres elevee" in texte
+            or "très haute" in texte
+            or "tres haute" in texte
+        ):
+            confiance_nl = "Très élevée"
+
+        elif (
+            "confiance élevée" in texte
+            or "confiance elevee" in texte
+            or "haute confiance" in texte
+        ):
+            confiance_nl = "Élevée"
+
+        elif "confiance moyenne" in texte:
+            confiance_nl = "Moyenne"
+
+        elif "confiance faible" in texte:
+            confiance_nl = "Faible"
+
+        # -----------------------------------------------------
+        # SIGNAL
+        # -----------------------------------------------------
+
+        if (
+            "achat fort" in texte
+            or "achats forts" in texte
+            or "fort achat" in texte
+            or "forts achats" in texte
+        ):
+            signal_nl = "🟢 ACHAT FORT"
+
+        elif (
+            "achat" in texte
+            or "achats" in texte
+            or "haussier" in texte
+            or "haussière" in texte
+        ):
+            signal_nl = "🟢 ACHAT"
+
+        elif (
+            "vente" in texte
+            or "ventes" in texte
+            or "baissier" in texte
+            or "baissière" in texte
+        ):
+            signal_nl = "🔴 VENTE"
+
+        # -----------------------------------------------------
+        # CATÉGORIE
+        # -----------------------------------------------------
+
+        if "crypto" in texte or "cryptomonnaie" in texte:
+            categorie_nl = "Crypto"
+
+        elif "forex" in texte
+        or "devises" in texte:
+            categorie_nl = "Forex"
+
+        elif (
+            "action" in texte
+            or "actions" in texte
+            or "stock" in texte
+            or "stocks" in texte
+        ):
+            categorie_nl = "Actions"
+
+        elif (
+            "matière première" in texte
+            or "matières premières" in texte
+            or "matiere premiere" in texte
+            or "matières" in texte
+            or "pétrole" in texte
+            or "petrole" in texte
+            or "or" in texte
+        ):
+            categorie_nl = "Matières Premières"
+
+        elif "indice" in texte or "indices" in texte:
+            categorie_nl = "Indices"
+
+        elif "etf" in texte:
+            categorie_nl = "ETF"
+
+        # -----------------------------------------------------
+        # DEMANDE "MEILLEURES"
+        # -----------------------------------------------------
+
+        recherche_meilleures = any(
+            mot in texte
+            for mot in [
+                "meilleures",
+                "meilleurs",
+                "top",
+                "meilleure",
+                "meilleur",
+                "opportunités fortes",
+                "opportunites fortes"
+            ]
+        )
+
+        if recherche_meilleures:
+
+            if seuil_score_nl == 0:
+                seuil_score_nl = 75
+
+            if seuil_qualite_nl == 0:
+                seuil_qualite_nl = 70
+
+        # =====================================================
+        # COMBINAISON FILTRES NATURELS + FILTRES MANUELS
+        # =====================================================
+
+        seuil_score_final = max(
+            seuil_score_nl,
+            score_filtre
+        )
+
+        seuil_qualite_final = max(
+            seuil_qualite_nl,
+            qualite_filtre
+        )
+
+        confiance_finale = confiance_nl
+
+        if confiance_filtre != "Toutes":
+
+            if confiance_finale is None:
+                confiance_finale = confiance_filtre
+
+            else:
+
+                if (
+                    ordre_confiance.index(confiance_filtre)
+                    >
+                    ordre_confiance.index(confiance_finale)
+                ):
+                    confiance_finale = confiance_filtre
+
+        signal_final = signal_nl
+
+        if signal_filtre != "Tous":
+
+            signal_final = signal_filtre
+
+        categorie_finale = categorie_nl
+
+        if categorie_filtre != "Toutes":
+
+            categorie_finale = categorie_filtre
+
+        # =====================================================
+        # RÉSUMÉ DE LA REQUÊTE COMPRISE
+        # =====================================================
+
+        st.markdown("### 🧠 Critères compris")
+
+        criteres = []
+
+        criteres.append(
+            f"PrediScore ≥ {seuil_score_final}"
+        )
+
+        if seuil_qualite_final > 0:
+            criteres.append(
+                f"Qualité ≥ {seuil_qualite_final}"
+            )
+
+        if confiance_finale:
+            criteres.append(
+                f"Confiance ≥ {confiance_finale}"
+            )
+
+        if signal_final:
+            criteres.append(
+                f"Signal : {signal_final}"
+            )
+
+        if categorie_finale:
+            criteres.append(
+                f"Catégorie : {categorie_finale}"
+            )
+
+        st.info(
+            " • ".join(criteres)
+        )
+
+        # =====================================================
+        # LISTE DES ACTIFS À SCANNER
+        # =====================================================
+
+        if categorie_finale:
+
+            categories_a_scanner = [
+                (
+                    categorie_finale,
+                    ASSETS.get(
+                        categorie_finale,
+                        {}
+                    )
+                )
+            ]
+
+        else:
+
+            categories_a_scanner = ASSETS.items()
+
+        results = []
+
+        # =====================================================
+        # ANALYSE DES MARCHÉS
+        # =====================================================
+
+        with st.spinner(
+            "🔎 Analyse complète des marchés..."
+        ):
+
+            for cat, assets in categories_a_scanner:
+
+                for nom, symbole in assets.items():
+
+                    try:
+
+                        df = charger_donnees(
+                            symbole,
+                            cat
+                        )
+
+                        if df is None or df.empty:
+                            continue
+
+                        ind = indicateurs(df)
+
+                        score, signal, conf = prediscore(
+                            ind
+                        )
+
+                        # -------------------------------------------------
+                        # SCORE
+                        # -------------------------------------------------
+
+                        if score < seuil_score_final:
+                            continue
+
+                        # -------------------------------------------------
+                        # CONFIANCE
+                        # -------------------------------------------------
+
+                        if confiance_finale:
+
+                            if conf not in ordre_confiance:
+                                continue
+
+                            if (
+                                ordre_confiance.index(conf)
+                                <
+                                ordre_confiance.index(
+                                    confiance_finale
+                                )
+                            ):
+                                continue
+
+                        # -------------------------------------------------
+                        # SIGNAL
+                        # -------------------------------------------------
+
+                        if signal_final:
+
+                            if signal != signal_final:
+                                continue
+
+                        # -------------------------------------------------
+                        # TECHNIQUE
+                        # -------------------------------------------------
+
+                        strategie = selectionner_technique(
+                            ind,
+                            score,
+                            signal
+                        )
+
+                        if not strategie:
+                            continue
+
+                        qualite = strategie.get(
+                            "qualite",
+                            0
+                        )
+
+                        if qualite < seuil_qualite_final:
+                            continue
+
+                        # -------------------------------------------------
+                        # PLAN
+                        # -------------------------------------------------
+
+                        plan = generer_plan_trade(
+                            ind,
+                            strategie
+                        )
+
+                        if not plan:
+                            continue
+
+                        if plan.get("statut") != "TRADE":
+                            continue
+
+                        # -------------------------------------------------
+                        # APPROCHE
+                        # -------------------------------------------------
+
+                        approche = selectionner_approche(
+                            ind,
+                            score,
+                            strategie,
+                            plan
+                        )
+
+                        # -------------------------------------------------
+                        # PRIORITÉ
+                        # -------------------------------------------------
+
+                        niveau = niveau_urgence_alerte(
+                            score,
+                            conf,
+                            qualite
+                        )
+
+                        # -------------------------------------------------
+                        # DONNÉES DU PLAN
+                        # -------------------------------------------------
+
+                        entree = plan.get(
+                            "entry",
+                            plan.get("entree", None)
+                        )
+
+                        stop = plan.get(
+                            "sl",
+                            plan.get("stop_loss", None)
+                        )
+
+                        tp1 = plan.get(
+                            "tp1",
+                            None
+                        )
+
+                        tp2 = plan.get(
+                            "tp2",
+                            None
+                        )
+
+                        tp3 = plan.get(
+                            "tp3",
+                            None
+                        )
+
+                        rr = plan.get(
+                            "rr2",
+                            plan.get(
+                                "rr",
+                                0
+                            )
+                        )
+
+                        # -------------------------------------------------
+                        # RÉSULTAT
+                        # -------------------------------------------------
+
+                        results.append({
+                            "Actif": nom,
+                            "Catégorie": cat,
+                            "Score": score,
+                            "Signal": signal,
+                            "Confiance": conf,
+                            "Qualité": qualite,
+                            "Technique": strategie.get(
+                                "nom",
+                                "Non définie"
+                            ),
+                            "Approche": approche.get(
+                                "approche",
+                                "ATTENDRE"
+                            ),
+                            "Levier": approche.get(
+                                "levier",
+                                "0x"
+                            ),
+                            "Priorité": niveau,
+                            "Entrée": entree,
+                            "SL": stop,
+                            "TP1": tp1,
+                            "TP2": tp2,
+                            "TP3": tp3,
+                            "R/R": rr,
+                            "Raison": approche.get(
+                                "raison",
+                                ""
+                            )
+                        })
+
+                    except Exception:
+                        continue
+
+        # =====================================================
+        # TRI DES RÉSULTATS
+        # =====================================================
+
+        results = sorted(
+            results,
+            key=lambda x: (
+                x["Score"],
+                x["Qualité"]
+            ),
+            reverse=True
+        )
+
+        # Limitation du nombre affiché
+        results_affiches = results[
+            :nombre_resultats
+        ]
+
+        # =====================================================
+        # RÉSULTATS
+        # =====================================================
+
+        st.markdown("### 🚨 Opportunités détectées")
+
+        if not results:
+
+            st.warning(
+                "Aucune opportunité ne correspond "
+                "aux critères demandés."
+            )
+
+        else:
+
+            st.success(
+                f"🔥 {len(results)} opportunité(s) détectée(s)"
+            )
+
+            st.caption(
+                f"Affichage des {len(results_affiches)} "
+                f"meilleurs résultats."
+            )
+
+            # =================================================
+            # TABLEAU
+            # =================================================
+
+            tableau = []
+
+            for r in results_affiches:
+
+                tableau.append({
+                    "Actif": r["Actif"],
+                    "Score": r["Score"],
+                    "Signal": r["Signal"],
+                    "Confiance": r["Confiance"],
+                    "Qualité": r["Qualité"],
+                    "Technique": r["Technique"],
+                    "Approche": r["Approche"],
+                    "Priorité": r["Priorité"],
+                    "R/R": r["R/R"]
+                })
+
+            st.dataframe(
+                pd.DataFrame(tableau),
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # =================================================
+            # DÉTAILS
+            # =================================================
+
+            st.markdown("### 🧠 Détails des opportunités")
+
+            for r in results_affiches:
+
+                with st.expander(
+                    f"{r['Actif']} — "
+                    f"{r['Signal']} — "
+                    f"Score {r['Score']}"
+                ):
+
+                    c1, c2, c3, c4 = st.columns(4)
+
+                    with c1:
+                        st.metric(
+                            "PrediScore",
+                            r["Score"]
+                        )
+
+                    with c2:
+                        st.metric(
+                            "Qualité",
+                            f"{r['Qualité']}/100"
+                        )
+
+                    with c3:
+                        st.metric(
+                            "Confiance",
+                            r["Confiance"]
+                        )
+
+                    with c4:
+                        st.metric(
+                            "R/R",
+                            r["R/R"]
+                        )
+
+                    st.write(
+                        f"📈 **Signal :** {r['Signal']}"
+                    )
+
+                    st.write(
+                        f"🧠 **Technique :** {r['Technique']}"
+                    )
+
+                    st.write(
+                        f"🎯 **Approche :** {r['Approche']}"
+                    )
+
+                    st.write(
+                        f"⚡ **Levier :** {r['Levier']}"
+                    )
+
+                    st.write(
+                        f"🚨 **Priorité :** {r['Priorité']}"
+                    )
+
+                    st.divider()
+
+                    p1, p2, p3, p4, p5 = st.columns(5)
+
+                    with p1:
+                        st.metric(
+                            "📍 Entrée",
+                            r["Entrée"]
+                            if r["Entrée"] is not None
+                            else "—"
+                        )
+
+                    with p2:
+                        st.metric(
+                            "🛑 Stop Loss",
+                            r["SL"]
+                            if r["SL"] is not None
+                            else "—"
+                        )
+
+                    with p3:
+                        st.metric(
+                            "🎯 TP1",
+                            r["TP1"]
+                            if r["TP1"] is not None
+                            else "—"
+                        )
+
+                    with p4:
+                        st.metric(
+                            "🎯 TP2",
+                            r["TP2"]
+                            if r["TP2"] is not None
+                            else "—"
+                        )
+
+                    with p5:
+                        st.metric(
+                            "🎯 TP3",
+                            r["TP3"]
+                            if r["TP3"] is not None
+                            else "—"
+                        )
+
+                    if r["Raison"]:
+
+                        st.info(
+                            f"💡 **Pourquoi cette opportunité ?** "
+                            f"{r['Raison']}"
+         )
 elif menu=="⚖️ Comparaison":
     st.title("⚖️ Comparaison"); c1,c2=st.columns(2)
     with c1: cat1=st.selectbox("Cat 1",list(ASSETS.keys()),key="c1"); a1=st.selectbox("Actif 1",list(ASSETS[cat1].keys()),key="a1")
