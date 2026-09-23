@@ -4322,8 +4322,7 @@ elif menu == "🔍 Scanner intelligent":
         if "crypto" in texte or "cryptomonnaie" in texte:
             categorie_nl = "Crypto"
 
-        elif "forex" in texte
-        or "devises" in texte:
+        elif "forex" in texte or "devises" in texte:
             categorie_nl = "Forex"
 
         elif (
