@@ -3732,6 +3732,149 @@ if menu=="📊 Tableau de bord":
     c1,c2,c3=st.columns(3); c1.metric("Actifs",sum(len(v) for v in ASSETS.values())); c2.metric("Version",APP_VERSION); c3.metric("Statut","Premium" if st.session_state.is_premium else "Gratuit")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history[-5:]),use_container_width=True)
     else: st.info("Lance une analyse dans IA Pro")
+# ============================================================
+# 🧠 ANALYSE MULTI-TIMEFRAME
+# ============================================================
+
+def analyser_multi_timeframe(symbol, asset_type):
+    timeframes = {
+        "15m": "15 minutes",
+        "1h": "1 heure",
+        "4h": "4 heures",
+        "1d": "1 jour"
+    }
+
+    resultats = {}
+
+    for interval, label in timeframes.items():
+
+        try:
+            df_tf = charger_donnees(
+                symbol,
+                asset_type,
+                interval=interval
+            )
+
+            if df_tf.empty:
+                continue
+
+            ind_tf = indicateurs(df_tf)
+
+            score_tf, signal_tf, conf_tf = prediscore(ind_tf)
+
+            strategie_tf = selectionner_technique(
+                ind_tf,
+                score_tf,
+                signal_tf
+            )
+
+            qualite_tf = strategie_tf.get(
+                "qualite",
+                0
+            )
+
+            resultats[interval] = {
+                "label": label,
+                "score": score_tf,
+                "signal": signal_tf,
+                "confiance": conf_tf,
+                "qualite": qualite_tf,
+                "technique": strategie_tf.get(
+                    "nom",
+                    "Non définie"
+                )
+            }
+
+        except Exception:
+            continue
+
+    # --------------------------------------------------------
+    # CONCORDANCE
+    # --------------------------------------------------------
+
+    scores = [
+        r["score"]
+        for r in resultats.values()
+    ]
+
+    haussiers = sum(
+        1
+        for r in resultats.values()
+        if r["score"] >= 70
+    )
+
+    baissiers = sum(
+        1
+        for r in resultats.values()
+        if r["score"] < 45
+    )
+
+    neutres = len(resultats) - haussiers - baissiers
+
+    total = len(resultats)
+
+    if total == 0:
+
+        concordance = "⚪ INDISPONIBLE"
+        biais = "Neutre"
+        force = 0
+
+    else:
+
+        if haussiers > baissiers and haussiers > neutres:
+
+            biais = "Haussier"
+            force = round(
+                (haussiers / total) * 100
+            )
+
+            if haussiers == total:
+                concordance = "🟢 TRÈS FORTE"
+
+            elif haussiers >= 3:
+                concordance = "🟢 FORTE"
+
+            else:
+                concordance = "🟡 MODÉRÉE"
+
+        elif baissiers > haussiers and baissiers > neutres:
+
+            biais = "Baissier"
+            force = round(
+                (baissiers / total) * 100
+            )
+
+            if baissiers == total:
+                concordance = "🔴 TRÈS FORTE"
+
+            elif baissiers >= 3:
+                concordance = "🔴 FORTE"
+
+            else:
+                concordance = "🟠 MODÉRÉE"
+
+        else:
+
+            biais = "Mixte"
+            force = round(
+                max(haussiers, baissiers) / total * 100
+            )
+
+            concordance = "🟡 MIXTE"
+
+    score_global = (
+        round(sum(scores) / len(scores), 1)
+        if scores
+        else 0
+    )
+
+    return {
+        "resultats": resultats,
+        "concordance": concordance,
+        "biais": biais,
+        "force": force,
+        "score_global": score_global
+   }
 
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
@@ -3746,6 +3889,18 @@ elif menu=="🧠 Analyse IA Pro":
         else:
           ind=indicateurs(df)
           ind=indicateurs(df)
+         # ============================================================
+         # 🧠 ANALYSE MULTI-TIMEFRAME
+         # ============================================================
+          multi_tf = analyser_multi_timeframe(
+             ASSETS[cat][name],
+             cat
+          )
+          resultats_tf = multi_tf["resultats"]
+          concordance_tf = multi_tf["concordance"]
+          biais_tf = multi_tf["biais"]
+          force_tf = multi_tf["force"]
+          score_global_tf = multi_tf["score_global"]
           score,signal,conf=prediscore(ind)
           strategie=selectionner_technique(ind,score,signal)
           plan=generer_plan_trade(ind,strategie)
@@ -3766,6 +3921,62 @@ elif menu=="🧠 Analyse IA Pro":
             risque_pct=1.0
           )
           st.success(f"✅ Analyse terminée — {name}")
+          st.markdown("### 🧠 Analyse Multi-Timeframe")
+          col1, col2, col3 = st.columns(3)
+          with col1:
+             st.metric(
+                "Score global",
+                f"{score_global_tf:.1f}/100"
+             )
+         with col2:
+            st.metric(
+               "Concordance",
+               concordance_tf
+            )
+         with col3:
+            st.metric(
+               "Biais dominant",
+               biais_tf,
+               f"{force_tf}%"
+            )
+         if resultats_tf:
+            st.markdown("#### 📊 Lecture des différentes périodes")
+            lignes_tf = []
+            ordre_tf = ["15m", "1h", "4h", "1d"]
+            for tf in ordre_tf:
+               if tf not in resultats_tf:
+                  continue
+               r = resultats_tf[tf]
+               lignes_tf.append({
+                  "Timeframe": r["label"],
+                  "PrediScore": r["score"],
+                  "Signal": r["signal"],
+                  "Confiance": r["confiance"],
+                  "Qualité": r["qualite"],
+                  "Technique": r["technique"]
+               })
+            st.dataframe(
+               pd.DataFrame(lignes_tf),
+               use_container_width=True,
+               hide_index=True
+            )
+            if biais_tf == "Haussier":
+               st.success(
+                  f"🟢 Concordance multi-timeframe {concordance_tf} : "
+                  f"le biais dominant est haussier sur "
+                  f"{force_tf}% des périodes analysées."
+               )
+            elif biais_tf == "Baissier":
+               st.error(
+                  f"🔴 Concordance multi-timeframe {concordance_tf} : "
+                  f"le biais dominant est baissier sur "
+                  f"{force_tf}% des périodes analysées."
+               )
+            else:
+               st.warning(
+                  "🟡 Les différentes périodes présentent des signaux mixtes. "
+                  "La confirmation multi-timeframe est limitée."
+                  )
           st.subheader("🎯 Plan de trade PrediTrade AI")
           if plan["statut"]=="NO_TRADE":
             st.info("🟡 Aucun trade recommandé : les conditions actuelles ne sont pas suffisamment claires.")
