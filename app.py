@@ -4012,7 +4012,7 @@ if menu=="🧠 Analyse IA Pro":
                   c2.metric("🔗 Confluence",f'{setup["confluence"]}/100')
                   c3.metric("⚠️ Risque",setup["risque"])
                   st.info(
-                     f'🧠 **Évaluation :** {setup["niveau"]}\n\n
+                     f'🧠 **Évaluation :** {setup["niveau"]}\n\n'
                      f'{setup["raison"]}'
                   )
                   c1,c2,c3=st.columns(3)
