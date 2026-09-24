@@ -3872,21 +3872,21 @@ if menu=="🧠 Analyse IA Pro":
    cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
    name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
    if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
-   with st.spinner("🤖 PrediTrade AI analyse..."):
-      df=charger_donnees(ASSETS[cat][name], cat)
-      if df.empty:
-         st.error(f"❌ Impossible de récupérer les données pour {name}")
-         st.stop()
-      else:
-         ind=indicateurs(df)
-         ind=indicateurs(df)
+      with st.spinner("🤖 PrediTrade AI analyse..."):
+         df=charger_donnees(ASSETS[cat][name], cat)
+         if df.empty:
+            st.error(f"❌ Impossible de récupérer les données pour {name}")
+            st.stop()
+         else:
+            ind=indicateurs(df)
+            ind=indicateurs(df)
       # ============================================================
       # 🧠 ANALYSE MULTI-TIMEFRAME
       # ============================================================
-         multi_tf = analyser_multi_timeframe(
-            ASSETS[cat][name],
-            cat
-         )
+            multi_tf = analyser_multi_timeframe(
+               ASSETS[cat][name],
+               cat
+            )
          resultats_tf = multi_tf["resultats"]
          concordance_tf = multi_tf["concordance"]
          biais_tf = multi_tf["biais"]
