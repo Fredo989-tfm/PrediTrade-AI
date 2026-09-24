@@ -3732,10 +3732,6 @@ if menu=="📊 Tableau de bord":
     c1,c2,c3=st.columns(3); c1.metric("Actifs",sum(len(v) for v in ASSETS.values())); c2.metric("Version",APP_VERSION); c3.metric("Statut","Premium" if st.session_state.is_premium else "Gratuit")
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history[-5:]),use_container_width=True)
     else: st.info("Lance une analyse dans IA Pro")
-# ============================================================
-# 🧠 ANALYSE MULTI-TIMEFRAME
-# ============================================================
-
 def analyser_multi_timeframe(symbol, asset_type):
     timeframes = {
         "15m": "15 minutes",
@@ -3787,8 +3783,7 @@ def analyser_multi_timeframe(symbol, asset_type):
 
         except Exception:
             continue
-
-    # --------------------------------------------------------
+# --------------------------------------------------------
     # CONCORDANCE
     # --------------------------------------------------------
 
@@ -3859,8 +3854,7 @@ def analyser_multi_timeframe(symbol, asset_type):
             force = round(
                 max(haussiers, baissiers) / total * 100
             )
-
-            concordance = "🟡 MIXTE"
+concordance = "🟡 MIXTE"
 
     score_global = (
         round(sum(scores) / len(scores), 1)
@@ -3874,8 +3868,7 @@ def analyser_multi_timeframe(symbol, asset_type):
         "biais": biais,
         "force": force,
         "score_global": score_global
-   }
-
+    } 
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
