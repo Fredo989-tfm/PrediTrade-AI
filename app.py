@@ -3855,20 +3855,19 @@ def analyser_multi_timeframe(symbol, asset_type):
                 max(haussiers, baissiers) / total * 100
             )
 concordance = "🟡 MIXTE"
+score_global = (
+      round(sum(scores) / len(scores), 1)
+      if scores
+      else 0
+   )
 
-    score_global = (
-        round(sum(scores) / len(scores), 1)
-        if scores
-        else 0
-    )
-
-    return {
-        "resultats": resultats,
-        "concordance": concordance,
-        "biais": biais,
-        "force": force,
-        "score_global": score_global
-    } 
+   return {
+      "resultats": resultats,
+      "concordance": concordance,
+      "biais": biais,
+      "force": force,
+      "score_global": score_global
+   } 
 elif menu=="🧠 Analyse IA Pro":
     st.title("🧠 Analyse IA Pro")
     cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
