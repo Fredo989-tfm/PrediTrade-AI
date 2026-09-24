@@ -4157,60 +4157,60 @@ if menu=="🧠 Analyse IA Pro":
                            )
                         else:
                            st.success(f"🟢 Configuration haussière forte : {score}/100.")
-                        elif score>=70:
+                     elif score>=70:
                            st.success(f"🟢 Configuration haussière : {score}/100.")
-                        elif score>=55:
+                     elif score>=55:
                            st.info(f"🟡 Configuration neutre : {score}/100.")
-                       elif score>=40:
-                  st.warning(f"🟠 Configuration prudente : {score}/100.")
-            else:
-               st.error(f"🔴 Configuration baissière : {score}/100.")
-               st.subheader("📋 Résumé technique")
-               resume=pd.DataFrame([
-                  {
-                     "Indicateur":"EMA20",
-                     "Valeur":f"{ema20:,.4f}",
-                     "Lecture":"Haussière" if ema20>ema50 else "Baissière"
-                  },
-                  {
-                     "Indicateur":"EMA50",
-                     "Valeur":f"{ema50:,.4f}",
-                     "Lecture":"Haussière" if ema50>ema200 else "Baissière"
-                  },
-                  {
-                     "Indicateur":"EMA200",
-                     "Valeur":f"{ema200:,.4f}",
-                     "Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"
-                  },
-                  {
-                     "Indicateur":"RSI",
-                     "Valeur":f"{rsi:.1f}",
-                     "Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"
-                  },
-                  {
-                     "Indicateur":"MACD",
-                     "Valeur":f"{macd:.4f}",
-                     "Lecture":"Haussier" if macd>macd_signal else "Baissier"
-                  },
-                  {
-                     "Indicateur":"Momentum",
-                     "Valeur":f"{momentum:.2f}%",
-                     "Lecture":"Positif" if momentum>0 else "Négatif"
-                  }
-               ])
-               st.dataframe(
-                  resume,
-                  use_container_width=True,
-                  hide_index=True
-               )
-               st.session_state.history.append({
-                  "date":datetime.now().strftime("%Y-%m-%d %H:%M"),
-                  "actif":name,
-                  "score":score, 
-                  "signal":signal,
-                  "confiance":conf,
-                  "prix":prix
-               })
+                     elif score>=40:
+                        st.warning(f"🟠 Configuration prudente : {score}/100.")
+                     else:
+                        st.error(f"🔴 Configuration baissière : {score}/100.")
+                        st.subheader("📋 Résumé technique")
+                        resume=pd.DataFrame([
+                           {
+                              "Indicateur":"EMA20",
+                              "Valeur":f"{ema20:,.4f}",
+                              "Lecture":"Haussière" if ema20>ema50 else "Baissière"
+                           },
+                           {
+                              "Indicateur":"EMA50",
+                              "Valeur":f"{ema50:,.4f}",
+                              "Lecture":"Haussière" if ema50>ema200 else "Baissière"
+                           },
+                           {
+                              "Indicateur":"EMA200",
+                              "Valeur":f"{ema200:,.4f}",
+                              "Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"
+                           },
+                           { 
+                              "Indicateur":"RSI",
+                              "Valeur":f"{rsi:.1f}",
+                              "Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"
+                           },
+                           {
+                              "Indicateur":"MACD",
+                              "Valeur":f"{macd:.4f}",
+                              "Lecture":"Haussier" if macd>macd_signal else "Baissier"
+                           },
+                           {
+                              "Indicateur":"Momentum",
+                              "Valeur":f"{momentum:.2f}%",
+                              "Lecture":"Positif" if momentum>0 else "Négatif"
+                           }
+                        ])
+                        st.dataframe(
+                           resume,
+                           use_container_width=True,
+                           hide_index=True
+                        )
+                        st.session_state.history.append({
+                           "date":datetime.now().strftime("%Y-%m-%d %H:%M"),
+                           "actif":name,
+                           "score":score, 
+                           "signal":signal,
+                           "confiance":conf,
+                           "prix":prix
+                        })
 elif menu == "🔍 Scanner intelligent":
 
     import re
