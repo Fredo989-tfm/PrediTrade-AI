@@ -3867,7 +3867,7 @@ return {
    "force": force,
    "score_global": score_global
 } 
-elif menu=="🧠 Analyse IA Pro":
+if menu=="🧠 Analyse IA Pro":
    st.title("🧠 Analyse IA Pro")
    cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
    name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
