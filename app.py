@@ -3860,13 +3860,13 @@ score_global = (
       if scores
       else 0
    )
-return {
-   "resultats": resultats,
-   "concordance": concordance,
-   "biais": biais,
-   "force": force,
-   "score_global": score_global
-} 
+   return {
+      "resultats": resultats,
+      "concordance": concordance,
+      "biais": biais,
+      "force": force,
+      "score_global": score_global
+   } 
 if menu=="🧠 Analyse IA Pro":
    st.title("🧠 Analyse IA Pro")
    cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
@@ -3878,7 +3878,6 @@ if menu=="🧠 Analyse IA Pro":
             st.error(f"❌ Impossible de récupérer les données pour {name}")
             st.stop()
          else:
-            ind=indicateurs(df)
             ind=indicateurs(df)
       # ============================================================
       # 🧠 ANALYSE MULTI-TIMEFRAME
