@@ -4101,6 +4101,7 @@ if menu=="🧠 Analyse IA Pro":
                         annotation_text="🛑 Stop Loss",
                         annotation_position="bottom left"
                      )
+                     fig.add_hline(
                      y=plan["tp1"],
                      line_dash="dot",
                      annotation_text="🎯 TP1",
