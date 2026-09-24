@@ -3441,6 +3441,118 @@ with st.sidebar:
     elif st.session_state.is_premium: st.success("⭐ Premium Actif")
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
+def analyser_multi_timeframe(symbole, categorie):
+    """
+    Analyse simplifiée multi-timeframe de PrediTrade AI.
+    Utilise les données disponibles sur plusieurs horizons.
+    """
+
+    timeframes = {
+        "4H": "4h",
+        "1H": "1h",
+        "15M": "15m"
+    }
+
+    resultats = []
+    scores = []
+
+    for nom_tf, intervalle in timeframes.items():
+
+        try:
+            df_tf = charger_donnees(symbole, categorie, interval=intervalle)
+
+            if df_tf is None or df_tf.empty:
+                continue
+
+            ind_tf = indicateurs(df_tf)
+
+            if ind_tf is None:
+                continue
+
+            score_tf = ind_tf.get("score", 50)
+
+            try:
+                score_tf = float(score_tf)
+            except:
+                score_tf = 50
+
+            if score_tf >= 80:
+                signal_tf = "ACHAT FORT"
+            elif score_tf >= 70:
+                signal_tf = "ACHAT"
+            elif score_tf >= 55:
+                signal_tf = "ATTENDRE"
+            elif score_tf >= 40:
+                signal_tf = "PRUDENCE"
+            else:
+                signal_tf = "VENTE"
+
+            resultats.append({
+                "timeframe": nom_tf,
+                "score": round(score_tf, 1),
+                "signal": signal_tf
+            })
+
+            scores.append(score_tf)
+
+        except Exception:
+            continue
+
+    if not scores:
+        return {
+            "resultats": [],
+            "concordance": "⚪ DONNÉES INSUFFISANTES",
+            "biais": "Neutre",
+            "force": 0,
+            "score_global": 0
+        }
+
+    score_global = round(sum(scores) / len(scores), 1)
+
+    achats = sum(
+        1 for r in resultats
+        if r["signal"] in ["ACHAT", "ACHAT FORT"]
+    )
+
+    ventes = sum(
+        1 for r in resultats
+        if r["signal"] == "VENTE"
+    )
+
+    if achats > ventes:
+        biais = "Haussier"
+        force = round((achats / len(resultats)) * 100)
+
+    elif ventes > achats:
+        biais = "Baissier"
+        force = round((ventes / len(resultats)) * 100)
+
+    else:
+        biais = "Mixte"
+        force = 50
+
+    if len(resultats) == 1:
+        concordance = "🟡 MODÉRÉE"
+
+    elif achats == len(resultats):
+        concordance = "🟢 TRÈS FORTE"
+
+    elif ventes == len(resultats):
+        concordance = "🔴 TRÈS FORTE"
+
+    elif achats > ventes or ventes > achats:
+        concordance = "🟡 MODÉRÉE"
+
+    else:
+        concordance = "🟠 MIXTE"
+
+    return {
+        "resultats": resultats,
+        "concordance": concordance,
+        "biais": biais,
+        "force": force,
+        "score_global": score_global
+           }
 def niveau_urgence_alerte(score, confiance, qualite):
     if score >= 90 and confiance == "Très élevée" and qualite >= 85:
         return "🔴 URGENTE"
