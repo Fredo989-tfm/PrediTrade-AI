@@ -715,6 +715,48 @@ def actualiser_statut_premium():
         return True
     st.session_state.is_premium=False
     return False
+# --- DETECTEUR DE BALEINES - AJOUT PREDIC ---
+def get_prix_btc():
+    try:
+        import requests
+        url = "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=15m&limit=100"
+        data = requests.get(url, timeout=5).json()
+        prix = float(data[-1][4])
+        return prix
+    except:
+        return None
+
+def check_baleine():
+    prix = get_prix_btc()
+    if prix:
+        print(f"BTC Prix actuel: {prix}")
+        return prix
+    else:
+        print("Erreur connexion Binance")
+        return None
+# --- 🐋 MODULE BALEINE PREDICT - AJOUT ---
+st.divider()
+st.subheader("🐋 Détecteur de Baleines")
+
+import requests
+def get_whale_alert():
+    try:
+        # On regarde les grosses transactions
+        url = "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        d = requests.get(url, headers=headers, timeout=5).json()
+        volume = float(d['quoteVolume'])
+        
+        if volume > 20000000000: # 20 milliards = baleines actives
+            return f"🚨 ACTIVITÉ BALEINE: Volume 24h = {volume/1e9:.1f} Milliards $"
+        else:
+            return f"✅ Pas de baleine: Volume 24h = {volume/1e9:.1f} Milliards $"
+    except:
+        return "Volume indisponible"
+
+st.info(get_whale_alert())
+st.caption("Si volume > 20Mds, les baleines manipulent. Ne pas entrer en LEVIER.")
+# --- FIN MODULE BALEINE ---
 
 def initialiser_notifications():
     if "notifications" not in st.session_state: st.session_state.notifications=[]
@@ -6488,22 +6530,3 @@ elif menu=="🔗 Connexions aux plateformes":
 
     with c2:
         st.info("⚫ OKX\n\nBientôt disponible")
-   # --- DETECTEUR DE BALEINES - AJOUT PREDIC ---
-def get_prix_btc():
-    try:
-        import requests
-        url = "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=15m&limit=100"
-        data = requests.get(url, timeout=5).json()
-        prix = float(data[-1][4])
-        return prix
-    except:
-        return None
-
-def check_baleine():
-    prix = get_prix_btc()
-    if prix:
-        print(f"BTC Prix actuel: {prix}")
-        return prix
-    else:
-        print("Erreur connexion Binance")
-        return None
