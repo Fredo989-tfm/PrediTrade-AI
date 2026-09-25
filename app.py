@@ -826,33 +826,51 @@ def ajouter_notification(
 
     return n
 @st.cache_data(ttl=300, show_spinner=False)
-def charger_donnees(symbol, asset_type):
-  try:
-        # Convertit les noms affichés comme "Bitcoin (BTC)"
-        # en symboles utilisables par les sources de données.
+def charger_donnees(symbol, asset_type, interval="4h"):
+    try:
+        # =====================================================
+        # NORMALISATION DU SYMBOLE
+        # =====================================================
         if "(" in symbol and ")" in symbol:
             symbol = symbol.split("(")[-1].split(")")[0].strip()
-          # =================================================
-    # CRYPTO — BINANCE
-      # =====================================================
+
+        # =====================================================
+        # INTERVALLES AUTORISÉS
+        # =====================================================
+        intervalles_valides = ["15m", "1h", "4h", "1d"]
+
+        if interval not in intervalles_valides:
+            interval = "4h"
+
+        # =====================================================
+        # CRYPTO — BINANCE
+        # =====================================================
         if asset_type == "Crypto":
+
             try:
                 bs = f"{symbol}USDT"
 
                 url_binance = proxy_url(
                     f"https://data-api.binance.vision/api/v3/klines"
-                    f"?symbol={bs}&interval=4h&limit=500"
+                    f"?symbol={bs}"
+                    f"&interval={interval}"
+                    f"&limit=500"
                 )
 
-                r = requests.get(url_binance, timeout=15)
+                r = requests.get(
+                    url_binance,
+                    timeout=15
+                )
 
                 if r.ok:
                     data = r.json()
 
                     if isinstance(data, list) and len(data) > 0:
+
                         df = pd.DataFrame(data)
 
                         df = df.iloc[:, :6]
+
                         df.columns = [
                             "timestamp",
                             "Open",
@@ -862,11 +880,17 @@ def charger_donnees(symbol, asset_type):
                             "Volume"
                         ]
 
-                        df["Open"] = pd.to_numeric(df["Open"], errors="coerce")
-                        df["High"] = pd.to_numeric(df["High"], errors="coerce")
-                        df["Low"] = pd.to_numeric(df["Low"], errors="coerce")
-                        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
-                        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
+                        for col in [
+                            "Open",
+                            "High",
+                            "Low",
+                            "Close",
+                            "Volume"
+                        ]:
+                            df[col] = pd.to_numeric(
+                                df[col],
+                                errors="coerce"
+                            )
 
                         df["timestamp"] = pd.to_datetime(
                             df["timestamp"],
@@ -875,7 +899,12 @@ def charger_donnees(symbol, asset_type):
                         )
 
                         df = df.dropna(
-                            subset=["Open", "High", "Low", "Close"]
+                            subset=[
+                                "Open",
+                                "High",
+                                "Low",
+                                "Close"
+                            ]
                         )
 
                         df = df.set_index("timestamp")
@@ -888,8 +917,9 @@ def charger_donnees(symbol, asset_type):
                 pass
 
         # =====================================================
-        # YAHOO FINANCE — FALLBACK
+        # YAHOO FINANCE
         # =====================================================
+
         ymap = {
             "EURUSD": "EURUSD=X",
             "GBPUSD": "GBPUSD=X",
@@ -908,9 +938,27 @@ def charger_donnees(symbol, asset_type):
         if asset_type == "Crypto":
             ys = f"{symbol}-USD"
 
+        # =====================================================
+        # PÉRIODE YAHOO SELON LE TIMEFRAME
+        # =====================================================
+
+        if interval == "15m":
+            range_yahoo = "60d"
+
+        elif interval == "1h":
+            range_yahoo = "730d"
+
+        elif interval == "4h":
+            range_yahoo = "2y"
+
+        else:
+            range_yahoo = "2y"
+
         url = (
             f"https://query1.finance.yahoo.com/v8/finance/chart/"
-            f"{ys}?range=2y&interval=1d"
+            f"{ys}"
+            f"?range={range_yahoo}"
+            f"&interval={interval}"
         )
 
         headers = {
@@ -928,7 +976,12 @@ def charger_donnees(symbol, asset_type):
 
         data = r.json()
 
-        result = data.get("chart", {}).get("result")
+        result = data.get(
+            "chart",
+            {}
+        ).get(
+            "result"
+        )
 
         if not result:
             return pd.DataFrame()
@@ -936,7 +989,14 @@ def charger_donnees(symbol, asset_type):
         result = result[0]
 
         timestamps = result.get("timestamp")
-        quotes = result.get("indicators", {}).get("quote", [{}])[0]
+
+        quotes = result.get(
+            "indicators",
+            {}
+        ).get(
+            "quote",
+            [{}]
+        )[0]
 
         if not timestamps or not quotes:
             return pd.DataFrame()
@@ -946,7 +1006,7 @@ def charger_donnees(symbol, asset_type):
             "High": quotes.get("high", []),
             "Low": quotes.get("low", []),
             "Close": quotes.get("close", []),
-            "Volume": quotes.get("volume", []),
+            "Volume": quotes.get("volume", [])
         })
 
         df["timestamp"] = pd.to_datetime(
@@ -955,24 +1015,40 @@ def charger_donnees(symbol, asset_type):
             errors="coerce"
         )
 
-        for col in ["Open", "High", "Low", "Close", "Volume"]:
+        for col in [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
+        ]:
             df[col] = pd.to_numeric(
                 df[col],
                 errors="coerce"
             )
 
         df = df.dropna(
-            subset=["Open", "High", "Low", "Close"]
+            subset=[
+                "Open",
+                "High",
+                "Low",
+                "Close"
+            ]
         )
 
         df = df.set_index("timestamp")
         df = df.sort_index()
 
+        # =====================================================
+        # VALIDATION DES DONNÉES
+        # =====================================================
+
         if len(df) < 220:
             return pd.DataFrame()
 
         return df
-  except Exception:
+
+    except Exception:
         return pd.DataFrame()
 def indicateurs(df):
     close=df["Close"]; ema20=close.ewm(span=20,adjust=False).mean(); ema50=close.ewm(span=50,adjust=False).mean(); ema200=close.ewm(span=200,adjust=False).mean()
