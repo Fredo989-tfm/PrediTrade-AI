@@ -3561,14 +3561,15 @@ with st.sidebar:
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
 def analyser_multi_timeframe(symbole, categorie):
     """
-    Analyse simplifiée multi-timeframe de PrediTrade AI.
-    Utilise les données disponibles sur plusieurs horizons.
+    Analyse multi-timeframe de PrediTrade AI.
+    Analyse les horizons 15M, 1H, 4H et 1D.
     """
 
     timeframes = {
-        "4H": "4h",
+        "15M": "15m",
         "1H": "1h",
-        "15M": "15m"
+        "4H": "4h",
+        "1D": "1d"
     }
 
     resultats = []
@@ -3577,7 +3578,11 @@ def analyser_multi_timeframe(symbole, categorie):
     for nom_tf, intervalle in timeframes.items():
 
         try:
-            df_tf = charger_donnees(symbole, categorie, interval=intervalle)
+            df_tf = charger_donnees(
+                symbole,
+                categorie,
+                interval=intervalle
+            )
 
             if df_tf is None or df_tf.empty:
                 continue
@@ -3591,30 +3596,45 @@ def analyser_multi_timeframe(symbole, categorie):
 
             try:
                 score_tf = float(score_tf)
-            except:
+            except Exception:
                 score_tf = 50
 
             if score_tf >= 80:
                 signal_tf = "ACHAT FORT"
+                biais_tf = "Haussier"
+
             elif score_tf >= 70:
                 signal_tf = "ACHAT"
+                biais_tf = "Haussier"
+
             elif score_tf >= 55:
                 signal_tf = "ATTENDRE"
+                biais_tf = "Neutre"
+
             elif score_tf >= 40:
                 signal_tf = "PRUDENCE"
+                biais_tf = "Prudent"
+
             else:
                 signal_tf = "VENTE"
+                biais_tf = "Baissier"
 
             resultats.append({
                 "timeframe": nom_tf,
+                "interval": intervalle,
                 "score": round(score_tf, 1),
-                "signal": signal_tf
+                "signal": signal_tf,
+                "biais": biais_tf
             })
 
             scores.append(score_tf)
 
         except Exception:
             continue
+
+    # ==========================================
+    # AUCUNE DONNÉE
+    # ==========================================
 
     if not scores:
         return {
@@ -3625,29 +3645,52 @@ def analyser_multi_timeframe(symbole, categorie):
             "score_global": 0
         }
 
-    score_global = round(sum(scores) / len(scores), 1)
+    # ==========================================
+    # SCORE GLOBAL
+    # ==========================================
+
+    score_global = round(
+        sum(scores) / len(scores),
+        1
+    )
+
+    # ==========================================
+    # CALCUL DU BIAIS
+    # ==========================================
 
     achats = sum(
-        1 for r in resultats
+        1
+        for r in resultats
         if r["signal"] in ["ACHAT", "ACHAT FORT"]
     )
 
     ventes = sum(
-        1 for r in resultats
+        1
+        for r in resultats
         if r["signal"] == "VENTE"
     )
 
+    neutres = len(resultats) - achats - ventes
+
     if achats > ventes:
         biais = "Haussier"
-        force = round((achats / len(resultats)) * 100)
+        force = round(
+            (achats / len(resultats)) * 100
+        )
 
     elif ventes > achats:
         biais = "Baissier"
-        force = round((ventes / len(resultats)) * 100)
+        force = round(
+            (ventes / len(resultats)) * 100
+        )
 
     else:
         biais = "Mixte"
         force = 50
+
+    # ==========================================
+    # CONCORDANCE
+    # ==========================================
 
     if len(resultats) == 1:
         concordance = "🟡 MODÉRÉE"
@@ -3658,11 +3701,18 @@ def analyser_multi_timeframe(symbole, categorie):
     elif ventes == len(resultats):
         concordance = "🔴 TRÈS FORTE"
 
-    elif achats > ventes or ventes > achats:
-        concordance = "🟡 MODÉRÉE"
+    elif achats > ventes:
+        concordance = "🟡 HAUSSIÈRE"
+
+    elif ventes > achats:
+        concordance = "🟠 BAISSIÈRE"
 
     else:
         concordance = "🟠 MIXTE"
+
+    # ==========================================
+    # RÉSULTAT FINAL
+    # ==========================================
 
     return {
         "resultats": resultats,
@@ -3670,7 +3720,7 @@ def analyser_multi_timeframe(symbole, categorie):
         "biais": biais,
         "force": force,
         "score_global": score_global
-           }
+   }
 def niveau_urgence_alerte(score, confiance, qualite):
     if score >= 90 and confiance == "Très élevée" and qualite >= 85:
         return "🔴 URGENTE"
