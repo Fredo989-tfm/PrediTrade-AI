@@ -6412,3 +6412,22 @@ elif menu=="🔗 Connexions aux plateformes":
 
     with c2:
         st.info("⚫ OKX\n\nBientôt disponible")
+   # --- DETECTEUR DE BALEINES - AJOUT PREDIC ---
+def get_prix_btc():
+    try:
+        import requests
+        url = "https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=15m&limit=100"
+        data = requests.get(url, timeout=5).json()
+        prix = float(data[-1][4])
+        return prix
+    except:
+        return None
+
+def check_baleine():
+    prix = get_prix_btc()
+    if prix:
+        print(f"BTC Prix actuel: {prix}")
+        return prix
+    else:
+        print("Erreur connexion Binance")
+        return None
