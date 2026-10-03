@@ -3595,9 +3595,26 @@ with st.sidebar:
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
 def analyser_multi_timeframe(symbole, categorie):
     """
-    Analyse multi-timeframe de PrediTrade AI.
-    Analyse les horizons 15M, 1H, 4H et 1D.
+    Analyse Multi-Timeframe de PrediTrade AI.
+
+    Timeframes analysés :
+    - 15M : court terme
+    - 1H  : intraday
+    - 4H  : tendance principale
+    - 1D  : contexte général
+
+    Retourne :
+    - résultats détaillés par timeframe
+    - score global MTF
+    - biais global
+    - force du biais
+    - concordance
+    - nombre de timeframes analysés
     """
+
+    # =====================================================
+    # CONFIGURATION DES TIMEFRAMES
+    # =====================================================
 
     timeframes = {
         "15M": "15m",
@@ -3609,49 +3626,93 @@ def analyser_multi_timeframe(symbole, categorie):
     resultats = []
     scores = []
 
+    # =====================================================
+    # ANALYSE DE CHAQUE TIMEFRAME
+    # =====================================================
+
     for nom_tf, intervalle in timeframes.items():
 
         try:
+
+            # -------------------------------------------------
+            # CHARGEMENT DES DONNÉES
+            # -------------------------------------------------
+
             df_tf = charger_donnees(
                 symbole,
                 categorie,
                 interval=intervalle
             )
 
+            # Données absentes
             if df_tf is None or df_tf.empty:
                 continue
+
+            # -------------------------------------------------
+            # VÉRIFICATION DU VOLUME DE DONNÉES
+            # -------------------------------------------------
+
+            if len(df_tf) < 50:
+                continue
+
+            # -------------------------------------------------
+            # CALCUL DES INDICATEURS
+            # -------------------------------------------------
 
             ind_tf = indicateurs(df_tf)
 
             if ind_tf is None:
                 continue
 
+            # -------------------------------------------------
+            # RÉCUPÉRATION DU SCORE
+            # -------------------------------------------------
+
             score_tf = ind_tf.get("score", 50)
 
             try:
                 score_tf = float(score_tf)
-            except Exception:
-                score_tf = 50
+            except (TypeError, ValueError):
+                score_tf = 50.0
+
+            # Sécurisation entre 0 et 100
+            score_tf = max(
+                0.0,
+                min(100.0, score_tf)
+            )
+
+            # -------------------------------------------------
+            # DÉTERMINATION DU SIGNAL
+            # -------------------------------------------------
 
             if score_tf >= 80:
+
                 signal_tf = "ACHAT FORT"
                 biais_tf = "Haussier"
 
             elif score_tf >= 70:
+
                 signal_tf = "ACHAT"
                 biais_tf = "Haussier"
 
             elif score_tf >= 55:
+
                 signal_tf = "ATTENDRE"
                 biais_tf = "Neutre"
 
             elif score_tf >= 40:
+
                 signal_tf = "PRUDENCE"
                 biais_tf = "Prudent"
 
             else:
+
                 signal_tf = "VENTE"
                 biais_tf = "Baissier"
+
+            # -------------------------------------------------
+            # ENREGISTREMENT
+            # -------------------------------------------------
 
             resultats.append({
                 "timeframe": nom_tf,
@@ -3664,97 +3725,182 @@ def analyser_multi_timeframe(symbole, categorie):
             scores.append(score_tf)
 
         except Exception:
+            # Un timeframe défaillant ne doit pas
+            # empêcher les autres de fonctionner.
             continue
 
-    # ==========================================
-    # AUCUNE DONNÉE
-    # ==========================================
+    # =====================================================
+    # AUCUNE DONNÉE DISPONIBLE
+    # =====================================================
 
     if not scores:
+
         return {
             "resultats": [],
             "concordance": "⚪ DONNÉES INSUFFISANTES",
             "biais": "Neutre",
             "force": 0,
-            "score_global": 0
+            "score_global": 0,
+            "timeframes_analyses": 0,
+            "timeframes_total": 4
         }
 
-    # ==========================================
-    # SCORE GLOBAL
-    # ==========================================
+    # =====================================================
+    # SCORE GLOBAL MULTI-TIMEFRAME
+    # =====================================================
 
     score_global = round(
         sum(scores) / len(scores),
         1
     )
 
-    # ==========================================
-    # CALCUL DU BIAIS
-    # ==========================================
+    # =====================================================
+    # COMPTAGE DES SIGNAUX
+    # =====================================================
 
     achats = sum(
         1
-        for r in resultats
-        if r["signal"] in ["ACHAT", "ACHAT FORT"]
+        for resultat in resultats
+        if resultat["signal"] in [
+            "ACHAT",
+            "ACHAT FORT"
+        ]
     )
 
     ventes = sum(
         1
-        for r in resultats
-        if r["signal"] == "VENTE"
+        for resultat in resultats
+        if resultat["signal"] == "VENTE"
     )
 
     neutres = len(resultats) - achats - ventes
 
+    # =====================================================
+    # BIAIS GLOBAL
+    # =====================================================
+
     if achats > ventes:
+
         biais = "Haussier"
+
         force = round(
             (achats / len(resultats)) * 100
         )
 
     elif ventes > achats:
+
         biais = "Baissier"
+
         force = round(
             (ventes / len(resultats)) * 100
         )
 
     else:
+
         biais = "Mixte"
         force = 50
 
-    # ==========================================
-    # CONCORDANCE
-    # ==========================================
+    # =====================================================
+    # CONCORDANCE MULTI-TIMEFRAME
+    # =====================================================
 
     if len(resultats) == 1:
+
         concordance = "🟡 MODÉRÉE"
 
     elif achats == len(resultats):
+
         concordance = "🟢 TRÈS FORTE"
 
     elif ventes == len(resultats):
+
         concordance = "🔴 TRÈS FORTE"
 
     elif achats > ventes:
+
         concordance = "🟡 HAUSSIÈRE"
 
     elif ventes > achats:
+
         concordance = "🟠 BAISSIÈRE"
 
     else:
+
         concordance = "🟠 MIXTE"
 
-    # ==========================================
+    # =====================================================
+    # NIVEAU DE CONFIANCE MTF
+    # =====================================================
+
+    if len(resultats) < 2:
+
+        confiance = "Faible"
+
+    elif len(resultats) == 2:
+
+        confiance = "Modérée"
+
+    elif len(resultats) == 3:
+
+        confiance = "Bonne"
+
+    else:
+
+        confiance = "Élevée"
+
+    # =====================================================
+    # ÉTAT GLOBAL
+    # =====================================================
+
+    if score_global >= 80:
+
+        etat_global = "ACHAT FORT"
+
+    elif score_global >= 70:
+
+        etat_global = "ACHAT"
+
+    elif score_global >= 55:
+
+        etat_global = "ATTENDRE"
+
+    elif score_global >= 40:
+
+        etat_global = "PRUDENCE"
+
+    else:
+
+        etat_global = "VENTE"
+
+    # =====================================================
     # RÉSULTAT FINAL
-    # ==========================================
+    # =====================================================
 
     return {
         "resultats": resultats,
+
         "concordance": concordance,
+
         "biais": biais,
+
         "force": force,
-        "score_global": score_global
-   }
+
+        "score_global": score_global,
+
+        "etat_global": etat_global,
+
+        "confiance": confiance,
+
+        "timeframes_analyses": len(resultats),
+
+        "timeframes_total": 4,
+
+        "achats": achats,
+
+        "ventes": ventes,
+
+        "neutres": neutres
+               }
 def niveau_urgence_alerte(score, confiance, qualite):
     if score >= 90 and confiance == "Très élevée" and qualite >= 85:
         return "🔴 URGENTE"
@@ -4047,349 +4193,900 @@ if menu=="📊 Tableau de bord":
     if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history[-5:]),use_container_width=True)
     else: st.info("Lance une analyse dans IA Pro")
 
-if menu=="🧠 Analyse IA Pro":
-   st.title("🧠 Analyse IA Pro")
-   cat=st.selectbox("📂 Catégorie",list(ASSETS.keys()),key="ia_cat")
-   name=st.selectbox("💹 Actif",list(ASSETS[cat].keys()),key="ia_asset")
-   if st.button("🚀 Lancer l'analyse",type="primary",use_container_width=True,key="launch_analysis"):
-      with st.spinner("🤖 PrediTrade AI analyse..."):
-         df=charger_donnees(ASSETS[cat][name], cat)
-         if df.empty:
-            st.error(f"❌ Impossible de récupérer les données pour {name}")
-            st.stop()
-         else:
-            ind=indicateurs(df)
-      # ============================================================
-      # 🧠 ANALYSE MULTI-TIMEFRAME
-      # ============================================================
+if menu == "🧠 Analyse IA Pro":
+
+    st.title("🧠 Analyse IA Pro")
+
+    cat = st.selectbox(
+        "📂 Catégorie",
+        list(ASSETS.keys()),
+        key="ia_cat"
+    )
+
+    name = st.selectbox(
+        "💹 Actif",
+        list(ASSETS[cat].keys()),
+        key="ia_asset"
+    )
+
+    if st.button(
+        "🚀 Lancer l'analyse",
+        type="primary",
+        use_container_width=True,
+        key="launch_analysis"
+    ):
+
+        with st.spinner("🤖 PrediTrade AI analyse..."):
+
+            # ============================================================
+            # ANALYSE PRINCIPALE
+            # ============================================================
+
+            df = charger_donnees(
+                ASSETS[cat][name],
+                cat
+            )
+
+            if df.empty:
+
+                st.error(
+                    f"❌ Impossible de récupérer les données pour {name}"
+                )
+                st.stop()
+
+            ind = indicateurs(df)
+
+            # ============================================================
+            # 🧠 ANALYSE MULTI-TIMEFRAME
+            # ============================================================
+
             multi_tf = analyser_multi_timeframe(
-               ASSETS[cat][name],
-               cat
+                ASSETS[cat][name],
+                cat
             )
-         resultats_tf = multi_tf["resultats"]
-         concordance_tf = multi_tf["concordance"]
-         biais_tf = multi_tf["biais"]
-         force_tf = multi_tf["force"]
-         score_global_tf = multi_tf["score_global"]
-         score,signal,conf=prediscore(ind)
-         strategie=selectionner_technique(ind,score,signal)
-         plan=generer_plan_trade(ind,strategie)
-         approche=selectionner_approche(ind,score,strategie,plan)
-         setup=evaluer_qualite_setup(ind,score,strategie,plan)
-         scenarios=generer_scenarios(ind,score,strategie,plan,setup)
-         prix=float(ind["close"].iloc[-1])
-         rsi=float(ind["rsi"].iloc[-1])
-         momentum=float(ind["momentum"].iloc[-1])
-         macd=float(ind["macd"].iloc[-1])
-         macd_signal=float(ind["signal"].iloc[-1])
-         ema20=float(ind["ema20"].iloc[-1])
-         ema50=float(ind["ema50"].iloc[-1])
-         ema200=float(ind["ema200"].iloc[-1])
-         risque_info=calculer_risque_trade(
-         plan,
-         capital=float(st.session_state.cash),
-         risque_pct=1.0
-         )
-         st.success(f"✅ Analyse terminée — {name}")
-         st.markdown("### 🧠 Analyse Multi-Timeframe")
-         col1, col2, col3 = st.columns(3)
-         with col1:
-            st.metric(
-               "Score global",
-               f"{score_global_tf:.1f}/100"
+
+            resultats_tf = multi_tf.get(
+                "resultats",
+                []
             )
-         with col2:
-            st.metric(
-               "Concordance",
-               concordance_tf
+
+            concordance_tf = multi_tf.get(
+                "concordance",
+                "⚪ DONNÉES INSUFFISANTES"
             )
-         with col3:
-            st.metric(
-               "Biais dominant",
-               biais_tf,
-               f"{force_tf}%"
+
+            biais_tf = multi_tf.get(
+                "biais",
+                "Neutre"
             )
-         if resultats_tf:
-            st.markdown("#### 📊 Lecture des différentes périodes")
-            lignes_tf = []
-            ordre_tf = ["15m", "1h", "4h", "1d"]
-            for tf in ordre_tf:
-               if tf not in resultats_tf:
-                  continue
-               r = resultats_tf[tf]
-               lignes_tf.append({
-                  "Timeframe": r["label"],
-                  "PrediScore": r["score"],
-                  "Signal": r["signal"],
-                  "Confiance": r["confiance"],
-                  "Qualité": r["qualite"],
-                  "Technique": r["technique"]
-               })
-            st.dataframe(
-               pd.DataFrame(lignes_tf),
-               use_container_width=True,
-               hide_index=True
+
+            force_tf = multi_tf.get(
+                "force",
+                0
             )
-            if biais_tf == "Haussier":
-               st.success(
-                  f"🟢 Concordance multi-timeframe {concordance_tf} : "
-                  f"le biais dominant est haussier sur "
-                  f"{force_tf}% des périodes analysées."
-               )
-            elif biais_tf == "Baissier":
-               st.error(
-                  f"🔴 Concordance multi-timeframe {concordance_tf} : "
-                  f"le biais dominant est baissier sur "
-                  f"{force_tf}% des périodes analysées."
-               )
+
+            score_global_tf = multi_tf.get(
+                "score_global",
+                0
+            )
+
+            confiance_tf = multi_tf.get(
+                "confiance",
+                "Faible"
+            )
+
+            etat_global_tf = multi_tf.get(
+                "etat_global",
+                "PRUDENCE"
+            )
+
+            timeframes_analyses = multi_tf.get(
+                "timeframes_analyses",
+                0
+            )
+
+            timeframes_total = multi_tf.get(
+                "timeframes_total",
+                4
+            )
+
+            # ============================================================
+            # 🎯 SCORE PRINCIPAL
+            # ============================================================
+
+            score, signal, conf = prediscore(ind)
+
+            # ============================================================
+            # 🧠 STRATÉGIE
+            # ============================================================
+
+            strategie = selectionner_technique(
+                ind,
+                score,
+                signal
+            )
+
+            plan = generer_plan_trade(
+                ind,
+                strategie
+            )
+
+            approche = selectionner_approche(
+                ind,
+                score,
+                strategie,
+                plan
+            )
+
+            setup = evaluer_qualite_setup(
+                ind,
+                score,
+                strategie,
+                plan
+            )
+
+            scenarios = generer_scenarios(
+                ind,
+                score,
+                strategie,
+                plan,
+                setup
+            )
+
+            # ============================================================
+            # 📊 VALEURS TECHNIQUES
+            # ============================================================
+
+            prix = float(
+                ind["close"].iloc[-1]
+            )
+
+            rsi = float(
+                ind["rsi"].iloc[-1]
+            )
+
+            momentum = float(
+                ind["momentum"].iloc[-1]
+            )
+
+            macd = float(
+                ind["macd"].iloc[-1]
+            )
+
+            macd_signal = float(
+                ind["signal"].iloc[-1]
+            )
+
+            ema20 = float(
+                ind["ema20"].iloc[-1]
+            )
+
+            ema50 = float(
+                ind["ema50"].iloc[-1]
+            )
+
+            ema200 = float(
+                ind["ema200"].iloc[-1]
+            )
+
+            # ============================================================
+            # 🛡️ GESTION DU RISQUE
+            # ============================================================
+
+            risque_info = calculer_risque_trade(
+                plan,
+                capital=float(
+                    st.session_state.cash
+                ),
+                risque_pct=1.0
+            )
+
+            # ============================================================
+            # ✅ ANALYSE TERMINÉE
+            # ============================================================
+
+            st.success(
+                f"✅ Analyse terminée — {name}"
+            )
+
+            # ============================================================
+            # 🧠 ANALYSE MULTI-TIMEFRAME
+            # ============================================================
+
+            st.markdown(
+                "### 🧠 Analyse Multi-Timeframe"
+            )
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.metric(
+                    "Score global MTF",
+                    f"{score_global_tf:.1f}/100"
+                )
+
+            with col2:
+                st.metric(
+                    "Concordance",
+                    concordance_tf
+                )
+
+            with col3:
+                st.metric(
+                    "Biais dominant",
+                    biais_tf,
+                    f"{force_tf}%"
+                )
+
+            # Informations complémentaires MTF
+
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                st.metric(
+                    "🧠 Confiance MTF",
+                    confiance_tf
+                )
+
+            with c2:
+                st.metric(
+                    "📊 État global",
+                    etat_global_tf
+                )
+
+            with c3:
+                st.metric(
+                    "⏱️ Timeframes",
+                    f"{timeframes_analyses}/{timeframes_total}"
+                )
+
+            # ============================================================
+            # 📊 LECTURE DES TIMEFRAMES
+            # ============================================================
+
+            if resultats_tf:
+
+                st.markdown(
+                    "#### 📊 Lecture des différentes périodes"
+                )
+
+                lignes_tf = []
+
+                ordre_tf = [
+                    "15M",
+                    "1H",
+                    "4H",
+                    "1D"
+                ]
+
+                for nom_tf in ordre_tf:
+
+                    resultat = next(
+                        (
+                            r
+                            for r in resultats_tf
+                            if r.get("timeframe") == nom_tf
+                        ),
+                        None
+                    )
+
+                    if resultat is None:
+                        continue
+
+                    lignes_tf.append(
+                        {
+                            "Timeframe": resultat.get(
+                                "timeframe",
+                                nom_tf
+                            ),
+                            "Intervalle": resultat.get(
+                                "interval",
+                                ""
+                            ),
+                            "PrediScore": resultat.get(
+                                "score",
+                                0
+                            ),
+                            "Signal": resultat.get(
+                                "signal",
+                                "N/A"
+                            ),
+                            "Biais": resultat.get(
+                                "biais",
+                                "N/A"
+                            )
+                        }
+                    )
+
+                if lignes_tf:
+
+                    st.dataframe(
+                        pd.DataFrame(lignes_tf),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
             else:
-               st.warning(
-                  "🟡 Les différentes périodes présentent des signaux mixtes. "
-                  "La confirmation multi-timeframe est limitée."
-                  )
-               st.subheader("🎯 Plan de trade PrediTrade AI")
-               if plan["statut"]=="NO_TRADE":
-                  st.info("🟡 Aucun trade recommandé : les conditions actuelles ne sont pas suffisamment claires.")
-               else:
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("📍 Point d'entrée",f"{plan['entree']:,.4f}")
-                  c2.metric("🛑 Stop Loss",f"{plan['stop_loss']:,.4f}")
-                  c3.metric("🎯 TP1",f"{plan['tp1']:,.4f}")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("🎯 TP2",f"{plan['tp2']:,.4f}")
-                  c2.metric("🎯 TP3",f"{plan['tp3']:,.4f}")
-                  c3.metric("📐 R/R TP2",f"1:{plan['rr2']:.1f}")
-                  st.caption(
-                     f"⚠️ Plan basé sur la technique **{strategie['nom']}** "
-                     f"avec un biais **{strategie['biais']}**."
-                  )
-                  st.subheader("🛡️ Gestion du risque")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("💰 Risque $",f"${risque_info['risque_montant']:.2f}")
-                  c2.metric("📏 Distance SL",f"{risque_info['distance_sl']:.4f}")
-                  c3.metric("📦 Taille position",f"{risque_info['taille_position']:.4f}")
-                  st.subheader("🧠 Stratégie sélectionnée par PrediTrade AI")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("📈 Régime",strategie["regime"])
-                  c2.metric("🎯 Technique",strategie["nom"])
-                  c3.metric("⭐ Qualité",f'{strategie["qualite"]}/100')
-                  st.info(
-                     f'💡 **Pourquoi cette technique ?** {strategie["raison"]}\n\n'
-                     f'**Biais du marché :** {strategie["biais"]}'
-                  )
-                  st.subheader("⚙️ Approche recommandée par PrediTrade AI")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("🎯 Approche",approche["approche"])
-                  c2.metric("⚡ Levier",approche["levier"])
-                  c3.metric("📊 Niveau",approche["niveau"])
-                  st.info(
-                     f'🧠 **Pourquoi cette approche ?** {approche["raison"]}'
-                  )
-                  st.subheader("⭐ Qualité du setup")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("⭐ Qualité",f'{setup["qualite"]}/100')
-                  c2.metric("🔗 Confluence",f'{setup["confluence"]}/100')
-                  c3.metric("⚠️ Risque",setup["risque"])
-                  st.info(
-                     f'🧠 **Évaluation :** {setup["niveau"]}\n\n'
-                     f'{setup["raison"]}'
-                  )
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("🎯 PrediScore",f"{score}/100")
-                  c2.metric("📡 Signal",signal)
-                  c3.metric("🧠 Confiance",conf)
-                  c1,c2,c3=st.columns(3)
-                  c1.metric("💰 Prix",f"{prix:,.4f}")
-                  c2.metric("📊 RSI",f"{rsi:.1f}")
-                  c3.metric("📈 Momentum",f"{momentum:.2f}%")
-                  st.divider()
-                  st.subheader("🔮 Scénarios du marché")
-                  c1,c2,c3=st.columns(3)
-                  c1.metric(
-                     "🟢 Scénario principal",
-                     f'{scenarios["principal"]["probabilite"]}%'
-                  )
-                  c2.metric(
-                     "🔴 Scénario adverse",
-                     f'{scenarios["adverse"]["probabilite"]}%'
-                  )
-                  c3.metric(
-                     "↔️ Scénario neutre",
-                     f'{scenarios["neutre"]["probabilite"]}%'
-                  )
-                  st.write(
-                     f'**{scenarios["principal"]["direction"]}** — '
-                     f'{scenarios["principal"]["condition"]}'
-                  )
-                  st.write(
-                     f'**{scenarios["adverse"]["direction"]}** — '
-                     f'{scenarios["adverse"]["condition"]}'
-                  )
-                  st.write(
-                     f'**{scenarios["neutre"]["direction"]}** — '
-                     f'{scenarios["neutre"]["condition"]}'
-                  )
-                  st.divider()
-                  st.subheader("📊 Graphique du marché")
-                  chart=df.tail(150).copy()
-                  fig=go.Figure()
-                  fig.add_trace(
-                     go.Candlestick(
-                        x=chart.index,
-                        open=chart["Open"],
-                        high=chart["High"],
-                        low=chart["Low"],
-                        close=chart["Close"],
-                        name="Prix"
-                     )
-                  )
-                  fig.add_trace(
-                     go.Scatter(
-                        x=chart.index,
-                        y=ind["ema20"].tail(150),
-                        name="EMA20",
-                        mode="lines"
-                     )
-                  )
-                  fig.add_trace(
-                     go.Scatter(
-                        x=chart.index,
-                        y=ind["ema50"].tail(150),
-                        name="EMA50",
-                        mode="lines"
-                     )
-                  )
-                  fig.add_trace(
-                     go.Scatter(
-                        x=chart.index,
-                        y=ind["ema200"].tail(150),
-                        name="EMA200",
-                        mode="lines"
-                     )
-                  )
-                  if plan["statut"]=="TRADE":
-                     fig.add_hline(
-                        y=plan["entree"], 
-                        line_dash="dash",
-                        annotation_text="📍 Entrée",
-                        annotation_position="top left"
-                     )
-                     fig.add_hline(
-                        y=plan["stop_loss"],
-                        line_dash="dash",
-                        annotation_text="🛑 Stop Loss",
-                        annotation_position="bottom left"
-                     )
-                     fig.add_hline(
-                     y=plan["tp1"],
-                     line_dash="dot",
-                     annotation_text="🎯 TP1",
-                     annotation_position="top left"
-                  )
-                  fig.add_hline(
-                     y=plan["tp2"],
-                     line_dash="dot",
-                     annotation_text="🎯 TP2",
-                     annotation_position="top left"
-                  )
-                  fig.add_hline(
-                     y=plan["tp3"],
-                     line_dash="dot",
-                     annotation_text="🎯 TP3",
-                     annotation_position="top left"
-                  )
-                  fig.update_layout(
-                     height=500,
-                     template="plotly_dark",
-                     xaxis_rangeslider_visible=False,
-                     margin=dict(l=5,r=5,t=30,b=5),
-                     legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=1.02,
-                        xanchor="left",
-                        x=0
-                     )
-                  )
-                  st.plotly_chart(
-                     fig,
-                     use_container_width=True,
-                     config={
-                        "displaylogo":False,
-                        "responsive":True
-                     }
-                  )
-                  st.divider()
-                  st.subheader("🔎 Pourquoi ce score?")
-                  for icone,indicateur,detail,interp in expliquer_score(ind):
-                     c1,c2,c3=st.columns([1,2,3])
-                     c1.write(icone)
-                     c2.write(f"**{indicateur}**")
-                     c3.write(f"{detail} — **{interp}**")
-                     st.divider()
-                     st.subheader("🤖 Conclusion PrediTrade AI")
-                     if score>=80:
-                        if rsi>70:
-                           st.warning(
-                              f"🟢 Signal fortement haussier ({score}/100), "
-                              f"mais le RSI à {rsi:.1f} indique une zone de surachat."
-                           )
-                        else:
-                           st.success(f"🟢 Configuration haussière forte : {score}/100.")
-                     elif score>=70:
-                           st.success(f"🟢 Configuration haussière : {score}/100.")
-                     elif score>=55:
-                           st.info(f"🟡 Configuration neutre : {score}/100.")
-                     elif score>=40:
-                        st.warning(f"🟠 Configuration prudente : {score}/100.")
-                     else:
-                        st.error(f"🔴 Configuration baissière : {score}/100.")
-                        st.subheader("📋 Résumé technique")
-                        resume=pd.DataFrame([
-                           {
-                              "Indicateur":"EMA20",
-                              "Valeur":f"{ema20:,.4f}",
-                              "Lecture":"Haussière" if ema20>ema50 else "Baissière"
-                           },
-                           {
-                              "Indicateur":"EMA50",
-                              "Valeur":f"{ema50:,.4f}",
-                              "Lecture":"Haussière" if ema50>ema200 else "Baissière"
-                           },
-                           {
-                              "Indicateur":"EMA200",
-                              "Valeur":f"{ema200:,.4f}",
-                              "Lecture":"Prix au-dessus" if prix>ema200 else "Prix sous"
-                           },
-                           { 
-                              "Indicateur":"RSI",
-                              "Valeur":f"{rsi:.1f}",
-                              "Lecture":"Suracheté" if rsi>70 else "Survendu" if rsi<30 else "Zone normale"
-                           },
-                           {
-                              "Indicateur":"MACD",
-                              "Valeur":f"{macd:.4f}",
-                              "Lecture":"Haussier" if macd>macd_signal else "Baissier"
-                           },
-                           {
-                              "Indicateur":"Momentum",
-                              "Valeur":f"{momentum:.2f}%",
-                              "Lecture":"Positif" if momentum>0 else "Négatif"
-                           }
-                        ])
-                        st.dataframe(
-                           resume,
-                           use_container_width=True,
-                           hide_index=True
+
+                st.warning(
+                    "⚠️ Aucune timeframe exploitable n'a pu être analysée."
+                )
+
+            # ============================================================
+            # 📡 INTERPRÉTATION DE LA CONCORDANCE
+            # ============================================================
+
+            if biais_tf == "Haussier":
+
+                st.success(
+                    f"🟢 Concordance multi-timeframe "
+                    f"{concordance_tf} : le biais dominant est "
+                    f"haussier sur {force_tf}% des périodes analysées."
+                )
+
+            elif biais_tf == "Baissier":
+
+                st.error(
+                    f"🔴 Concordance multi-timeframe "
+                    f"{concordance_tf} : le biais dominant est "
+                    f"baissier sur {force_tf}% des périodes analysées."
+                )
+
+            else:
+
+                st.warning(
+                    "🟡 Les différentes périodes présentent "
+                    "des signaux mixtes. La confirmation "
+                    "multi-timeframe est limitée."
+                )
+
+            # ============================================================
+            # 🎯 PLAN DE TRADE
+            # ============================================================
+
+            st.subheader(
+                "🎯 Plan de trade PrediTrade AI"
+            )
+
+            if plan["statut"] == "NO_TRADE":
+
+                st.info(
+                    "🟡 Aucun trade recommandé : les conditions "
+                    "actuelles ne sont pas suffisamment claires."
+                )
+
+            else:
+
+                c1, c2, c3 = st.columns(3)
+
+                c1.metric(
+                    "📍 Point d'entrée",
+                    f"{plan['entree']:,.4f}"
+                )
+
+                c2.metric(
+                    "🛑 Stop Loss",
+                    f"{plan['stop_loss']:,.4f}"
+                )
+
+                c3.metric(
+                    "🎯 TP1",
+                    f"{plan['tp1']:,.4f}"
+                )
+
+                c1, c2, c3 = st.columns(3)
+
+                c1.metric(
+                    "🎯 TP2",
+                    f"{plan['tp2']:,.4f}"
+                )
+
+                c2.metric(
+                    "🎯 TP3",
+                    f"{plan['tp3']:,.4f}"
+                )
+
+                c3.metric(
+                    "📐 R/R TP2",
+                    f"1:{plan['rr2']:.1f}"
+                )
+
+                st.caption(
+                    f"⚠️ Plan basé sur la technique "
+                    f"**{strategie['nom']}** avec un biais "
+                    f"**{strategie['biais']}**."
+                )
+
+            # ============================================================
+            # 🛡️ GESTION DU RISQUE
+            # ============================================================
+
+            st.subheader(
+                "🛡️ Gestion du risque"
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "💰 Risque $",
+                f"${risque_info['risque_montant']:.2f}"
+            )
+
+            c2.metric(
+                "📏 Distance SL",
+                f"{risque_info['distance_sl']:.4f}"
+            )
+
+            c3.metric(
+                "📦 Taille position",
+                f"{risque_info['taille_position']:.4f}"
+            )
+
+            # ============================================================
+            # 🧠 STRATÉGIE
+            # ============================================================
+
+            st.subheader(
+                "🧠 Stratégie sélectionnée par PrediTrade AI"
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "📈 Régime",
+                strategie["regime"]
+            )
+
+            c2.metric(
+                "🎯 Technique",
+                strategie["nom"]
+            )
+
+            c3.metric(
+                "⭐ Qualité",
+                f'{strategie["qualite"]}/100'
+            )
+
+            st.info(
+                f'💡 **Pourquoi cette technique ?** '
+                f'{strategie["raison"]}\n\n'
+                f'**Biais du marché :** '
+                f'{strategie["biais"]}'
+            )
+
+            # ============================================================
+            # ⚙️ APPROCHE
+            # ============================================================
+
+            st.subheader(
+                "⚙️ Approche recommandée par PrediTrade AI"
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "🎯 Approche",
+                approche["approche"]
+            )
+
+            c2.metric(
+                "⚡ Levier",
+                approche["levier"]
+            )
+
+            c3.metric(
+                "📊 Niveau",
+                approche["niveau"]
+            )
+
+            st.info(
+                f'🧠 **Pourquoi cette approche ?** '
+                f'{approche["raison"]}'
+            )
+
+            # ============================================================
+            # ⭐ QUALITÉ DU SETUP
+            # ============================================================
+
+            st.subheader(
+                "⭐ Qualité du setup"
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "⭐ Qualité",
+                f'{setup["qualite"]}/100'
+            )
+
+            c2.metric(
+                "🔗 Confluence",
+                f'{setup["confluence"]}/100'
+            )
+
+            c3.metric(
+                "⚠️ Risque",
+                setup["risque"]
+            )
+
+            st.info(
+                f'🧠 **Évaluation :** {setup["niveau"]}\n\n'
+                f'{setup["raison"]}'
+            )
+
+            # ============================================================
+            # 🎯 PREDITRADE SCORE
+            # ============================================================
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "🎯 PrediScore",
+                f"{score}/100"
+            )
+
+            c2.metric(
+                "📡 Signal",
+                signal
+            )
+
+            c3.metric(
+                "🧠 Confiance",
+                conf
+            )
+
+            # ============================================================
+            # 📊 INDICATEURS PRINCIPAUX
+            # ============================================================
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "💰 Prix",
+                f"{prix:,.4f}"
+            )
+
+            c2.metric(
+                "📊 RSI",
+                f"{rsi:.1f}"
+            )
+
+            c3.metric(
+                "📈 Momentum",
+                f"{momentum:.2f}%"
+            )
+
+            st.divider()
+
+            # ============================================================
+            # 🔮 SCÉNARIOS
+            # ============================================================
+
+            st.subheader(
+                "🔮 Scénarios du marché"
+            )
+
+            c1, c2, c3 = st.columns(3)
+
+            c1.metric(
+                "🟢 Scénario principal",
+                f'{scenarios["principal"]["probabilite"]}%'
+            )
+
+            c2.metric(
+                "🔴 Scénario adverse",
+                f'{scenarios["adverse"]["probabilite"]}%'
+            )
+
+            c3.metric(
+                "↔️ Scénario neutre",
+                f'{scenarios["neutre"]["probabilite"]}%'
+            )
+
+            st.write(
+                f'**{scenarios["principal"]["direction"]}** — '
+                f'{scenarios["principal"]["condition"]}'
+            )
+
+            st.write(
+                f'**{scenarios["adverse"]["direction"]}** — '
+                f'{scenarios["adverse"]["condition"]}'
+            )
+
+            st.write(
+                f'**{scenarios["neutre"]["direction"]}** — '
+                f'{scenarios["neutre"]["condition"]}'
+            )
+
+            st.divider()
+
+            # ============================================================
+            # 📊 GRAPHIQUE DU MARCHÉ
+            # ============================================================
+
+            st.subheader(
+                "📊 Graphique du marché"
+            )
+
+            chart = df.tail(150).copy()
+
+            fig = go.Figure()
+
+            fig.add_trace(
+                go.Candlestick(
+                    x=chart.index,
+                    open=chart["Open"],
+                    high=chart["High"],
+                    low=chart["Low"],
+                    close=chart["Close"],
+                    name="Prix"
+                )
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=chart.index,
+                    y=ind["ema20"].tail(150),
+                    name="EMA20",
+                    mode="lines"
+                )
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=chart.index,
+                    y=ind["ema50"].tail(150),
+                    name="EMA50",
+                    mode="lines"
+                )
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=chart.index,
+                    y=ind["ema200"].tail(150),
+                    name="EMA200",
+                    mode="lines"
+                )
+            )
+
+            if plan["statut"] == "TRADE":
+
+                fig.add_hline(
+                    y=plan["entree"],
+                    line_dash="dash",
+                    annotation_text="📍 Entrée",
+                    annotation_position="top left"
+                )
+
+                fig.add_hline(
+                    y=plan["stop_loss"],
+                    line_dash="dash",
+                    annotation_text="🛑 Stop Loss",
+                    annotation_position="bottom left"
+                )
+
+                fig.add_hline(
+                    y=plan["tp1"],
+                    line_dash="dot",
+                    annotation_text="🎯 TP1",
+                    annotation_position="top left"
+                )
+
+                fig.add_hline(
+                    y=plan["tp2"],
+                    line_dash="dot",
+                    annotation_text="🎯 TP2",
+                    annotation_position="top left"
+                )
+
+                fig.add_hline(
+                    y=plan["tp3"],
+                    line_dash="dot",
+                    annotation_text="🎯 TP3",
+                    annotation_position="top left"
+                )
+
+            fig.update_layout(
+                height=500,
+                template="plotly_dark",
+                xaxis_rangeslider_visible=False,
+                margin=dict(
+                    l=5,
+                    r=5,
+                    t=30,
+                    b=5
+                ),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="left",
+                    x=0
+                )
+            )
+
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                config={
+                    "displaylogo": False,
+                    "responsive": True
+                }
+            )
+
+            st.divider()
+
+            # ============================================================
+            # 🔎 EXPLICATION DU SCORE
+            # ============================================================
+
+            st.subheader(
+                "🔎 Pourquoi ce score?"
+            )
+
+            for icone, indicateur, detail, interp in expliquer_score(ind):
+
+                c1, c2, c3 = st.columns(
+                    [1, 2, 3]
+                )
+
+                c1.write(icone)
+
+                c2.write(
+                    f"**{indicateur}**"
+                )
+
+                c3.write(
+                    f"{detail} — **{interp}**"
+                )
+
+                st.divider()
+
+            # ============================================================
+            # 🤖 CONCLUSION
+            # ============================================================
+
+            st.subheader(
+                "🤖 Conclusion PrediTrade AI"
+            )
+
+            if score >= 80:
+
+                if rsi > 70:
+
+                    st.warning(
+                        f"🟢 Signal fortement haussier "
+                        f"({score}/100), mais le RSI à "
+                        f"{rsi:.1f} indique une zone de surachat."
+                    )
+
+                else:
+
+                    st.success(
+                        f"🟢 Configuration haussière forte : "
+                        f"{score}/100."
+                    )
+
+            elif score >= 70:
+
+                st.success(
+                    f"🟢 Configuration haussière : "
+                    f"{score}/100."
+                )
+
+            elif score >= 55:
+
+                st.info(
+                    f"🟡 Configuration neutre : "
+                    f"{score}/100."
+                )
+
+            elif score >= 40:
+
+                st.warning(
+                    f"🟠 Configuration prudente : "
+                    f"{score}/100."
+                )
+
+            else:
+
+                st.error(
+                    f"🔴 Configuration baissière : "
+                    f"{score}/100."
+                )
+
+            # ============================================================
+            # 📋 RÉSUMÉ TECHNIQUE
+            # ============================================================
+
+            st.subheader(
+                "📋 Résumé technique"
+            )
+
+            resume = pd.DataFrame(
+                [
+                    {
+                        "Indicateur": "EMA20",
+                        "Valeur": f"{ema20:,.4f}",
+                        "Lecture": (
+                            "Haussière"
+                            if ema20 > ema50
+                            else "Baissière"
                         )
-                        st.session_state.history.append({
-                           "date":datetime.now().strftime("%Y-%m-%d %H:%M"),
-                           "actif":name,
-                           "score":score, 
-                           "signal":signal,
-                           "confiance":conf,
-                           "prix":prix
-                        })
+                    },
+                    {
+                        "Indicateur": "EMA50",
+                        "Valeur": f"{ema50:,.4f}",
+                        "Lecture": (
+                            "Haussière"
+                            if ema50 > ema200
+                            else "Baissière"
+                        )
+                    },
+                    {
+                        "Indicateur": "EMA200",
+                        "Valeur": f"{ema200:,.4f}",
+                        "Lecture": (
+                            "Prix au-dessus"
+                            if prix > ema200
+                            else "Prix sous"
+                        )
+                    },
+                    {
+                        "Indicateur": "RSI",
+                        "Valeur": f"{rsi:.1f}",
+                        "Lecture": (
+                            "Suracheté"
+                            if rsi > 70
+                            else "Survendu"
+                            if rsi < 30
+                            else "Zone normale"
+                        )
+                    },
+                    {
+                        "Indicateur": "MACD",
+                        "Valeur": f"{macd:.4f}",
+                        "Lecture": (
+                            "Haussier"
+                            if macd > macd_signal
+                            else "Baissier"
+                        )
+                    },
+                    {
+                        "Indicateur": "Momentum",
+                        "Valeur": f"{momentum:.2f}%",
+                        "Lecture": (
+                            "Positif"
+                            if momentum > 0
+                            else "Négatif"
+                        )
+                    }
+                ]
+            )
+
+            st.dataframe(
+                resume,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # ============================================================
+            # 📝 HISTORIQUE
+            # ============================================================
+
+            st.session_state.history.append(
+                {
+                    "date": datetime.now().strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
+                    "actif": name,
+                    "score": score,
+                    "signal": signal,
+                    "confiance": conf,
+                    "prix": prix
+                }
+           )
 elif menu == "🔍 Scanner intelligent":
 
     import re
