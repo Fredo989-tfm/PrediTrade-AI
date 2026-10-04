@@ -3592,7 +3592,7 @@ with st.sidebar:
         st.info(f"🚀 Essai Premium : {jours}j — {heures}h restantes")
     elif st.session_state.is_premium: st.success("⭐ Premium Actif")
     else: st.warning("🆓 Gratuit")
-    st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history)
+    st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses"),len(st.session_state.history)
  def analyser_multi_timeframe(symbole, categorie):
     """
     Analyse Multi-Timeframe de PrediTrade AI.
