@@ -3767,198 +3767,198 @@ def analyser_multi_timeframe(symbole, categorie):
          # empêcher les autres de fonctionner.
          continue
 
-    # =====================================================
-    # AUCUNE DONNÉE DISPONIBLE
-    # =====================================================
-
-    if not scores:
-
-        return {
-            "resultats": [],
-            "concordance": "⚪ DONNÉES INSUFFISANTES",
-            "biais": "Neutre",
-            "force": 0,
-            "score_global": 0,
-            "etat_global": "DONNÉES INSUFFISANTES",
-            "confiance": "Faible",
-            "timeframes_analyses": 0,
-            "timeframes_total": 4,
-            "achats": 0,
-            "ventes": 0,
-            "neutres": 0
-        }
+   # =====================================================
+   # AUCUNE DONNÉE DISPONIBLE
+   # =====================================================
+
+   if not scores:
+
+      return {
+         "resultats": [],
+         "concordance": "⚪ DONNÉES INSUFFISANTES",
+         "biais": "Neutre",
+         "force": 0,
+         "score_global": 0,
+         "etat_global": "DONNÉES INSUFFISANTES",
+         "confiance": "Faible",
+         "timeframes_analyses": 0,
+         "timeframes_total": 4,
+         "achats": 0,
+         "ventes": 0,
+         "neutres": 0
+      }
 
-    # =====================================================
-    # SCORE GLOBAL MULTI-TIMEFRAME
-    # =====================================================
+   # =====================================================
+   # SCORE GLOBAL MULTI-TIMEFRAME
+   # =====================================================
 
-    score_global = round(
-        sum(scores) / len(scores),
-        1
-    )
+   score_global = round(
+      sum(scores) / len(scores),
+      1
+   )
 
-    # =====================================================
-    # COMPTAGE DES SIGNAUX
-    # =====================================================
+   # =====================================================
+   # COMPTAGE DES SIGNAUX
+   # =====================================================
 
-    achats = sum(
-        1
-        for resultat in resultats
-        if resultat["signal"].upper()
-        in [
-            "ACHAT",
-            "ACHAT FORT"
-        ]
-        or "ACHAT" in resultat["signal"].upper()
-    )
+   achats = sum(
+      1
+      for resultat in resultats
+      if resultat["signal"].upper()
+      in [
+         "ACHAT",
+         "ACHAT FORT"
+      ]
+      or "ACHAT" in resultat["signal"].upper()
+   )
 
-    ventes = sum(
-        1
-        for resultat in resultats
-        if (
-            resultat["signal"].upper() == "VENTE"
-            or "VENTE" in resultat["signal"].upper()
-        )
-    )
+   ventes = sum(
+      1
+      for resultat in resultats
+      if (
+         resultat["signal"].upper() == "VENTE"
+         or "VENTE" in resultat["signal"].upper()
+      )
+   )
 
-    neutres = (
-        len(resultats)
-        - achats
-        - ventes
-    )
+   neutres = (
+      len(resultats)
+      - achats
+      - ventes
+   )
 
-    # Sécurité
-    neutres = max(
-        0,
-        neutres
-    )
+   # Sécurité
+   neutres = max(
+      0,
+      neutres
+   )
 
-    # =====================================================
-    # BIAIS GLOBAL
-    # =====================================================
+   # =====================================================
+   # BIAIS GLOBAL
+   # =====================================================
 
-    if achats > ventes:
+   if achats > ventes:
 
-        biais = "Haussier"
+      biais = "Haussier"
 
-        force = round(
-            (achats / len(resultats)) * 100
-        )
+      force = round(
+         (achats / len(resultats)) * 100
+      )
 
-    elif ventes > achats:
+   elif ventes > achats:
 
-        biais = "Baissier"
+      biais = "Baissier"
 
-        force = round(
-            (ventes / len(resultats)) * 100
-        )
+      force = round(
+         (ventes / len(resultats)) * 100
+      )
 
-    else:
+   else:
 
-        biais = "Mixte"
-        force = 50
+      biais = "Mixte"
+      force = 50
 
-    # =====================================================
-    # CONCORDANCE
-    # =====================================================
+   # =====================================================
+   # CONCORDANCE
+   # =====================================================
 
-    if len(resultats) == 1:
+   if len(resultats) == 1:
 
-        concordance = "🟡 MODÉRÉE"
+      concordance = "🟡 MODÉRÉE"
 
-    elif achats == len(resultats):
+   elif achats == len(resultats):
 
-        concordance = "🟢 TRÈS FORTE"
+      concordance = "🟢 TRÈS FORTE"
 
-    elif ventes == len(resultats):
+   elif ventes == len(resultats):
 
-        concordance = "🔴 TRÈS FORTE"
+      concordance = "🔴 TRÈS FORTE"
 
-    elif achats > ventes:
+   elif achats > ventes:
 
-        concordance = "🟡 HAUSSIÈRE"
+      concordance = "🟡 HAUSSIÈRE"
 
-    elif ventes > achats:
+   elif ventes > achats:
 
-        concordance = "🟠 BAISSIÈRE"
+      concordance = "🟠 BAISSIÈRE"
 
-    else:
+   else:
 
-        concordance = "🟠 MIXTE"
+      concordance = "🟠 MIXTE"
 
-    # =====================================================
-    # NIVEAU DE CONFIANCE MTF
-    # =====================================================
+   # =====================================================
+   # NIVEAU DE CONFIANCE MTF
+   # =====================================================
 
-    if len(resultats) < 2:
+   if len(resultats) < 2:
 
-        confiance = "Faible"
+      confiance = "Faible"
 
-    elif len(resultats) == 2:
+   elif len(resultats) == 2:
 
-        confiance = "Modérée"
+      confiance = "Modérée"
 
-    elif len(resultats) == 3:
+   elif len(resultats) == 3:
 
-        confiance = "Bonne"
+      confiance = "Bonne"
 
-    else:
+   else:
 
-        confiance = "Élevée"
+      confiance = "Élevée"
 
-    # =====================================================
-    # ÉTAT GLOBAL
-    # =====================================================
+   # =====================================================
+   # ÉTAT GLOBAL
+   # =====================================================
 
-    if score_global >= 80:
+   if score_global >= 80:
 
-        etat_global = "ACHAT FORT"
+      etat_global = "ACHAT FORT"
 
-    elif score_global >= 70:
+   elif score_global >= 70:
 
-        etat_global = "ACHAT"
+      etat_global = "ACHAT"
 
-    elif score_global >= 55:
+   elif score_global >= 55:
 
-        etat_global = "ATTENDRE"
+      etat_global = "ATTENDRE"
 
-    elif score_global >= 40:
+   elif score_global >= 40:
 
-        etat_global = "PRUDENCE"
+      etat_global = "PRUDENCE"
 
-    else:
+   else:
 
-        etat_global = "VENTE"
+      etat_global = "VENTE"
 
-    # =====================================================
-    # RÉSULTAT FINAL
-    # =====================================================
+   # =====================================================
+  # RÉSULTAT FINAL
+   # =====================================================
 
-    return {
-        "resultats": resultats,
+   return {
+      "resultats": resultats,
 
-        "concordance": concordance,
+      "concordance": concordance,
 
-        "biais": biais,
+      "biais": biais,
 
-        "force": force,
+      "force": force,
 
-        "score_global": score_global,
+      "score_global": score_global,
 
-        "etat_global": etat_global,
+      "etat_global": etat_global,
 
-        "confiance": confiance,
+      "confiance": confiance,
 
-        "timeframes_analyses": len(resultats),
+      "timeframes_analyses": len(resultats),
 
-        "timeframes_total": 4,
+      "timeframes_total": 4,
 
-        "achats": achats,
+      "achats": achats,
 
-        "ventes": ventes,
+      "ventes": ventes,
 
-        "neutres": neutres
-           }                                                                   
+      "neutres": neutres
+         }                                                                   
 def niveau_urgence_alerte(score, confiance, qualite):
     if score >= 90 and confiance == "Très élevée" and qualite >= 85:
         return "🔴 URGENTE"
