@@ -3592,24 +3592,19 @@ with st.sidebar:
         st.info(f"🚀 Essai Premium : {jours}j — {heures}h restantes")
     elif st.session_state.is_premium: st.success("⭐ Premium Actif")
     else: st.warning("🆓 Gratuit")
-    st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history))
-def analyser_multi_timeframe(symbole, categorie):
+    st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses",len(st.session_state.history)
+ def analyser_multi_timeframe(symbole, categorie):
     """
     Analyse Multi-Timeframe de PrediTrade AI.
 
-    Timeframes analysés :
+    Timeframes :
     - 15M : court terme
     - 1H  : intraday
     - 4H  : tendance principale
     - 1D  : contexte général
 
-    Retourne :
-    - résultats détaillés par timeframe
-    - score global MTF
-    - biais global
-    - force du biais
-    - concordance
-    - nombre de timeframes analysés
+    Le PrediScore de chaque timeframe est calculé
+    par la fonction officielle prediscore().
     """
 
     # =====================================================
@@ -3644,12 +3639,11 @@ def analyser_multi_timeframe(symbole, categorie):
                 interval=intervalle
             )
 
-            # Données absentes
             if df_tf is None or df_tf.empty:
                 continue
 
             # -------------------------------------------------
-            # VÉRIFICATION DU VOLUME DE DONNÉES
+            # VÉRIFICATION DES DONNÉES
             # -------------------------------------------------
 
             if len(df_tf) < 50:
@@ -3665,66 +3659,108 @@ def analyser_multi_timeframe(symbole, categorie):
                 continue
 
             # -------------------------------------------------
-            # RÉCUPÉRATION DU SCORE
+            # CALCUL DU VRAI PREDITRADE SCORE
             # -------------------------------------------------
 
-            score_tf = ind_tf.get("score", 50)
-
             try:
-                score_tf = float(score_tf)
-            except (TypeError, ValueError):
-                score_tf = 50.0
 
-            # Sécurisation entre 0 et 100
+                score_tf, signal_tf, confiance_tf = prediscore(
+                    ind_tf
+                )
+
+                score_tf = float(score_tf)
+
+            except Exception:
+
+                continue
+
+            # -------------------------------------------------
+            # SÉCURISATION DU SCORE
+            # -------------------------------------------------
+
             score_tf = max(
                 0.0,
                 min(100.0, score_tf)
             )
 
             # -------------------------------------------------
-            # DÉTERMINATION DU SIGNAL
+            # SÉCURISATION DU SIGNAL
+            # -------------------------------------------------
+
+            if signal_tf is None:
+                signal_tf = "NEUTRE"
+
+            signal_tf = str(
+                signal_tf
+            )
+
+            # -------------------------------------------------
+            # DÉTERMINATION DU BIAIS
             # -------------------------------------------------
 
             if score_tf >= 80:
 
-                signal_tf = "ACHAT FORT"
                 biais_tf = "Haussier"
 
             elif score_tf >= 70:
 
-                signal_tf = "ACHAT"
                 biais_tf = "Haussier"
 
             elif score_tf >= 55:
 
-                signal_tf = "ATTENDRE"
                 biais_tf = "Neutre"
 
             elif score_tf >= 40:
 
-                signal_tf = "PRUDENCE"
                 biais_tf = "Prudent"
 
             else:
 
-                signal_tf = "VENTE"
                 biais_tf = "Baissier"
+
+            # -------------------------------------------------
+            # AJUSTEMENT DU BIAIS SELON LE SIGNAL
+            # -------------------------------------------------
+
+            if "ACHAT" in signal_tf.upper():
+
+                biais_tf = "Haussier"
+
+            elif "VENTE" in signal_tf.upper():
+
+                biais_tf = "Baissier"
+
+            elif (
+                "ATTENDRE" in signal_tf.upper()
+                or "NEUTRE" in signal_tf.upper()
+            ):
+
+                biais_tf = "Neutre"
 
             # -------------------------------------------------
             # ENREGISTREMENT
             # -------------------------------------------------
 
-            resultats.append({
-                "timeframe": nom_tf,
-                "interval": intervalle,
-                "score": round(score_tf, 1),
-                "signal": signal_tf,
-                "biais": biais_tf
-            })
+            resultats.append(
+                {
+                    "timeframe": nom_tf,
+                    "interval": intervalle,
+                    "score": round(
+                        score_tf,
+                        1
+                    ),
+                    "signal": signal_tf,
+                    "biais": biais_tf,
+                    "confiance": confiance_tf
+                }
+            )
 
-            scores.append(score_tf)
+            scores.append(
+                score_tf
+            )
 
         except Exception:
+
             # Un timeframe défaillant ne doit pas
             # empêcher les autres de fonctionner.
             continue
@@ -3741,8 +3777,13 @@ def analyser_multi_timeframe(symbole, categorie):
             "biais": "Neutre",
             "force": 0,
             "score_global": 0,
+            "etat_global": "DONNÉES INSUFFISANTES",
+            "confiance": "Faible",
             "timeframes_analyses": 0,
-            "timeframes_total": 4
+            "timeframes_total": 4,
+            "achats": 0,
+            "ventes": 0,
+            "neutres": 0
         }
 
     # =====================================================
@@ -3761,19 +3802,34 @@ def analyser_multi_timeframe(symbole, categorie):
     achats = sum(
         1
         for resultat in resultats
-        if resultat["signal"] in [
+        if resultat["signal"].upper()
+        in [
             "ACHAT",
             "ACHAT FORT"
         ]
+        or "ACHAT" in resultat["signal"].upper()
     )
 
     ventes = sum(
         1
         for resultat in resultats
-        if resultat["signal"] == "VENTE"
+        if (
+            resultat["signal"].upper() == "VENTE"
+            or "VENTE" in resultat["signal"].upper()
+        )
     )
 
-    neutres = len(resultats) - achats - ventes
+    neutres = (
+        len(resultats)
+        - achats
+        - ventes
+    )
+
+    # Sécurité
+    neutres = max(
+        0,
+        neutres
+    )
 
     # =====================================================
     # BIAIS GLOBAL
@@ -3801,7 +3857,7 @@ def analyser_multi_timeframe(symbole, categorie):
         force = 50
 
     # =====================================================
-    # CONCORDANCE MULTI-TIMEFRAME
+    # CONCORDANCE
     # =====================================================
 
     if len(resultats) == 1:
@@ -3900,7 +3956,7 @@ def analyser_multi_timeframe(symbole, categorie):
         "ventes": ventes,
 
         "neutres": neutres
-               }
+           }                                                                   
 def niveau_urgence_alerte(score, confiance, qualite):
     if score >= 90 and confiance == "Très élevée" and qualite >= 85:
         return "🔴 URGENTE"
