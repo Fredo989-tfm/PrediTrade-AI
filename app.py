@@ -3593,177 +3593,179 @@ with st.sidebar:
     elif st.session_state.is_premium: st.success("⭐ Premium Actif")
     else: st.warning("🆓 Gratuit")
     st.metric("💰 Cash",f"${st.session_state.cash:,.2f}"); st.metric("📈 Analyses"),len(st.session_state.history)
- def analyser_multi_timeframe(symbole, categorie):
-    """
-    Analyse Multi-Timeframe de PrediTrade AI.
+def analyser_multi_timeframe(symbole, categorie):
+   """
+   Analyse Multi-Timeframe de PrediTrade AI.
 
-    Timeframes :
-    - 15M : court terme
-    - 1H  : intraday
-    - 4H  : tendance principale
-    - 1D  : contexte général
+   Timeframes :
+   - 15M : court terme
+   - 1H  : intraday
+   - 4H  : tendance principale
+   - 1D  : contexte général
 
-    Le PrediScore de chaque timeframe est calculé
-    par la fonction officielle prediscore().
-    """
+   Le PrediScore de chaque timeframe est calculé
+   par la fonction officielle prediscore().
+   """
 
-    # =====================================================
-    # CONFIGURATION DES TIMEFRAMES
-    # =====================================================
+   # =====================================================
+   # CONFIGURATION DES TIMEFRAMES
+   # =====================================================
 
-    timeframes = {
-        "15M": "15m",
-        "1H": "1h",
-        "4H": "4h",
-        "1D": "1d"
-    }
+   timeframes = {
+      "15M": "15m",
+      "1H": "1h",
+      "4H": "4h",
+      "1D": "1d"
+   }
 
-    resultats = []
-    scores = []
+   resultats = []
+   scores = []
 
-    # =====================================================
-    # ANALYSE DE CHAQUE TIMEFRAME
-    # =====================================================
+   # =====================================================
+   # ANALYSE DE CHAQUE TIMEFRAME
+   # =====================================================
 
-    for nom_tf, intervalle in timeframes.items():
+   for nom_tf, intervalle in timeframes.items():
 
-        try:
+      try:
 
-            # -------------------------------------------------
-            # CHARGEMENT DES DONNÉES
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # CHARGEMENT DES DONNÉES
+         # -------------------------------------------------
 
-            df_tf = charger_donnees(
-                symbole,
-                categorie,
-                interval=intervalle
-            )
+         df_tf = charger_donnees(
+               symbole,
+               categorie,
+               interval=intervalle
+         )
 
-            if df_tf is None or df_tf.empty:
-                continue
+         if df_tf is None or df_tf.empty:
+               continue
 
-            # -------------------------------------------------
-            # VÉRIFICATION DES DONNÉES
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # VÉRIFICATION DES DONNÉES
+         # -------------------------------------------------
 
-            if len(df_tf) < 50:
-                continue
+         if len(df_tf) < 50:
+               continue
 
-            # -------------------------------------------------
-            # CALCUL DES INDICATEURS
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # CALCUL DES INDICATEURS
+         # -------------------------------------------------
 
-            ind_tf = indicateurs(df_tf)
+         ind_tf = indicateurs(df_tf)
 
-            if ind_tf is None:
-                continue
+         if ind_tf is None:
+               continue
 
-            # -------------------------------------------------
-            # CALCUL DU VRAI PREDITRADE SCORE
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # CALCUL DU VRAI PREDITRADE SCORE
+         # -------------------------------------------------
 
-            try:
+         try:
 
-                score_tf, signal_tf, confiance_tf = prediscore(
-                    ind_tf
-                )
+               score_tf, signal_tf, confiance_tf = prediscore(
+                  ind_tf
+               )
 
-                score_tf = float(score_tf)
+               score_tf = float(score_tf)
 
-            except Exception:
+         except Exception:
 
-                continue
+               continue
 
-            # -------------------------------------------------
-            # SÉCURISATION DU SCORE
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # SÉCURISATION DU SCORE
+         # -------------------------------------------------
 
-            score_tf = max(
-                0.0,
-                min(100.0, score_tf)
-            )
+         score_tf = max(
+               0.0,
+               
+            
+         min(100.0, score_tf)
+         )
 
-            # -------------------------------------------------
-            # SÉCURISATION DU SIGNAL
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # SÉCURISATION DU SIGNAL
+         # -------------------------------------------------
 
-            if signal_tf is None:
-                signal_tf = "NEUTRE"
+         if signal_tf is None:
+               signal_tf = "NEUTRE"
 
-            signal_tf = str(
-                signal_tf
-            )
+         signal_tf = str(
+               signal_tf
+         )
 
-            # -------------------------------------------------
-            # DÉTERMINATION DU BIAIS
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # DÉTERMINATION DU BIAIS
+         # -------------------------------------------------
 
-            if score_tf >= 80:
+         if score_tf >= 80:
 
-                biais_tf = "Haussier"
+               biais_tf = "Haussier"
 
-            elif score_tf >= 70:
+         elif score_tf >= 70:
 
-                biais_tf = "Haussier"
+               biais_tf = "Haussier"
 
-            elif score_tf >= 55:
+         elif score_tf >= 55:
 
-                biais_tf = "Neutre"
+               biais_tf = "Neutre"
 
-            elif score_tf >= 40:
+         elif score_tf >= 40:
 
-                biais_tf = "Prudent"
+               biais_tf = "Prudent"
 
-            else:
+         else:
 
-                biais_tf = "Baissier"
+               biais_tf = "Baissier"
 
-            # -------------------------------------------------
-            # AJUSTEMENT DU BIAIS SELON LE SIGNAL
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # AJUSTEMENT DU BIAIS SELON LE SIGNAL
+         # -------------------------------------------------
 
-            if "ACHAT" in signal_tf.upper():
+         if "ACHAT" in signal_tf.upper():
 
-                biais_tf = "Haussier"
+               biais_tf = "Haussier"
 
-            elif "VENTE" in signal_tf.upper():
+         elif "VENTE" in signal_tf.upper():
 
-                biais_tf = "Baissier"
+               biais_tf = "Baissier"
 
-            elif (
-                "ATTENDRE" in signal_tf.upper()
-                or "NEUTRE" in signal_tf.upper()
-            ):
+         elif (
+               "ATTENDRE" in signal_tf.upper()
+               or "NEUTRE" in signal_tf.upper()
+         ):
 
-                biais_tf = "Neutre"
+               biais_tf = "Neutre"
 
-            # -------------------------------------------------
-            # ENREGISTREMENT
-            # -------------------------------------------------
+         # -------------------------------------------------
+         # ENREGISTREMENT
+         # -------------------------------------------------
 
-            resultats.append(
-                {
-                    "timeframe": nom_tf,
-                    "interval": intervalle,
-                    "score": round(
-                        score_tf,
-                        1
-                    ),
-                    "signal": signal_tf,
-                    "biais": biais_tf,
-                    "confiance": confiance_tf
-                }
-            )
+         resultats.append(
+               {
+                  "timeframe": nom_tf,
+                  "interval": intervalle,
+                  "score": round(
+                     score_tf,
+                     1
+                  ),
+                  "signal": signal_tf,
+                  "biais": biais_tf,
+                  "confiance": confiance_tf
+               }
+         )
 
-            scores.append(
-                score_tf
-            )
+         scores.append(
+               score_tf
+         )
 
-        except Exception:
+      except Exception:
 
-            # Un timeframe défaillant ne doit pas
-            # empêcher les autres de fonctionner.
-            continue
+         # Un timeframe défaillant ne doit pas
+         # empêcher les autres de fonctionner.
+         continue
 
     # =====================================================
     # AUCUNE DONNÉE DISPONIBLE
