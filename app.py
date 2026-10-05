@@ -5268,7 +5268,7 @@ if menu == "🧠 Analyse IA Pro":
             if (
                 pattern_direction == "Baissier"
                 and biais_tf == "Baissier"
-                and signal in [
+                and signal_final in [
                     "ACHAT",
                     "ACHAT FORT"
                 ]
