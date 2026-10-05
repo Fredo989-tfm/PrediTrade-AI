@@ -5251,16 +5251,16 @@ if menu == "🧠 Analyse IA Pro":
             # ------------------------------------------------------------
             # 🎯 NOUVELLE DÉCISION FINALE
             # ------------------------------------------------------------
-           if score_final >= 88:
-              signal_final = "🟢 ACHAT FORT"
-           elif score_final >= 76:
-              signal_final = "🟢 ACHAT"
-           elif score_final >= 60:
-              signal_final = "🟡 ATTENDRE"
-           elif score_final >= 45:
-              signal_final = "🟠 PRUDENCE"
-           else:
-              signal_final = "🔴 VENTE"
+            if score_final >= 88:
+               signal_final = "🟢 ACHAT FORT"
+            elif score_final >= 76:
+               signal_final = "🟢 ACHAT"
+            elif score_final >= 60:
+               signal_final = "🟡 ATTENDRE"
+            elif score_final >= 45:
+               signal_final = "🟠 PRUDENCE"
+            else:
+               signal_final = "🔴 VENTE"
             # ------------------------------------------------------------
             # 🧭 AJUSTEMENT PAR LA CONFLUENCE
             # ------------------------------------------------------------
