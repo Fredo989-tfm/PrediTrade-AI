@@ -5355,14 +5355,14 @@ if menu == "🧠 Analyse IA Pro":
                 f"🎯 **Décision finale PrediTrade AI : "
                 f"{signal_final} — {score:.1f}/100**"
     )
-            # ============================================================
+                        # ============================================================
             # 🧠 STRATÉGIE
             # ============================================================
 
             strategie = selectionner_technique(
                 ind,
                 score,
-                signal
+                signal_final
             )
 
             plan = generer_plan_trade(
@@ -5383,15 +5383,6 @@ if menu == "🧠 Analyse IA Pro":
                 strategie,
                 plan
             )
-
-            scenarios = generer_scenarios(
-                ind,
-                score,
-                strategie,
-                plan,
-                setup
-            )
-
             # ============================================================
             # 📊 VALEURS TECHNIQUES
             # ============================================================
