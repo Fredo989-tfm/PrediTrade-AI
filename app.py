@@ -5353,7 +5353,7 @@ if menu == "🧠 Analyse IA Pro":
 
             st.info(
                 f"🎯 **Décision finale PrediTrade AI : "
-                f"{signal} — {score:.1f}/100**"
+                f"{signal_final} — {score:.1f}/100**"
     )
             # ============================================================
             # 🧠 STRATÉGIE
