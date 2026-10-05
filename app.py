@@ -5134,8 +5134,243 @@ if menu == "🧠 Analyse IA Pro":
             # 🎯 SCORE PRINCIPAL
             # ============================================================
 
-            score, signal, conf = prediscore(ind)
+                        # ============================================================
+            # 🎯 SCORE PRINCIPAL + CONFLUENCE PATTERN / MTF
+            # ============================================================
 
+            # Score technique de base
+            score_base, signal_base, conf_base = prediscore(ind)
+
+            # ------------------------------------------------------------
+            # 📐 CONTRIBUTION DU PATTERN
+            # ------------------------------------------------------------
+
+            pattern_principal = (
+                patterns_info.get("principal")
+                if "patterns_info" in locals()
+                else None
+            )
+
+            pattern_score = 50.0
+            pattern_direction = "Neutre"
+            pattern_confiance = 0
+
+            if pattern_principal:
+
+                pattern_score = float(
+                    pattern_principal.get(
+                        "confiance",
+                        50
+                    )
+                )
+
+                pattern_direction = pattern_principal.get(
+                    "direction",
+                    "Neutre"
+                )
+
+                pattern_confiance = pattern_score
+
+            # ------------------------------------------------------------
+            # 🧠 CONTRIBUTION DU MULTI-TIMEFRAME
+            # ------------------------------------------------------------
+
+            mtf_score = float(
+                score_global_tf
+                if timeframes_analyses >= 2
+                else 50.0
+            )
+
+            # ------------------------------------------------------------
+            # ⚖️ SCORE DE CONFLUENCE
+            #
+            # 60 % indicateurs / PrediScore
+            # 20 % pattern graphique
+            # 20 % MTF
+            # ------------------------------------------------------------
+
+            score_confluence = (
+                (float(score_base) * 0.60)
+                + (pattern_score * 0.20)
+                + (mtf_score * 0.20)
+            )
+
+            # ------------------------------------------------------------
+            # 🔄 COHÉRENCE DES DIRECTIONS
+            # ------------------------------------------------------------
+
+            direction_base = "Neutre"
+
+            if score_base >= 70:
+                direction_base = "Haussier"
+
+            elif score_base < 40:
+                direction_base = "Baissier"
+
+            if (
+                pattern_direction == direction_base
+                and pattern_direction != "Neutre"
+            ):
+
+                score_confluence += 4
+
+            elif (
+                pattern_direction != "Neutre"
+                and direction_base != "Neutre"
+                and pattern_direction != direction_base
+            ):
+
+                score_confluence -= 4
+
+            # ------------------------------------------------------------
+            # 🧠 COHÉRENCE MTF
+            # ------------------------------------------------------------
+
+            if (
+                biais_tf in ["Haussier", "Baissier"]
+                and direction_base != "Neutre"
+            ):
+
+                if biais_tf == direction_base:
+                    score_confluence += 4
+
+                else:
+                    score_confluence -= 4
+
+            # Limitation du score
+            score = float(
+                max(
+                    0,
+                    min(
+                        100,
+                        score_confluence
+                    )
+                )
+            )
+
+            # ------------------------------------------------------------
+            # 🎯 NOUVELLE DÉCISION FINALE
+            # ------------------------------------------------------------
+
+            if score >= 80:
+
+                signal = "ACHAT FORT"
+                conf = "Très élevée"
+
+            elif score >= 70:
+
+                signal = "ACHAT"
+                conf = "Élevée"
+
+            elif score >= 55:
+
+                signal = "ATTENDRE"
+                conf = "Moyenne"
+
+            elif score >= 40:
+
+                signal = "PRUDENCE"
+                conf = "Faible"
+
+            else:
+
+                signal = "VENTE"
+                conf = "Élevée"
+
+            # ------------------------------------------------------------
+            # 🧭 AJUSTEMENT PAR LA CONFLUENCE
+            # ------------------------------------------------------------
+
+            if (
+                pattern_direction == "Baissier"
+                and biais_tf == "Baissier"
+                and signal in [
+                    "ACHAT",
+                    "ACHAT FORT"
+                ]
+            ):
+
+                signal = "PRUDENCE"
+
+            elif (
+                pattern_direction == "Haussier"
+                and biais_tf == "Haussier"
+                and score >= 70
+            ):
+
+                if score >= 80:
+                    signal = "ACHAT FORT"
+                else:
+                    signal = "ACHAT"
+
+            # ------------------------------------------------------------
+            # 📊 RÉSUMÉ DE LA CONFLUENCE
+            # ------------------------------------------------------------
+
+            st.markdown(
+                "### 🧠 Confluence technique finale"
+            )
+
+            cc1, cc2, cc3, cc4 = st.columns(4)
+
+            cc1.metric(
+                "🎯 PrediScore",
+                f"{score_base:.1f}/100"
+            )
+
+            cc2.metric(
+                "📐 Pattern",
+                f"{pattern_confiance:.0f}/100"
+            )
+
+            cc3.metric(
+                "🧠 MTF",
+                f"{mtf_score:.1f}/100"
+            )
+
+            cc4.metric(
+                "🔥 Score final",
+                f"{score:.1f}/100"
+            )
+
+            if (
+                pattern_principal
+                and biais_tf in [
+                    "Haussier",
+                    "Baissier"
+                ]
+            ):
+
+                direction_pattern = pattern_direction
+
+                if (
+                    direction_pattern == biais_tf
+                    and direction_pattern != "Neutre"
+                ):
+
+                    st.success(
+                        f"🟢 **Confluence confirmée :** "
+                        f"le pattern **{pattern_principal['pattern']}** "
+                        f"et le MTF présentent un biais "
+                        f"**{biais_tf.lower()}**."
+                    )
+
+                elif (
+                    direction_pattern != "Neutre"
+                    and direction_pattern != biais_tf
+                ):
+
+                    st.warning(
+                        f"🟡 **Confluence contradictoire :** "
+                        f"le pattern **{pattern_principal['pattern']}** "
+                        f"est **{direction_pattern.lower()}**, "
+                        f"tandis que le MTF est **{biais_tf.lower()}**."
+                    )
+
+            st.info(
+                f"🎯 **Décision finale PrediTrade AI : "
+                f"{signal} — {score:.1f}/100**"
+    )
             # ============================================================
             # 🧠 STRATÉGIE
             # ============================================================
