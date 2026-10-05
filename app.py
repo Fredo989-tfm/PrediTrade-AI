@@ -4293,6 +4293,788 @@ if menu == "🧠 Analyse IA Pro":
                 st.stop()
 
             ind = indicateurs(df)
+                       # ============================================================
+            # 📐 RECONNAISSANCE DES PATTERNS GRAPHIQUES — ÉTAPE 5
+            # ============================================================
+
+            def detecter_patterns_graphiques(df_pattern):
+                """
+                Détecte plusieurs configurations graphiques à partir des
+                dernières bougies disponibles.
+                
+                Module autonome :
+                - ne remplace pas le PrediScore
+                - ne remplace pas le Multi-Timeframe
+                - sert de confluence technique
+                """
+
+                resultats = []
+
+                if df_pattern is None or df_pattern.empty or len(df_pattern) < 60:
+                    return {
+                        "patterns": [],
+                        "principal": None,
+                        "confiance_globale": 0
+                    }
+
+                data = df_pattern.copy()
+
+                # Compatibilité avec les noms de colonnes
+                cols = {
+                    str(c).lower(): c
+                    for c in data.columns
+                }
+
+                if not all(
+                    k in cols
+                    for k in ["open", "high", "low", "close"]
+                ):
+                    return {
+                        "patterns": [],
+                        "principal": None,
+                        "confiance_globale": 0
+                    }
+
+                close = pd.to_numeric(
+                    data[cols["close"]],
+                    errors="coerce"
+                )
+
+                high = pd.to_numeric(
+                    data[cols["high"]],
+                    errors="coerce"
+                )
+
+                low = pd.to_numeric(
+                    data[cols["low"]],
+                    errors="coerce"
+                )
+
+                work = pd.DataFrame({
+                    "close": close,
+                    "high": high,
+                    "low": low
+                }).dropna()
+
+                if len(work) < 60:
+                    return {
+                        "patterns": [],
+                        "principal": None,
+                        "confiance_globale": 0
+                    }
+
+                # --------------------------------------------------------
+                # STRUCTURE RÉCENTE
+                # --------------------------------------------------------
+
+                w = work.tail(
+                    min(180, len(work))
+                ).reset_index(drop=True)
+
+                c = w["close"].to_numpy(dtype=float)
+                h = w["high"].to_numpy(dtype=float)
+                l = w["low"].to_numpy(dtype=float)
+
+                prix = float(c[-1])
+
+                # --------------------------------------------------------
+                # FONCTION UTILITAIRE
+                # --------------------------------------------------------
+
+                def pct_distance(a, b):
+                    base = max(abs(float(b)), 1e-12)
+                    return (
+                        abs(float(a) - float(b))
+                        / base
+                        * 100.0
+                    )
+
+                def ajouter(
+                    nom,
+                    direction,
+                    confiance,
+                    description,
+                    confirmation,
+                    invalidation
+                ):
+
+                    confiance = int(
+                        max(
+                            0,
+                            min(
+                                100,
+                                round(confiance)
+                            )
+                        )
+                    )
+
+                    resultats.append({
+                        "pattern": nom,
+                        "direction": direction,
+                        "confiance": confiance,
+                        "description": description,
+                        "confirmation": float(
+                            confirmation
+                        ),
+                        "invalidation": float(
+                            invalidation
+                        )
+                    })
+
+                # ========================================================
+                # PIVOTS
+                # ========================================================
+
+                look = 3
+
+                pivots_high = []
+                pivots_low = []
+
+                for i in range(
+                    look,
+                    len(w) - look
+                ):
+
+                    if h[i] >= np.max(
+                        h[i-look:i+look+1]
+                    ):
+                        pivots_high.append(
+                            (i, h[i])
+                        )
+
+                    if l[i] <= np.min(
+                        l[i-look:i+look+1]
+                    ):
+                        pivots_low.append(
+                            (i, l[i])
+                        )
+
+                # ========================================================
+                # 1️⃣ DOUBLE BOTTOM
+                # ========================================================
+
+                if (
+                    len(pivots_low) >= 2
+                    and len(pivots_high) >= 1
+                ):
+
+                    p1, v1 = pivots_low[-2]
+                    p2, v2 = pivots_low[-1]
+
+                    if p2 > p1 + 5:
+
+                        tol = pct_distance(
+                            v1,
+                            v2
+                        )
+
+                        entre_deux = h[p1:p2+1]
+
+                        neckline = (
+                            float(
+                                np.max(
+                                    entre_deux
+                                )
+                            )
+                            if len(entre_deux)
+                            else max(v1, v2)
+                        )
+
+                        distance_recent = (
+                            len(w) - 1
+                        ) - p2
+
+                        if (
+                            tol <= 3.5
+                            and distance_recent <= 45
+                            and neckline > max(v1, v2)
+                        ):
+
+                            conf = 68
+
+                            if prix >= neckline:
+                                conf += 12
+
+                            elif pct_distance(
+                                prix,
+                                neckline
+                            ) <= 2.0:
+                                conf += 7
+
+                            ajouter(
+                                "Double Bottom",
+                                "Haussier",
+                                conf,
+                                "Deux creux proches avec une zone de résistance commune.",
+                                neckline,
+                                min(v1, v2)
+                            )
+
+                # ========================================================
+                # 2️⃣ DOUBLE TOP
+                # ========================================================
+
+                if (
+                    len(pivots_high) >= 2
+                    and len(pivots_low) >= 1
+                ):
+
+                    p1, v1 = pivots_high[-2]
+                    p2, v2 = pivots_high[-1]
+
+                    if p2 > p1 + 5:
+
+                        tol = pct_distance(
+                            v1,
+                            v2
+                        )
+
+                        entre_deux = l[p1:p2+1]
+
+                        neckline = (
+                            float(
+                                np.min(
+                                    entre_deux
+                                )
+                            )
+                            if len(entre_deux)
+                            else min(v1, v2)
+                        )
+
+                        distance_recent = (
+                            len(w) - 1
+                        ) - p2
+
+                        if (
+                            tol <= 3.5
+                            and distance_recent <= 45
+                            and neckline < min(v1, v2)
+                        ):
+
+                            conf = 68
+
+                            if prix <= neckline:
+                                conf += 12
+
+                            elif pct_distance(
+                                prix,
+                                neckline
+                            ) <= 2.0:
+                                conf += 7
+
+                            ajouter(
+                                "Double Top",
+                                "Baissier",
+                                conf,
+                                "Deux sommets proches avec une zone de support commune.",
+                                neckline,
+                                max(v1, v2)
+                            )
+
+                # ========================================================
+                # 3️⃣ HEAD & SHOULDERS
+                # ========================================================
+
+                if (
+                    len(pivots_high) >= 3
+                    and len(pivots_low) >= 2
+                ):
+
+                    (a, va), (b, vb), (d, vd) = (
+                        pivots_high[-3:]
+                    )
+
+                    lows_between = [
+                        (i, v)
+                        for i, v in pivots_low
+                        if a < i < d
+                    ]
+
+                    if (
+                        b > a
+                        and d > b
+                        and lows_between
+                    ):
+
+                        epaule_g = va
+                        tete = vb
+                        epaule_d = vd
+
+                        sym = pct_distance(
+                            epaule_g,
+                            epaule_d
+                        )
+
+                        dominance = (
+                            (
+                                tete
+                                - max(
+                                    epaule_g,
+                                    epaule_d
+                                )
+                            )
+                            / max(
+                                tete,
+                                1e-12
+                            )
+                            * 100
+                        )
+
+                        neckline = float(
+                            np.mean(
+                                [
+                                    x[1]
+                                    for x in lows_between[-2:]
+                                ]
+                            )
+                        )
+
+                        if (
+                            sym <= 12
+                            and dominance >= 1.0
+                        ):
+
+                            conf = (
+                                65
+                                + min(
+                                    15,
+                                    dominance * 3
+                                )
+                            )
+
+                            if prix < neckline:
+                                conf += 10
+
+                            ajouter(
+                                "Head & Shoulders",
+                                "Baissier",
+                                conf,
+                                "Épaule gauche, tête dominante et épaule droite détectées.",
+                                neckline,
+                                tete
+                            )
+
+                # ========================================================
+                # 4️⃣ INVERSE HEAD & SHOULDERS
+                # ========================================================
+
+                if (
+                    len(pivots_low) >= 3
+                    and len(pivots_high) >= 2
+                ):
+
+                    (a, va), (b, vb), (d, vd) = (
+                        pivots_low[-3:]
+                    )
+
+                    highs_between = [
+                        (i, v)
+                        for i, v in pivots_high
+                        if a < i < d
+                    ]
+
+                    if (
+                        b > a
+                        and d > b
+                        and highs_between
+                    ):
+
+                        epaule_g = va
+                        tete = vb
+                        epaule_d = vd
+
+                        sym = pct_distance(
+                            epaule_g,
+                            epaule_d
+                        )
+
+                        dominance = (
+                            (
+                                min(
+                                    epaule_g,
+                                    epaule_d
+                                )
+                                - tete
+                            )
+                            / max(
+                                abs(tete),
+                                1e-12
+                            )
+                            * 100
+                        )
+
+                        neckline = float(
+                            np.mean(
+                                [
+                                    x[1]
+                                    for x in highs_between[-2:]
+                                ]
+                            )
+                        )
+
+                        if (
+                            sym <= 12
+                            and dominance >= 1.0
+                        ):
+
+                            conf = (
+                                65
+                                + min(
+                                    15,
+                                    dominance * 3
+                                )
+                            )
+
+                            if prix > neckline:
+                                conf += 10
+
+                            ajouter(
+                                "Inverse Head & Shoulders",
+                                "Haussier",
+                                conf,
+                                "Deux épaules autour d'un creux central plus profond.",
+                                neckline,
+                                tete
+                            )
+
+                # ========================================================
+                # 5️⃣ TRIANGLES
+                # ========================================================
+
+                n = min(
+                    70,
+                    len(w)
+                )
+
+                t = np.arange(
+                    n,
+                    dtype=float
+                )
+
+                hh = h[-n:]
+                ll = l[-n:]
+
+                if n >= 30:
+
+                    resistance = float(
+                        np.max(hh)
+                    )
+
+                    support = float(
+                        np.min(ll)
+                    )
+
+                    try:
+
+                        slope_high = float(
+                            np.polyfit(
+                                t,
+                                hh,
+                                1
+                            )[0]
+                        )
+
+                        slope_low = float(
+                            np.polyfit(
+                                t,
+                                ll,
+                                1
+                            )[0]
+                        )
+
+                    except Exception:
+
+                        slope_high = 0.0
+                        slope_low = 0.0
+
+                    range_pct = (
+                        (
+                            resistance
+                            - support
+                        )
+                        / max(
+                            abs(prix),
+                            1e-12
+                        )
+                        * 100
+                    )
+
+                    if range_pct >= 0.5:
+
+                        if (
+                            abs(slope_high)
+                            <= abs(slope_low) * 0.35
+                            + abs(prix) * 0.00001
+                            and slope_low > 0
+                        ):
+
+                            conf = 70
+
+                            if prix >= resistance * 0.99:
+                                conf += 8
+
+                            ajouter(
+                                "Triangle Ascendant",
+                                "Haussier",
+                                conf,
+                                "Résistance relativement horizontale et creux ascendants.",
+                                resistance,
+                                support
+                            )
+
+                        elif (
+                            abs(slope_low)
+                            <= abs(slope_high) * 0.35
+                            + abs(prix) * 0.00001
+                            and slope_high < 0
+                        ):
+
+                            conf = 70
+
+                            if prix <= support * 1.01:
+                                conf += 8
+
+                            ajouter(
+                                "Triangle Descendant",
+                                "Baissier",
+                                conf,
+                                "Support relativement horizontal et sommets descendants.",
+                                support,
+                                resistance
+                            )
+
+                # ========================================================
+                # 6️⃣ BREAKOUT RÉCENT
+                # ========================================================
+
+                if len(c) >= 25:
+
+                    zone = 20
+
+                    resistance = float(
+                        np.max(
+                            h[-zone-1:-1]
+                        )
+                    )
+
+                    support = float(
+                        np.min(
+                            l[-zone-1:-1]
+                        )
+                    )
+
+                    if prix > resistance:
+
+                        ecart = (
+                            (
+                                prix
+                                - resistance
+                            )
+                            / max(
+                                resistance,
+                                1e-12
+                            )
+                            * 100
+                        )
+
+                        if ecart <= 5:
+
+                            ajouter(
+                                "Breakout haussier",
+                                "Haussier",
+                                72 + min(
+                                    18,
+                                    ecart * 4
+                                ),
+                                "Le prix vient de dépasser la résistance récente.",
+                                resistance,
+                                resistance * 0.985
+                            )
+
+                    elif prix < support:
+
+                        ecart = (
+                            (
+                                support
+                                - prix
+                            )
+                            / max(
+                                support,
+                                1e-12
+                            )
+                            * 100
+                        )
+
+                        if ecart <= 5:
+
+                            ajouter(
+                                "Breakout baissier",
+                                "Baissier",
+                                72 + min(
+                                    18,
+                                    ecart * 4
+                                ),
+                                "Le prix vient de casser le support récent.",
+                                support,
+                                support * 1.015
+                            )
+
+                # ========================================================
+                # 7️⃣ RANGE / CONSOLIDATION
+                # ========================================================
+
+                if len(c) >= 30:
+
+                    recent = c[-30:]
+
+                    range_recent = (
+                        (
+                            np.max(recent)
+                            - np.min(recent)
+                        )
+                        / max(
+                            abs(prix),
+                            1e-12
+                        )
+                        * 100
+                    )
+
+                    if range_recent <= 4.0:
+
+                        ajouter(
+                            "Range / Consolidation",
+                            "Neutre",
+                            min(
+                                88,
+                                72
+                                + (
+                                    4.0
+                                    - range_recent
+                                ) * 4
+                            ),
+                            "Le prix évolue dans une zone relativement compacte.",
+                            float(
+                                np.max(recent)
+                            ),
+                            float(
+                                np.min(recent)
+                            )
+                        )
+
+                # ========================================================
+                # CLASSEMENT
+                # ========================================================
+
+                resultats.sort(
+                    key=lambda x: x["confiance"],
+                    reverse=True
+                )
+
+                principal = (
+                    resultats[0]
+                    if resultats
+                    else None
+                )
+
+                confiance_globale = (
+                    principal["confiance"]
+                    if principal
+                    else 0
+                )
+
+                return {
+                    "patterns": resultats[:5],
+                    "principal": principal,
+                    "confiance_globale": confiance_globale
+                }
+
+            # ============================================================
+            # EXÉCUTION
+            # ============================================================
+
+            patterns_info = detecter_patterns_graphiques(df)
+
+            st.markdown(
+                "### 📐 Reconnaissance des patterns graphiques"
+            )
+
+            pattern_principal = patterns_info.get(
+                "principal"
+            )
+
+            if pattern_principal:
+
+                pc1, pc2, pc3 = st.columns(3)
+
+                pc1.metric(
+                    "📐 Pattern principal",
+                    pattern_principal["pattern"]
+                )
+
+                pc2.metric(
+                    "🎯 Confiance",
+                    f'{pattern_principal["confiance"]}/100'
+                )
+
+                pc3.metric(
+                    "🧭 Direction",
+                    pattern_principal["direction"]
+                )
+
+                st.info(
+                    f'💡 **Lecture :** '
+                    f'{pattern_principal["description"]}\n\n'
+                    f'**Confirmation :** '
+                    f'{pattern_principal["confirmation"]:,.4f}'
+                    f'  •  '
+                    f'**Invalidation :** '
+                    f'{pattern_principal["invalidation"]:,.4f}'
+                )
+
+                if len(
+                    patterns_info["patterns"]
+                ) > 1:
+
+                    lignes_patterns = []
+
+                    for p in patterns_info["patterns"]:
+
+                        lignes_patterns.append({
+                            "Pattern": p["pattern"],
+                            "Direction": p["direction"],
+                            "Confiance": f'{p["confiance"]}/100',
+                            "Confirmation": round(
+                                p["confirmation"],
+                                4
+                            ),
+                            "Invalidation": round(
+                                p["invalidation"],
+                                4
+                            )
+                        })
+
+                    st.dataframe(
+                        pd.DataFrame(
+                            lignes_patterns
+                        ),
+                        use_container_width=True,
+                        hide_index=True
+                    )
+
+            else:
+
+                st.warning(
+                    "⚠️ Aucun pattern graphique "
+                    "suffisamment fiable n'a été identifié "
+                    "sur la structure récente."
+                )
+
+            st.caption(
+                "ℹ️ La reconnaissance des patterns est une "
+                "confluence technique : elle ne constitue pas "
+                "à elle seule un signal de trading et ne remplace "
+                "pas le PrediScore ni le MTF."
+               )
 
             # ============================================================
             # 🧠 ANALYSE MULTI-TIMEFRAME
