@@ -5251,32 +5251,16 @@ if menu == "🧠 Analyse IA Pro":
             # ------------------------------------------------------------
             # 🎯 NOUVELLE DÉCISION FINALE
             # ------------------------------------------------------------
-
-            if score >= 80:
-
-                signal = "ACHAT FORT"
-                conf = "Très élevée"
-
-            elif score >= 70:
-
-                signal = "ACHAT"
-                conf = "Élevée"
-
-            elif score >= 55:
-
-                signal = "ATTENDRE"
-                conf = "Moyenne"
-
-            elif score >= 40:
-
-                signal = "PRUDENCE"
-                conf = "Faible"
-
-            else:
-
-                signal = "VENTE"
-                conf = "Élevée"
-
+           if score_final >= 88:
+              signal_final = "🟢 ACHAT FORT"
+           elif score_final >= 76:
+              signal_final = "🟢 ACHAT"
+           elif score_final >= 60:
+              signal_final = "🟡 ATTENDRE"
+           elif score_final >= 45:
+              signal_final = "🟠 PRUDENCE"
+           else:
+              signal_final = "🔴 VENTE"
             # ------------------------------------------------------------
             # 🧭 AJUSTEMENT PAR LA CONFLUENCE
             # ------------------------------------------------------------
