@@ -6225,7 +6225,7 @@ if menu == "🧠 Analyse IA Pro":
                 hide_index=True
             )
 
-            # ============================================================
+                        # ============================================================
             # 📝 HISTORIQUE
             # ============================================================
 
@@ -6236,11 +6236,11 @@ if menu == "🧠 Analyse IA Pro":
                     ),
                     "actif": name,
                     "score": score,
-                    "signal": signal,
-                    "confiance": conf,
+                    "signal": signal_final,
+                    "confiance": score,
                     "prix": prix
                 }
-           )
+            )
 elif menu == "🔍 Scanner intelligent":
 
     import re
