@@ -5808,13 +5808,118 @@ if menu == "🧠 Analyse IA Pro":
 
             st.divider()
 
-            # ============================================================
+                        # ============================================================
             # 🔮 SCÉNARIOS
             # ============================================================
 
             st.subheader(
                 "🔮 Scénarios du marché"
             )
+
+            # Construction des scénarios à partir du score final
+            probabilite_principal = int(round(score))
+
+            probabilite_adverse = int(
+                round(
+                    max(
+                        0,
+                        min(
+                            100,
+                            100 - score
+                        )
+                    )
+                )
+            )
+
+            probabilite_neutre = int(
+                round(
+                    max(
+                        0,
+                        min(
+                            100,
+                            100 - abs(score - 50) * 2
+                        )
+                    )
+                )
+            )
+
+            # Normalisation pour éviter une somme > 100
+            total_scenarios = (
+                probabilite_principal
+                + probabilite_adverse
+                + probabilite_neutre
+            )
+
+            if total_scenarios > 100:
+                facteur = 100 / total_scenarios
+
+                probabilite_principal = int(
+                    round(probabilite_principal * facteur)
+                )
+
+                probabilite_adverse = int(
+                    round(probabilite_adverse * facteur)
+                )
+
+                probabilite_neutre = (
+                    100
+                    - probabilite_principal
+                    - probabilite_adverse
+                )
+
+            direction_principale = (
+                pattern_direction
+                if pattern_direction != "Neutre"
+                else biais_tf
+            )
+
+            if direction_principale == "Haussier":
+                condition_principale = (
+                    "Le biais technique et/ou le pattern "
+                    "favorise une poursuite haussière."
+                )
+
+                direction_adverse = "Baissier"
+
+            elif direction_principale == "Baissier":
+                condition_principale = (
+                    "Le biais technique et/ou le pattern "
+                    "favorise une poursuite baissière."
+                )
+
+                direction_adverse = "Haussier"
+
+            else:
+                direction_principale = "Neutre"
+                condition_principale = (
+                    "Les signaux restent insuffisamment alignés."
+                )
+
+                direction_adverse = "Neutre"
+
+            scenarios = {
+                "principal": {
+                    "probabilite": probabilite_principal,
+                    "direction": direction_principale,
+                    "condition": condition_principale
+                },
+                "adverse": {
+                    "probabilite": probabilite_adverse,
+                    "direction": direction_adverse,
+                    "condition": (
+                        "Le scénario principal est invalidé "
+                        "ou le biais s'inverse."
+                    )
+                },
+                "neutre": {
+                    "probabilite": probabilite_neutre,
+                    "direction": "Neutre",
+                    "condition": (
+                        "Le marché reste en consolidation "
+                        "ou les signaux deviennent contradictoires."
+                    )
+                }
+            }
 
             c1, c2, c3 = st.columns(3)
 
@@ -5849,7 +5954,6 @@ if menu == "🧠 Analyse IA Pro":
             )
 
             st.divider()
-
             # ============================================================
             # 📊 GRAPHIQUE DU MARCHÉ
             # ============================================================
