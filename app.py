@@ -1351,6 +1351,21 @@ def selectionner_technique(ind, score, signal):
     rsi = ctx["rsi"]
     momentum = ctx["momentum"]
     volatilite = ctx["volatilite"]
+       # La décision finale reste prioritaire sur la sélection de technique
+    # Aucun plan de trade ne doit être généré lorsque le signal final est
+    # ATTENDRE ou PRUDENCE.
+    if signal in ("🟡 ATTENDRE", "🟠 PRUDENCE"):
+        return {
+            "technique": "🚫 Aucune technique",
+            "nom": "Attendre",
+            "raison": (
+                "La confluence finale ne fournit pas suffisamment "
+                "de confirmation pour générer un plan de trade."
+            ),
+            "biais": "Neutre",
+            "qualite": score,
+            "regime": ctx["regime"]
+               }
 
     if volatilite > 6:
         return {
