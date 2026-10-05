@@ -5251,13 +5251,13 @@ if menu == "🧠 Analyse IA Pro":
             # ------------------------------------------------------------
             # 🎯 NOUVELLE DÉCISION FINALE
             # ------------------------------------------------------------
-            if score_final >= 88:
+            if score >= 88:
                signal_final = "🟢 ACHAT FORT"
-            elif score_final >= 76:
+            elif score >= 76:
                signal_final = "🟢 ACHAT"
-            elif score_final >= 60:
+            elif score >= 60:
                signal_final = "🟡 ATTENDRE"
-            elif score_final >= 45:
+            elif score >= 45:
                signal_final = "🟠 PRUDENCE"
             else:
                signal_final = "🔴 VENTE"
