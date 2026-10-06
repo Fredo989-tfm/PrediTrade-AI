@@ -4261,11 +4261,257 @@ p {
 </style>
 """, unsafe_allow_html=True)
 if menu=="📊 Tableau de bord":
-    st.title("📊 Tableau de bord"); st.image("IMG-20260810-WA1501.jpg",width=100)
-    c1,c2,c3=st.columns(3); c1.metric("Actifs",sum(len(v) for v in ASSETS.values())); c2.metric("Version",APP_VERSION); c3.metric("Statut","Premium" if st.session_state.is_premium else "Gratuit")
-    if st.session_state.history: st.dataframe(pd.DataFrame(st.session_state.history[-5:]),use_container_width=True)
-    else: st.info("Lance une analyse dans IA Pro")
+    st.title("📊 Tableau de bord")
 
+    # ============================================================
+    # EN-TÊTE
+    # ============================================================
+    col_logo, col_title = st.columns([1, 5])
+
+    with col_logo:
+        try:
+            st.image("IMG-20260810-WA1501.jpg", width=90)
+        except:
+            pass
+
+    with col_title:
+        st.markdown("### 🧠 PrediTrade AI")
+        st.caption("Votre centre de décision intelligent pour les marchés financiers")
+
+    st.divider()
+
+    # ============================================================
+    # STATUT DU COMPTE
+    # ============================================================
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.metric(
+            "📊 Actifs disponibles",
+            sum(len(v) for v in ASSETS.values())
+        )
+
+    with c2:
+        st.metric(
+            "🚀 Version",
+            APP_VERSION
+        )
+
+    with c3:
+        st.metric(
+            "👤 Abonnement",
+            "Premium" if st.session_state.is_premium else "Gratuit"
+        )
+
+    # ============================================================
+    # MODE DE TRADING
+    # ============================================================
+    st.markdown("### 🎯 Mode de trading")
+
+    mode_demo = st.session_state.get("mode_demo", True)
+
+    mode_col1, mode_col2 = st.columns(2)
+
+    with mode_col1:
+        if st.button(
+            "🟢 MODE DÉMO",
+            use_container_width=True,
+            type="primary" if mode_demo else "secondary"
+        ):
+            st.session_state.mode_demo = True
+            st.rerun()
+
+    with mode_col2:
+        if st.button(
+            "🔴 MODE RÉEL",
+            use_container_width=True,
+            type="primary" if not mode_demo else "secondary"
+        ):
+            st.session_state.mode_demo = False
+            st.rerun()
+
+    # ============================================================
+    # INFORMATIONS DU MODE ACTUEL
+    # ============================================================
+    if mode_demo:
+
+        st.success(
+            "🟢 **MODE DÉMO ACTIF** — "
+            "Les données financières affichées sont virtuelles."
+        )
+
+        # --------------------------------------------------------
+        # CAPITAL DÉMO
+        # --------------------------------------------------------
+        capital_demo = st.session_state.get("capital_demo", 10000.0)
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.metric(
+                "💰 Capital démo",
+                f"${capital_demo:,.2f}"
+            )
+
+        with c2:
+            st.metric(
+                "📈 Performance",
+                "0.00%"
+            )
+
+        with c3:
+            st.metric(
+                "⚠️ Risque exposé",
+                "0.00%"
+            )
+
+    else:
+
+        st.warning(
+            "🔴 **MODE RÉEL ACTIF** — "
+            "Aucune donnée financière fictive n'est affichée."
+        )
+
+        st.info(
+            "🔗 Connectez une plateforme de trading pour afficher "
+            "vos données réelles."
+        )
+
+    # ============================================================
+    # RADAR DU MARCHÉ
+    # ============================================================
+    st.markdown("### 📡 Radar du marché")
+
+    if st.session_state.history:
+
+        historique = st.session_state.history[-5:]
+
+        for analyse in reversed(historique):
+
+            actif = analyse.get(
+                "symbole",
+                analyse.get("asset", "Actif")
+            )
+
+            signal = analyse.get(
+                "signal",
+                "—"
+            )
+
+            confiance = analyse.get(
+                "confiance",
+                analyse.get("score", 0)
+            )
+
+            col1, col2, col3 = st.columns([2, 2, 1])
+
+            with col1:
+                st.markdown(f"**💹 {actif}**")
+
+            with col2:
+                st.markdown(f"**{signal}**")
+
+            with col3:
+                try:
+                    st.metric(
+                        "Score",
+                        f"{float(confiance):.1f}/100"
+                    )
+                except:
+                    st.metric(
+                        "Score",
+                        "—"
+                    )
+
+    else:
+
+        st.info(
+            "📊 Aucune analyse récente. "
+            "Lancez une analyse dans **Analyse IA Pro** "
+            "pour alimenter le radar."
+        )
+
+    # ============================================================
+    # MARCHÉS DISPONIBLES
+    # ============================================================
+    st.markdown("### 🌍 Marchés disponibles")
+
+    marche_cols = st.columns(4)
+
+    categories = [
+        ("🪙", "Crypto", "Crypto"),
+        ("💱", "Forex", "Forex"),
+        ("📈", "Actions", "Actions"),
+        ("🏦", "Indices / ETF", "Indices / ETF")
+    ]
+
+    for col, (icone, nom, cle) in zip(marche_cols, categories):
+
+        with col:
+
+            nombre = len(ASSETS.get(cle, []))
+
+            st.markdown(
+                f"""
+                **{icone} {nom}**
+
+                `{nombre}` actifs
+                """
+            )
+
+    # ============================================================
+    # ACTIVITÉ RÉCENTE
+    # ============================================================
+    st.markdown("### 🕒 Activité récente")
+
+    if st.session_state.history:
+
+        historique_df = pd.DataFrame(
+            st.session_state.history[-5:]
+        )
+
+        st.dataframe(
+            historique_df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+
+        st.info(
+            "Aucune activité récente."
+        )
+
+    # ============================================================
+    # ACTIONS RAPIDES
+    # ============================================================
+    st.markdown("### ⚡ Actions rapides")
+
+    a1, a2, a3, a4 = st.columns(4)
+
+    with a1:
+        st.button(
+            "🧠 Analyse IA Pro",
+            use_container_width=True
+        )
+
+    with a2:
+        st.button(
+            "📡 Scanner intelligent",
+            use_container_width=True
+        )
+
+    with a3:
+        st.button(
+            "💼 Portefeuille",
+            use_container_width=True
+        )
+
+    with a4:
+        st.button(
+            "⚠️ Gestion du risque",
+            use_container_width=True
+)
 if menu == "🧠 Analyse IA Pro":
 
     st.title("🧠 Analyse IA Pro")
