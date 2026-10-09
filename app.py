@@ -4260,133 +4260,152 @@ p {
 
 </style>
 """, unsafe_allow_html=True)
-if menu=="📊 Tableau de bord":
+
+if menu == "📊 Tableau de bord":
+
     st.title("📊 Tableau de bord")
+    st.caption(
+        "PrediTrade AI — Votre centre de décision "
+        "intelligent pour les marchés financiers."
+    )
 
-    # ============================================================
-    # EN-TÊTE
-    # ============================================================
-    col_logo, col_title = st.columns([1, 5])
+    # ---------------------------------------------------------
+    # MODE DE TRADING
+    # ---------------------------------------------------------
+    if "mode_demo" not in st.session_state:
+        st.session_state.mode_demo = True
 
-    with col_logo:
-        try:
-            st.image("IMG-20260810-WA1501.jpg", width=90)
-        except:
-            pass
+    mode_demo = st.session_state.mode_demo
 
-    with col_title:
-        st.markdown("### 🧠 PrediTrade AI")
-        st.caption("Votre centre de décision intelligent pour les marchés financiers")
+    st.markdown("### 🎯 Mode de trading")
+
+    col_demo, col_reel = st.columns(2)
+
+    with col_demo:
+        if st.button(
+            "🟢 MODE DÉMO",
+            use_container_width=True,
+            type="primary" if mode_demo else "secondary",
+            key="dashboard_mode_demo"
+        ):
+            st.session_state.mode_demo = True
+            st.rerun()
+
+    with col_reel:
+        if st.button(
+            "🔴 MODE RÉEL",
+            use_container_width=True,
+            type="primary" if not mode_demo else "secondary",
+            key="dashboard_mode_reel"
+        ):
+            st.session_state.mode_demo = False
+            st.rerun()
+
+    mode_demo = st.session_state.get("mode_demo", True)
+
+    if mode_demo:
+        st.success(
+            "🟢 MODE DÉMO ACTIF — Les montants affichés "
+            "sont virtuels et ne représentent pas un compte réel."
+        )
+    else:
+        st.warning(
+            "🔴 MODE RÉEL ACTIF — Aucun capital fictif "
+            "ne doit être présenté comme un solde réel."
+        )
 
     st.divider()
 
-    # ============================================================
-    # STATUT DU COMPTE
-    # ============================================================
-    c1, c2, c3 = st.columns(3)
+    # ---------------------------------------------------------
+    # INDICATEURS GÉNÉRAUX
+    # ---------------------------------------------------------
+    nombre_actifs = sum(
+        len(actifs) for actifs in ASSETS.values()
+    )
 
-    with c1:
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
         st.metric(
             "📊 Actifs disponibles",
-            sum(len(v) for v in ASSETS.values())
+            nombre_actifs
         )
 
-    with c2:
+    with col2:
         st.metric(
             "🚀 Version",
             APP_VERSION
         )
 
-    with c3:
-        st.metric(
-            "👤 Abonnement",
-            "Premium" if st.session_state.is_premium else "Gratuit"
+    with col3:
+        statut = (
+            "Premium"
+            if st.session_state.get("is_premium", False)
+            else "Gratuit"
         )
+        st.metric("👤 Abonnement", statut)
 
-    # ============================================================
-    # MODE DE TRADING
-    # ============================================================
-    st.markdown("### 🎯 Mode de trading")
+    # ---------------------------------------------------------
+    # CAPITAL ET PERFORMANCES
+    # ---------------------------------------------------------
+    st.markdown("### 💰 Aperçu financier")
 
-    mode_demo = st.session_state.get("mode_demo", True)
-
-    mode_col1, mode_col2 = st.columns(2)
-
-    with mode_col1:
-        if st.button(
-            "🟢 MODE DÉMO",
-            use_container_width=True,
-            type="primary" if mode_demo else "secondary"
-        ):
-            st.session_state.mode_demo = True
-            st.rerun()
-
-    with mode_col2:
-        if st.button(
-            "🔴 MODE RÉEL",
-            use_container_width=True,
-            type="primary" if not mode_demo else "secondary"
-        ):
-            st.session_state.mode_demo = False
-            st.rerun()
-
-    # ============================================================
-    # INFORMATIONS DU MODE ACTUEL
-    # ============================================================
     if mode_demo:
 
-        st.success(
-            "🟢 **MODE DÉMO ACTIF** — "
-            "Les données financières affichées sont virtuelles."
+        capital_demo = float(
+            st.session_state.get(
+                "capital_demo",
+                st.session_state.get("cash", 10000.0)
+            )
         )
 
-        # --------------------------------------------------------
-        # CAPITAL DÉMO
-        # --------------------------------------------------------
-        capital_demo = st.session_state.get("capital_demo", 10000.0)
+        col1, col2, col3 = st.columns(3)
 
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
+        with col1:
             st.metric(
-                "💰 Capital démo",
+                "💵 Capital démo",
                 f"${capital_demo:,.2f}"
             )
 
-        with c2:
+        with col2:
             st.metric(
                 "📈 Performance",
-                "0.00%"
+                "Non calculée"
             )
 
-        with c3:
+        with col3:
             st.metric(
                 "⚠️ Risque exposé",
-                "0.00%"
+                "Non calculé"
             )
+
+        st.caption(
+            "Les performances et le risque seront calculés "
+            "à partir des données disponibles lorsqu'ils "
+            "seront reliés au portefeuille de démonstration."
+        )
 
     else:
 
-        st.warning(
-            "🔴 **MODE RÉEL ACTIF** — "
-            "Aucune donnée financière fictive n'est affichée."
-        )
-
         st.info(
-            "🔗 Connectez une plateforme de trading pour afficher "
-            "vos données réelles."
+            "🔗 **Connectez une plateforme de trading**\n\n"
+            "Votre solde, votre capital et vos performances "
+            "réels pourront être affichés après la connexion "
+            "et la récupération effective des données du compte."
         )
 
-    # ============================================================
+    st.divider()
+
+    # ---------------------------------------------------------
     # RADAR DU MARCHÉ
-    # ============================================================
+    # ---------------------------------------------------------
     st.markdown("### 📡 Radar du marché")
 
-    if st.session_state.history:
+    historique = st.session_state.get("history", [])
 
-        historique = st.session_state.history[-5:]
+    if historique:
 
-        for analyse in reversed(historique):
+        for analyse in reversed(historique[-5:]):
 
             actif = analyse.get(
                 "symbole",
@@ -4395,123 +4414,148 @@ if menu=="📊 Tableau de bord":
 
             signal = analyse.get(
                 "signal",
-                "—"
+                "Non disponible"
             )
 
-            confiance = analyse.get(
+            score = analyse.get(
                 "confiance",
                 analyse.get("score", 0)
             )
 
-            col1, col2, col3 = st.columns([2, 2, 1])
+            c1, c2, c3 = st.columns([2, 2, 1])
 
-            with col1:
+            with c1:
                 st.markdown(f"**💹 {actif}**")
 
-            with col2:
-                st.markdown(f"**{signal}**")
+            with c2:
+                st.write(signal)
 
-            with col3:
+            with c3:
                 try:
                     st.metric(
                         "Score",
-                        f"{float(confiance):.1f}/100"
+                        f"{float(score):.1f}/100"
                     )
-                except:
-                    st.metric(
-                        "Score",
-                        "—"
-                    )
+                except (TypeError, ValueError):
+                    st.metric("Score", "—")
+
+            st.divider()
 
     else:
-
         st.info(
-            "📊 Aucune analyse récente. "
-            "Lancez une analyse dans **Analyse IA Pro** "
-            "pour alimenter le radar."
+            "Aucune analyse récente. Lancez une analyse "
+            "dans « Analyse IA Pro » pour alimenter ce radar."
         )
 
-    # ============================================================
+    # ---------------------------------------------------------
     # MARCHÉS DISPONIBLES
-    # ============================================================
+    # ---------------------------------------------------------
     st.markdown("### 🌍 Marchés disponibles")
 
-    marche_cols = st.columns(4)
-
-    categories = [
+    categories_dashboard = [
         ("🪙", "Crypto", "Crypto"),
         ("💱", "Forex", "Forex"),
         ("📈", "Actions", "Actions"),
-        ("🏦", "Indices / ETF", "Indices / ETF")
+        ("🏦", "Indices", "Indices"),
+        ("📦", "ETF", "ETF"),
+        ("🛢️", "Matières premières", "Matières Premières"),
     ]
 
-    for col, (icone, nom, cle) in zip(marche_cols, categories):
+    market_cols = st.columns(3)
 
-        with col:
+    for i, (icone, nom, cle) in enumerate(
+        categories_dashboard
+    ):
+        nombre = len(ASSETS.get(cle, {}))
 
-            nombre = len(ASSETS.get(cle, []))
-
-            st.markdown(
-                f"""
-                **{icone} {nom}**
-
-                `{nombre}` actifs
-                """
+        with market_cols[i % 3]:
+            st.markdown(f"**{icone} {nom}**")
+            st.metric(
+                "Actifs disponibles",
+                nombre
             )
 
-    # ============================================================
+    st.divider()
+
+    # ---------------------------------------------------------
     # ACTIVITÉ RÉCENTE
-    # ============================================================
+    # ---------------------------------------------------------
     st.markdown("### 🕒 Activité récente")
 
-    if st.session_state.history:
+    if historique:
 
-        historique_df = pd.DataFrame(
-            st.session_state.history[-5:]
-        )
+        lignes = []
+
+        for analyse in reversed(historique[-5:]):
+            lignes.append({
+                "Actif": analyse.get(
+                    "symbole",
+                    analyse.get("asset", "—")
+                ),
+                "Signal": analyse.get(
+                    "signal",
+                    "—"
+                ),
+                "Score": analyse.get(
+                    "confiance",
+                    analyse.get("score", "—")
+                ),
+            })
 
         st.dataframe(
-            historique_df,
+            pd.DataFrame(lignes),
             use_container_width=True,
             hide_index=True
         )
 
     else:
-
-        st.info(
-            "Aucune activité récente."
+        st.caption(
+            "Aucune activité enregistrée pour le moment."
         )
 
-    # ============================================================
+    # ---------------------------------------------------------
     # ACTIONS RAPIDES
-    # ============================================================
+    # ---------------------------------------------------------
     st.markdown("### ⚡ Actions rapides")
 
-    a1, a2, a3, a4 = st.columns(4)
+    a1, a2 = st.columns(2)
+    a3, a4 = st.columns(2)
 
     with a1:
         st.button(
             "🧠 Analyse IA Pro",
-            use_container_width=True
+            use_container_width=True,
+            key="dashboard_action_analyse"
         )
 
     with a2:
         st.button(
-            "📡 Scanner intelligent",
-            use_container_width=True
+            "🔍 Scanner intelligent",
+            use_container_width=True,
+            key="dashboard_action_scanner"
         )
 
     with a3:
         st.button(
             "💼 Portefeuille",
-            use_container_width=True
+            use_container_width=True,
+            key="dashboard_action_portefeuille"
         )
 
     with a4:
         st.button(
-            "⚠️ Gestion du risque",
-            use_container_width=True
-)
+            "🛡️ Gestion du risque",
+            use_container_width=True,
+            key="dashboard_action_risque"
+        )
+
+    st.caption(
+        "PrediTrade AI V"
+        + str(APP_VERSION)
+        + " — Les analyses sont des outils d'aide à la décision "
+        "et ne garantissent aucun résultat financier."
+    )
+
 if menu == "🧠 Analyse IA Pro":
 
     st.title("🧠 Analyse IA Pro")
