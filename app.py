@@ -690,6 +690,77 @@ def firebase_request(function_name, data):
 def hash_password(pw):
     return hashlib.sha256(str(pw).encode()).hexdigest()
 
+import smtplib
+import secrets
+from email.message import EmailMessage
+
+
+def envoyer_code_verification(email, code):
+    """Envoie un code de vérification à usage unique par Gmail."""
+    try:
+        smtp_email = st.secrets["SMTP_EMAIL"]
+        smtp_password = st.secrets["SMTP_PASSWORD"]
+        smtp_server = st.secrets.get(
+            "SMTP_SERVER", "smtp.gmail.com"
+        )
+        smtp_port = int(st.secrets.get("SMTP_PORT", 587))
+
+        message = EmailMessage()
+        message["Subject"] = "Votre code de sécurité PrediTrade AI"
+        message["From"] = smtp_email
+        message["To"] = email
+        message.set_content(
+            f"""Bonjour,
+
+Votre code de vérification PrediTrade AI est : {code}
+
+Ce code expire dans 10 minutes et ne peut être utilisé qu'une fois.
+
+Si vous n'êtes pas à l'origine de cette demande,
+vous pouvez ignorer cet e-mail.
+
+L'équipe PrediTrade AI
+"""
+        )
+
+        with smtplib.SMTP(smtp_server, smtp_port, timeout=20) as serveur:
+            serveur.starttls()
+            serveur.login(smtp_email, smtp_password)
+            serveur.send_message(message)
+
+        return True, "Code envoyé."
+
+    except Exception:
+        return False, (
+            "Impossible d'envoyer le code. Vérifiez les Secrets "
+            "Streamlit et la configuration Gmail."
+        )
+
+
+def demarrer_verification(email, utilisateur, action="login"):
+    """Crée un code temporaire et déclenche son envoi."""
+    code = f"{secrets.randbelow(1000000):06d}"
+
+    succes, message = envoyer_code_verification(email, code)
+
+    if not succes:
+        return False, message
+
+    st.session_state["otp_email"] = email.strip().lower()
+    st.session_state["otp_hash"] = hashlib.sha256(
+        code.encode()
+    ).hexdigest()
+    st.session_state["otp_expiration"] = (
+        datetime.now() + timedelta(minutes=10)
+    )
+    st.session_state["otp_tentatives"] = 0
+    st.session_state["otp_utilisateur"] = utilisateur
+    st.session_state["otp_action"] = action
+    st.session_state["otp_en_attente"] = True
+
+    return True, "Code envoyé à votre adresse e-mail."
+
+
 def trial_active():
     t=st.session_state.get("trial_until")
     if not t: return False
