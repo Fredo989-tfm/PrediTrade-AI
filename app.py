@@ -2744,7 +2744,6 @@ def backtester_strategie(
     gagnants = int(
         (df_trades["profit"] > 0).sum()
     )
-
     perdants = int(
         (df_trades["profit"] < 0).sum()
     )
@@ -3612,53 +3611,254 @@ ASSETS = {
 }
 
 if not st.session_state.get("logged_in", False):
-    st.set_page_config(page_title="PrediTrade AI", page_icon="📈", layout="centered")
+    st.set_page_config(
+        page_title="PrediTrade AI",
+        page_icon="📈",
+        layout="centered"
+    )
+
     st.image("IMG-20260810-WA1501.jpg", width=120)
     st.title("📈 PrediTrade AI")
     st.caption("Ton assistant intelligent pour étudier les marchés.")
-    mode_auth = st.radio("Accès", ["🔑 Connexion", "📝 Créer un compte"], horizontal=True)
+
+    # ÉCRAN DE VÉRIFICATION PAR CODE
+    if st.session_state.get("otp_en_attente", False):
+        st.subheader("🔐 Vérification de sécurité")
+        st.info(
+            f"Un code a été envoyé à "
+            f"{st.session_state.get('otp_email', '')}. "
+            "Il expire dans 10 minutes."
+        )
+
+        code_saisi = st.text_input(
+            "Code de vérification à 6 chiffres",
+            max_chars=6,
+            key="otp_code_saisi"
+        )
+
+        if st.button(
+            "✅ Vérifier le code",
+            type="primary",
+            use_container_width=True
+        ):
+            expiration = st.session_state.get("otp_expiration")
+            tentatives = st.session_state.get("otp_tentatives", 0)
+
+            if tentatives >= 5:
+                st.session_state["otp_en_attente"] = False
+                st.error(
+                    "Trop de tentatives. Recommence la connexion."
+                )
+
+            elif not expiration or datetime.now() > expiration:
+                st.session_state["otp_en_attente"] = False
+                st.error(
+                    "Le code a expiré. Recommence la connexion."
+                )
+
+            elif (
+                len(code_saisi) != 6
+                or not code_saisi.isdigit()
+            ):
+                st.session_state["otp_tentatives"] = tentatives + 1
+                st.error("Saisis un code numérique à 6 chiffres.")
+
+            else:
+                hash_saisi = hashlib.sha256(
+                    code_saisi.encode()
+                ).hexdigest()
+
+                hash_attendu = st.session_state.get("otp_hash", "")
+
+                if not hmac.compare_digest(
+                    hash_saisi, hash_attendu
+                ):
+                    st.session_state["otp_tentatives"] = tentatives + 1
+                    st.error("Code incorrect.")
+                else:
+                    utilisateur = st.session_state.get(
+                        "otp_utilisateur"
+                    )
+
+                    if not utilisateur:
+                        st.session_state["otp_en_attente"] = False
+                        st.error(
+                            "Session de vérification invalide. "
+                            "Recommence la connexion."
+                        )
+                    else:
+                        # Invalidation immédiate du code
+                        st.session_state["otp_en_attente"] = False
+                        st.session_state.pop("otp_hash", None)
+                        st.session_state.pop("otp_expiration", None)
+                        st.session_state.pop("otp_tentatives", None)
+                        st.session_state.pop("otp_utilisateur", None)
+                        st.session_state.pop("otp_action", None)
+
+                        st.session_state.logged_in = True
+                        st.session_state.user_email = utilisateur["email"]
+                        st.session_state.is_premium = utilisateur["premium"]
+
+                        if utilisateur.get("trial_until"):
+                            try:
+                                st.session_state.trial_until = (
+                                    datetime.fromisoformat(
+                                        utilisateur["trial_until"]
+                                    )
+                                )
+                            except (ValueError, TypeError):
+                                st.session_state.trial_until = None
+
+                        st.session_state.show_landing = False
+                        st.session_state.show_login = False
+
+                        st.success("Connexion sécurisée réussie.")
+                        st.rerun()
+
+        if st.button(
+            "↩️ Annuler et revenir à la connexion",
+            use_container_width=True
+        ):
+            for cle in (
+                "otp_en_attente",
+                "otp_email",
+                "otp_hash",
+                "otp_expiration",
+                "otp_tentatives",
+                "otp_utilisateur",
+                "otp_action",
+                "otp_code_saisi",
+            ):
+                st.session_state.pop(cle, None)
+            st.rerun()
+
+        st.stop()
+
+    # ÉCRAN NORMAL : CONNEXION OU INSCRIPTION
+    mode_auth = st.radio(
+        "Accès",
+        ["🔑 Connexion", "📝 Créer un compte"],
+        horizontal=True
+    )
     st.divider()
+
     if mode_auth == "🔑 Connexion":
         st.subheader("🔑 Se connecter")
-        email = st.text_input("📧 Email", placeholder="exemple@email.com", key="login_email")
-        password = st.text_input("🔒 Mot de passe", type="password", key="login_password")
-        if st.button("🚀 Se connecter", type="primary", use_container_width=True):
+
+        email = st.text_input(
+            "📧 Email",
+            placeholder="exemple@email.com",
+            key="login_email"
+        )
+        password = st.text_input(
+            "🔒 Mot de passe",
+            type="password",
+            key="login_password"
+        )
+
+        if st.button(
+            "🚀 Se connecter",
+            type="primary",
+            use_container_width=True
+        ):
             email = email.strip().lower()
-            if not email or not password: st.error("❌ Remplis tous les champs.")
+
+            if not email or not password:
+                st.error("Remplis tous les champs.")
             else:
-                user = authenticate_user(email, password)
-                if user:
-                    st.session_state.logged_in = True; st.session_state.user_email = user["email"]; st.session_state.is_premium = user["premium"]
-                    if user.get("trial_until"):
-                        try: st.session_state.trial_until = datetime.fromisoformat(user["trial_until"])
-                        except: st.session_state.trial_until = None
-                    st.session_state.show_landing = False; st.session_state.show_login = False
-                    st.success("✅ Connexion réussie!"); time.sleep(0.5); st.rerun()
-                else: st.error("❌ Email ou mot de passe incorrect.")
+                utilisateur = authenticate_user(email, password)
+
+                if utilisateur:
+                    succes, message = demarrer_verification(
+                        email,
+                        utilisateur,
+                        "login"
+                    )
+
+                    if succes:
+                        st.success(message)
+                        st.rerun()
+                    else:
+                        st.error(message)
+                else:
+                    st.error("Email ou mot de passe incorrect.")
+
     else:
         st.subheader("📝 Créer ton compte")
-        email = st.text_input("📧 Email", placeholder="exemple@email.com", key="register_email")
-        password = st.text_input("🔒 Mot de passe", type="password", key="register_password")
-        password_confirm = st.text_input("🔒 Confirmer le mot de passe", type="password", key="register_password_confirm")
-        st.caption("Le mot de passe doit contenir au minimum 6 caractères.")
-        if st.button("✨ Créer mon compte", type="primary", use_container_width=True):
+
+        email = st.text_input(
+            "📧 Email",
+            placeholder="exemple@email.com",
+            key="register_email"
+        )
+        password = st.text_input(
+            "🔒 Mot de passe",
+            type="password",
+            key="register_password"
+        )
+        password_confirm = st.text_input(
+            "🔒 Confirmer le mot de passe",
+            type="password",
+            key="register_password_confirm"
+        )
+
+        st.caption(
+            "Le mot de passe doit contenir au minimum 6 caractères."
+        )
+
+        if st.button(
+            "✨ Créer mon compte",
+            type="primary",
+            use_container_width=True
+        ):
             email = email.strip().lower()
-            if not email or not password or not password_confirm: st.error("❌ Remplis tous les champs.")
-            elif "@" not in email or "." not in email: st.error("❌ Adresse email invalide.")
-            elif len(password) < 6: st.error("❌ Le mot de passe doit contenir au moins 6 caractères.")
-            elif password!= password_confirm: st.error("❌ Les deux mots de passe ne correspondent pas.")
+
+            if not email or not password or not password_confirm:
+                st.error("Remplis tous les champs.")
+            elif "@" not in email or "." not in email:
+                st.error("Adresse e-mail invalide.")
+            elif len(password) < 6:
+                st.error("Le mot de passe doit contenir au moins 6 caractères.")
+            elif password != password_confirm:
+                st.error("Les deux mots de passe ne correspondent pas.")
             else:
-                success, message = create_user(email, password)
-                if success:
-                    st.session_state.logged_in = True; st.session_state.user_email = email; st.session_state.is_premium = False; st.session_state.trial_until = None
-                    st.session_state.show_landing = False; st.session_state.show_login = False
-                    st.success("🎉 Compte créé! Bienvenue sur PrediTrade AI."); time.sleep(0.5); st.rerun()
-                else: st.error(f"❌ {message}")
+                succes, message = create_user(email, password)
+
+                if succes:
+                    utilisateur = {
+                        "email": email,
+                        "premium": False,
+                        "trial_until": None
+                    }
+
+                    envoi_ok, message_envoi = demarrer_verification(
+                        email,
+                        utilisateur,
+                        "register"
+                    )
+
+                    if envoi_ok:
+                        st.success(
+                            "Compte créé. Vérifie ton e-mail "
+                            "pour confirmer la connexion."
+                        )
+                        st.rerun()
+                    else:
+                        st.error(message_envoi)
+                        st.warning(
+                            "Le compte a été créé, mais le code n'a "
+                            "pas pu être envoyé. Réessaie de te connecter."
+                        )
+                else:
+                    st.error(message)
+
     st.divider()
-    st.caption("🔐 Tes identifiants sont gérés directement par PrediTrade AI.")
+    st.caption(
+        "🔐 La connexion nécessite la validation d'un code "
+        "envoyé par e-mail."
+    )
     st.stop()
 
-if not st.session_state.get("logged_in", False): st.stop()
 
 with st.sidebar:
     st.image("IMG-20260810-WA1501.jpg",width=80); st.title("PrediTrade AI"); st.caption(f"V{APP_VERSION}")
