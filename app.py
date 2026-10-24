@@ -591,90 +591,192 @@ header[data-testid="stHeader"] {
 
 </style>
 """, unsafe_allow_html=True)
-DB_FILE = "users.db"
+
+import os
+import psycopg
+
+def get_database_url():
+    """Récupère l'URL PostgreSQL depuis Streamlit Secrets ou l'environnement."""
+    try:
+        url = st.secrets.get("DATABASE_URL")
+        if url:
+            return url
+    except Exception:
+        pass
+
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        return url
+
+    raise RuntimeError(
+        "DATABASE_URL manquante. Configure-la dans les Secrets de Streamlit."
+    )
+
+
+def get_db_connection():
+    """Ouvre une connexion à la base PostgreSQL Neon."""
+    return psycopg.connect(get_database_url())
+
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            premium INTEGER DEFAULT 0,
-            trial_until TEXT,
-            created_at TEXT NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
+    """Crée la table utilisateurs si elle n'existe pas."""
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGSERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    premium BOOLEAN NOT NULL DEFAULT FALSE,
+                    trial_until TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
 
 def create_user(email, password):
     email = email.strip().lower()
+
     if not email or not password:
         return False, "Email et mot de passe obligatoires."
+
     password_hash = hash_password(password)
+
     try:
-        conn = sqlite3.connect(DB_FILE)
-        cur = conn.cursor()
-        cur.execute("INSERT INTO users (email, password_hash, premium, trial_until, created_at) VALUES (?,?,?,?,?)", (email, password_hash, 0, None, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO users
+                    (email, password_hash, premium, trial_until, created_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        email,
+                        password_hash,
+                        False,
+                        None,
+                        datetime.now().isoformat()
+                    )
+                )
+
         return True, "Compte créé avec succès."
-    except sqlite3.IntegrityError:
+
+    except psycopg.errors.UniqueViolation:
         return False, "Un compte existe déjà avec cet email."
-    except Exception as e:
-        return False, f"Erreur : {e}"
+
+    except Exception:
+        return False, (
+            "Impossible de créer le compte. "
+            "Vérifie la configuration de la base de données."
+        )
+
 
 def authenticate_user(email, password):
     email = email.strip().lower()
     password_hash = hash_password(password)
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT email, password_hash, premium, trial_until FROM users WHERE email =?", (email,))
-    user = cur.fetchone()
-    conn.close()
-    if not user: return None
-    if not hmac.compare_digest(user[1], password_hash): return None
-    return {"email": user[0], "premium": bool(user[2]), "trial_until": user[3]}
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT email, password_hash, premium, trial_until
+                FROM users
+                WHERE email = %s
+                """,
+                (email,)
+            )
+            user = cur.fetchone()
+
+    if not user:
+        return None
+
+    if not hmac.compare_digest(user[1], password_hash):
+        return None
+
+    return {
+        "email": user[0],
+        "premium": bool(user[2]),
+        "trial_until": user[3]
+    }
+
 
 def get_user(email):
     email = email.strip().lower()
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT email, premium, trial_until FROM users WHERE email =?", (email,))
-    user = cur.fetchone()
-    conn.close()
-    if not user: return None
-    return {"email": user[0], "premium": bool(user[1]), "trial_until": user[2]}
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT email, premium, trial_until
+                FROM users
+                WHERE email = %s
+                """,
+                (email,)
+            )
+            user = cur.fetchone()
+
+    if not user:
+        return None
+
+    return {
+        "email": user[0],
+        "premium": bool(user[1]),
+        "trial_until": user[2]
+    }
+
 
 def set_user_premium(email, premium=True):
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("UPDATE users SET premium =? WHERE email =?", (1 if premium else 0, email.strip().lower()))
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE users
+                SET premium = %s
+                WHERE email = %s
+                """,
+                (bool(premium), email.strip().lower())
+            )
+
 
 def load_users():
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT email, premium, trial_until FROM users")
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT email, premium, trial_until FROM users"
+            )
+            rows = cur.fetchall()
+
     users = {}
     for email, premium, trial_until in rows:
-        users[email] = {"premium": bool(premium), "trial_until": trial_until}
+        users[email] = {
+            "premium": bool(premium),
+            "trial_until": trial_until
+        }
+
     return users
 
+
 def save_users(users):
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    for email, data in users.items():
-        cur.execute("UPDATE users SET premium =?, trial_until =? WHERE email =?", (1 if data.get("premium", False) else 0, data.get("trial_until"), email.strip().lower()))
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            for email, data in users.items():
+                cur.execute(
+                    """
+                    UPDATE users
+                    SET premium = %s, trial_until = %s
+                    WHERE email = %s
+                    """,
+                    (
+                        bool(data.get("premium", False)),
+                        data.get("trial_until"),
+                        email.strip().lower()
+                    )
+                )
+
 
 init_db()
+
 PROXY="https://preditrade-proxy.fredoblong6.workers.dev"
 def proxy_url(target_url): return f"{PROXY}?url={urllib.parse.quote(target_url, safe='')}"
 FIREBASE_FUNCTIONS="https://europe-west1-preditrade-ai-3edb0.cloudfunctions.net"
