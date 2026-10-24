@@ -872,22 +872,33 @@ def trial_active():
     return datetime.now()<t
 
 def actualiser_statut_premium():
-    email=st.session_state.get("user_email","").strip().lower()
+    email = st.session_state.get("user_email", "").strip().lower()
+
     if not email:
-        st.session_state.is_premium=False
+        st.session_state.is_premium = False
         return False
-    if st.session_state.get("is_premium"):
-        return True
-    res = firebase_request("getUser", {"email": email})
-    if res.get("success"):
-        if res.get("premium"):
-            st.session_state.is_premium=True
-            return True
+
+    try:
+        user = get_user(email)
+
+        if user:
+            premium = user.get("premium", False)
+
+            if premium:
+                st.session_state.is_premium = True
+                return True
+
+    except Exception as e:
+        print(f"Erreur vérification Premium : {e}")
+
     if trial_active():
-        st.session_state.is_premium=True
+        st.session_state.is_premium = True
         return True
-    st.session_state.is_premium=False
+
+    st.session_state.is_premium = False
     return False
+
+
 # --- DETECTEUR DE BALEINES - FONCTIONS ---
 
 def get_prix_btc():
