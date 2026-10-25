@@ -1,7 +1,9 @@
 import streamlit as st, requests, hashlib, urllib.parse, pandas as pd, numpy as np
+import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
 import time
+cookie_manager = stx.CookieManager()
 APP_VERSION="5.0.0"
 import sqlite3
 # --- PWA PrediTrade IA - Activation Installation ---
@@ -3808,7 +3810,7 @@ if not st.session_state.get("logged_in", False):
                         st.session_state.pop("otp_utilisateur", None)
                         st.session_state.pop("otp_action", None)
 
-                        st.session_state.logged_in = True
+                                                st.session_state.logged_in = True
                         st.session_state.user_email = utilisateur["email"]
                         st.session_state.is_premium = utilisateur["premium"]
 
@@ -3982,8 +3984,13 @@ with st.sidebar:
         if st.session_state.is_premium: st.markdown('<span style="background:#00E5FF;color:#000;padding:3px 8px;border-radius:5px;font-size:10px">PREMIUM</span>',unsafe_allow_html=True)
     st.divider()
     if st.button("🚪 Se déconnecter", use_container_width=True):
-        st.session_state.logged_in = False; st.session_state.user_email = ""; st.session_state.is_premium = False; st.session_state.trial_until = None
-        st.session_state.show_landing = True; st.session_state.show_login = True; st.rerun()
+       st.session_state.logged_in = False
+       st.session_state.user_email = ""
+       st.session_state.is_premium = False
+       st.session_state.trial_until = None
+       st.session_state.show_landing = True
+       st.session_state.show_login = True
+       st.rerun()
     st.divider()
     actualiser_statut_premium()
     if trial_active():
