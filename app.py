@@ -3810,7 +3810,7 @@ if not st.session_state.get("logged_in", False):
                         st.session_state.pop("otp_utilisateur", None)
                         st.session_state.pop("otp_action", None)
 
-                                                st.session_state.logged_in = True
+                        st.session_state.logged_in = True
                         st.session_state.user_email = utilisateur["email"]
                         st.session_state.is_premium = utilisateur["premium"]
 
