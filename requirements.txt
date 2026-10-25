@@ -9,3 +9,5 @@ google-genai
 firebase-admin
 python-binance
 psycopg[binary]
+extra-streamlit-components
+
