@@ -3731,7 +3731,7 @@ if not st.session_state.get("logged_in", False):
         page_icon="📈",
         layout="centered"
     )
-
+   
     st.image("IMG-20260810-WA1501.jpg", width=120)
     st.title("📈 PrediTrade AI")
     st.caption("Ton assistant intelligent pour étudier les marchés.")
