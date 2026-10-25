@@ -1,4 +1,5 @@
 import streamlit as st, requests, hashlib, urllib.parse, pandas as pd, numpy as np
+import streamlit.components.v1 as components
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 import plotly.graph_objects as go, hmac
